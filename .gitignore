@@ -69,3 +69,10 @@ desktop.ini
 *.tmp
 *.temp
 .tmp
+
+
+# Arquivos de backup
+.scolisscan_clean.zip
+
+# Outros
+.CLAUDE.md
