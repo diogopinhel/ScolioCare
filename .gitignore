@@ -75,4 +75,6 @@ desktop.ini
 .scolisscan_clean.zip
 
 # Outros
+.CONTEXT_BRIEFING.md
+.relevant_files/
 .CLAUDE.md
