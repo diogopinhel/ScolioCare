@@ -1,4 +1,6 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Outlet } from "react-router";
+
+import { ProtectedRoute } from "./auth/ProtectedRoute";
 
 // Auth
 import LoginScreen from "./screens/auth/LoginScreen";
@@ -51,13 +53,24 @@ import ProfileScreen from "./screens/mobile/ProfileScreen";
 import TwoFactorSetupScreen from "./screens/mobile/TwoFactorSetupScreen";
 
 export const router = createBrowserRouter([
+  // ─── Público ────────────────────────────────────────────────────────────
   {
     path: "/login",
     Component: LoginScreen,
   },
   {
+    path: "/403",
+    Component: Error403Screen,
+  },
+
+  // ─── Médico Especialista ───────────────────────────────────────────────
+  {
     path: "/",
-    Component: Layout,
+    element: (
+      <ProtectedRoute perfis="MEDICO">
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, Component: DashboardScreen },
       { path: "patients", Component: PatientListScreen },
@@ -67,25 +80,35 @@ export const router = createBrowserRouter([
       { path: "exam-comparison", Component: ExamComparisonScreen },
       { path: "report-generation", Component: ReportGenerationScreen },
       { path: "glass-break", Component: GlassBreakScreen },
-      { path: "ui-audit", Component: UIAuditScreen },
-      { path: "403", Component: Error403Screen },
-      { path: "404", Component: Error404Screen },
       { path: "*", Component: Error404Screen },
     ],
   },
+
+  // ─── Técnico de Saúde ──────────────────────────────────────────────────
   {
     path: "/tecnico",
-    Component: TecnicoLayout,
+    element: (
+      <ProtectedRoute perfis="TECNICO">
+        <TecnicoLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, Component: TecnicoDashboardScreen },
       { path: "upload", Component: ExamUploadScreen },
       { path: "queue", Component: ExamQueueScreen },
       { path: "patients", Component: TecnicoPatientsScreen },
+      { path: "*", Component: Error404Screen },
     ],
   },
+
+  // ─── Administrador ─────────────────────────────────────────────────────
   {
     path: "/admin-panel",
-    Component: AdminLayout,
+    element: (
+      <ProtectedRoute perfis="ADMIN">
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, Component: AdminDashboardScreen },
       { path: "users", Component: AdminUsersScreen },
@@ -93,22 +116,46 @@ export const router = createBrowserRouter([
       { path: "settings", Component: AdminSettingsScreen },
       { path: "ai", Component: AdminAIScreen },
       { path: "compliance", Component: AdminComplianceScreen },
+      // Auditoria UI/UX — só admin tem acesso, e só por URL directo
+      // (não aparece na sidebar por ser uma ferramenta interna de QA)
+      { path: "ui-audit", Component: UIAuditScreen },
+      { path: "*", Component: Error404Screen },
     ],
   },
+
+  // ─── Mobile (Paciente) ─────────────────────────────────────────────────
+  // Onboarding e MobileLogin ficam públicos; o resto é protegido para
+  // pacientes autenticados.
   {
     path: "/mobile",
     children: [
       { index: true, Component: OnboardingScreen },
       { path: "login", Component: MobileLoginScreen },
-      { path: "home", Component: MobileHomeScreen },
-      { path: "exams", Component: ExamListScreen },
-      { path: "exam-detail", Component: ExamDetailScreen },
-      { path: "exam-comparison", Component: ExamComparisonMobileScreen },
-      { path: "wellness-log", Component: WellnessLogScreen },
-      { path: "assistant", Component: AssistantScreen },
-      { path: "notifications", Component: NotificationsScreen },
-      { path: "profile", Component: ProfileScreen },
-      { path: "2fa-setup", Component: TwoFactorSetupScreen },
+      {
+        element: (
+          <ProtectedRoute perfis="PACIENTE">
+            <Outlet />
+          </ProtectedRoute>
+        ),
+        children: [
+          { path: "home", Component: MobileHomeScreen },
+          { path: "exams", Component: ExamListScreen },
+          { path: "exam-detail", Component: ExamDetailScreen },
+          { path: "exam-comparison", Component: ExamComparisonMobileScreen },
+          { path: "wellness-log", Component: WellnessLogScreen },
+          { path: "assistant", Component: AssistantScreen },
+          { path: "notifications", Component: NotificationsScreen },
+          { path: "profile", Component: ProfileScreen },
+          { path: "2fa-setup", Component: TwoFactorSetupScreen },
+        ],
+      },
+      { path: "*", Component: Error404Screen },
     ],
+  },
+
+  // ─── Catch-all ─────────────────────────────────────────────────────────
+  {
+    path: "*",
+    Component: Error404Screen,
   },
 ]);

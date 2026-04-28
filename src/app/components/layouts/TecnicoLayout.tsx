@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, NavLink } from 'react-router';
+import { Outlet, NavLink, useNavigate } from 'react-router';
 import {
   LayoutDashboard,
   Upload,
@@ -10,10 +10,33 @@ import {
   Globe,
   ChevronDown,
   Clock,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from '../../auth/AuthContext';
+
+function obterIniciais(nomeCompleto: string): string {
+  const partes = nomeCompleto.trim().split(/\s+/);
+  if (partes.length === 0) return '?';
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
 
 export default function TecnicoLayout() {
   const [notificationCount] = React.useState(2);
+  const navigate = useNavigate();
+  const { utilizador, logout } = useAuth();
+
+  const nome = utilizador?.nomeCompleto ?? 'Técnico';
+  const iniciais = obterIniciais(nome);
+  const departamento =
+    utilizador?.perfil === 'TECNICO' && 'departamento' in utilizador
+      ? (utilizador as { departamento: string }).departamento
+      : 'Técnico de saúde';
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
 
   const navItem = (
     to: string,
@@ -44,9 +67,7 @@ export default function TecnicoLayout() {
 
   return (
     <div className="flex h-screen bg-[var(--scolio-page-surface)] w-[1440px] mx-auto">
-      {/* Sidebar — verde como cor de identidade */}
       <aside className="w-60 bg-white border-r border-[var(--scolio-border-light)] flex flex-col">
-        {/* Logo */}
         <div className="p-6 border-b border-[var(--scolio-border-light)]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[var(--scolio-success-green)] rounded-lg flex items-center justify-center">
@@ -69,7 +90,6 @@ export default function TecnicoLayout() {
           </div>
         </div>
 
-        {/* Navegação */}
         <nav className="flex-1 p-4">
           <ul className="space-y-1">
             {navItem('/tecnico', LayoutDashboard, 'Painel', true)}
@@ -79,33 +99,39 @@ export default function TecnicoLayout() {
           </ul>
         </nav>
 
-        {/* User */}
         <div className="p-4 border-t border-[var(--scolio-border-light)]">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full bg-[var(--scolio-success-green)] flex items-center justify-center text-white font-medium">
-              RS
+              {iniciais}
             </div>
             <div className="flex-1 min-w-0">
               <p
                 className="text-[var(--scolio-text-primary)] font-medium truncate"
                 style={{ fontSize: 'var(--text-body)' }}
               >
-                Ricardo Sousa
+                {nome}
               </p>
               <p
                 className="text-[var(--scolio-text-secondary)] truncate"
                 style={{ fontSize: 'var(--text-caption)' }}
               >
-                Técnico de radiologia
+                {departamento}
               </p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-[var(--radius-component)] text-[var(--scolio-text-secondary)] hover:bg-[var(--scolio-page-surface)] hover:text-[var(--scolio-text-primary)] transition-colors"
+            style={{ fontSize: 'var(--text-body)' }}
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sair</span>
+          </button>
         </div>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <header className="bg-white border-b border-[var(--scolio-border-light)] px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
@@ -118,15 +144,11 @@ export default function TecnicoLayout() {
                 />
               </div>
 
-              {/* Indicador de turno */}
               <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--scolio-success-surface)] rounded-[var(--radius-component)]">
                 <Clock className="w-4 h-4 text-[var(--scolio-success-green)]" />
                 <span
                   className="text-[var(--scolio-success-green)]"
-                  style={{
-                    fontSize: 'var(--text-caption)',
-                    fontWeight: 'var(--weight-medium)',
-                  }}
+                  style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}
                 >
                   Turno activo · 08:00 – 16:00
                 </span>
@@ -134,13 +156,20 @@ export default function TecnicoLayout() {
             </div>
 
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-2 px-3 py-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors">
+              <button
+                type="button"
+                className="flex items-center gap-2 px-3 py-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors"
+              >
                 <Globe className="w-5 h-5" />
                 <span style={{ fontSize: 'var(--text-body)' }}>PT</span>
                 <ChevronDown className="w-4 h-4" />
               </button>
 
-              <button className="relative p-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors">
+              <button
+                type="button"
+                className="relative p-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors"
+                aria-label="Notificações"
+              >
                 <Bell className="w-5 h-5" />
                 {notificationCount > 0 && (
                   <span className="absolute top-1 right-1 w-4 h-4 bg-[var(--scolio-danger-coral)] text-white rounded-full flex items-center justify-center text-xs font-medium">
@@ -155,7 +184,7 @@ export default function TecnicoLayout() {
                     className="text-[var(--scolio-text-primary)] font-medium"
                     style={{ fontSize: 'var(--text-caption)' }}
                   >
-                    Ricardo Sousa
+                    {nome}
                   </p>
                   <p
                     className="text-[var(--scolio-text-secondary)]"
@@ -165,7 +194,7 @@ export default function TecnicoLayout() {
                   </p>
                 </div>
                 <div className="w-9 h-9 rounded-full bg-[var(--scolio-success-green)] flex items-center justify-center text-white font-medium">
-                  RS
+                  {iniciais}
                 </div>
               </div>
             </div>
