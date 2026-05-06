@@ -1,0 +1,114 @@
+import { supabase } from '../../lib/supabase';
+import type { PacienteResumo, PacienteListagem, PacienteDetalhe, EstadoEstudo } from '../types';
+
+/**
+ * Devolve todos os pacientes associados ao médico autenticado (paciente_medico.data_fim IS NULL),
+ * com contagem de exames e estado do exame mais recente agregados em TypeScript (2 queries).
+ */
+export async function getPacientesListagem(): Promise<PacienteListagem[]> {
+  const { data: associacoes, error: errAssoc } = await supabase
+    .from('paciente_medico')
+    .select(`
+      data_associacao,
+      utilizadores!paciente_medico_paciente_id_fkey(
+        id, nome_completo, numero_utente, data_nascimento, genero
+      )
+    `)
+    .is('data_fim', null)
+    .order('data_associacao', { ascending: false });
+
+  if (errAssoc || !associacoes) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pacientes = (associacoes as any[])
+    .filter((a) => a.utilizadores)
+    .map((a) => a.utilizadores as {
+      id: string;
+      nome_completo: string;
+      numero_utente: string | null;
+      data_nascimento: string | null;
+      genero: string | null;
+    });
+
+  if (pacientes.length === 0) return [];
+
+  // Buscar exames destes pacientes numa única query
+  const ids = pacientes.map((p) => p.id);
+  const { data: estudos } = await supabase
+    .from('estudos')
+    .select('paciente_id, estado, data_estudo')
+    .in('paciente_id', ids)
+    .eq('arquivado', false)
+    .order('data_estudo', { ascending: false });
+
+  // Agregar em TypeScript: percorre exames já ordenados por data desc,
+  // por isso o primeiro encontrado por paciente é o mais recente.
+  const resumoPorPaciente = new Map<string, { total: number; ultimoEstado: EstadoEstudo; ultimaData: string }>();
+  for (const e of (estudos ?? [])) {
+    const pid = e.paciente_id as string;
+    const existing = resumoPorPaciente.get(pid);
+    if (!existing) {
+      resumoPorPaciente.set(pid, {
+        total: 1,
+        ultimoEstado: e.estado as EstadoEstudo,
+        ultimaData: e.data_estudo as string,
+      });
+    } else {
+      existing.total++;
+    }
+  }
+
+  return pacientes.map((p) => ({
+    id: p.id,
+    nomeCompleto: p.nome_completo,
+    numeroUtente: p.numero_utente ?? '—',
+    dataNascimento: p.data_nascimento ?? null,
+    genero: p.genero ?? null,
+    totalExames: resumoPorPaciente.get(p.id)?.total ?? 0,
+    ultimoExame: resumoPorPaciente.get(p.id)?.ultimaData ?? null,
+    estadoUltimoExame: resumoPorPaciente.get(p.id)?.ultimoEstado ?? null,
+  }));
+}
+
+export async function getPaciente(id: string): Promise<PacienteDetalhe | null> {
+  const { data, error } = await supabase
+    .from('utilizadores')
+    .select('id, nome_completo, data_nascimento, genero, numero_utente, contacto, morada')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const row = data as any;
+  return {
+    id: row.id as string,
+    nomeCompleto: row.nome_completo as string,
+    dataNascimento: row.data_nascimento as string | null,
+    genero: row.genero as string | null,
+    numeroUtente: row.numero_utente as string | null,
+    contacto: row.contacto as string | null,
+    morada: row.morada as string | null,
+  };
+}
+
+export async function getPacientesAssociados(): Promise<PacienteResumo[]> {
+  const { data: rows, error } = await supabase
+    .from('paciente_medico')
+    .select('data_associacao, utilizadores!paciente_medico_paciente_id_fkey(id, nome_completo, numero_utente)')
+    .is('data_fim', null)
+    .order('data_associacao', { ascending: false })
+    .limit(10);
+
+  if (error || !rows) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (rows as any[])
+    .filter((row) => row.utilizadores)
+    .map((row) => ({
+      id: row.utilizadores.id as string,
+      nomeCompleto: row.utilizadores.nome_completo as string,
+      numeroUtente: (row.utilizadores.numero_utente ?? '—') as string,
+      dataAssociacao: row.data_associacao as string,
+    }));
+}

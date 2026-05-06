@@ -19,4 +19,14 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  // Impede que o browser guarde index.html em cache entre deployments.
+  // Os assets JS/CSS já são imunes: o build do Vite adiciona um hash de conteúdo
+  // ao nome de cada ficheiro, pelo que qualquer alteração gera um novo URL.
+  server: {
+    headers: { 'Cache-Control': 'no-cache' },
+  },
+  preview: {
+    headers: { 'Cache-Control': 'no-cache' },
+  },
 })

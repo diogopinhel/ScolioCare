@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm typecheck *)",
+      "Bash(npm run *)",
+      "Bash(del *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Ambiente de Trabalho\\\\UTAD\\\\3ºAno\\\\2º Semestre\\\\Trabalho Final\\\\ScolioCare\\\\src\\\\app\\\\screens\" -Recurse -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(python seed_utilizadores.py)",
+      "Bash(py --version)",
+      "Bash(py -m pip install supabase python-dotenv --quiet)"
+    ]
+  }
+}

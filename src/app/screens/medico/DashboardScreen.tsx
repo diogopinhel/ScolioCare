@@ -1,226 +1,372 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, FileText, CheckCircle2, FileBarChart, Upload, Activity, FileCheck } from 'lucide-react';
-import { Button, StatusBadge } from '../../components/scolio';
+import { Button, StatusBadge, ExamListSkeleton, PatientCardSkeleton } from '../../components/scolio';
+import type { BadgeStatus } from '../../components/scolio';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../../auth/AuthContext';
+import {
+  getMetricasDashboard,
+  getEstudosPendentesValidacao,
+  getExamesPorSemana,
+  getAtividadeRecente,
+} from '../../../data/repository/estudos';
+import { getPacientesAssociados } from '../../../data/repository/pacientes';
+import type {
+  MetricasDashboardMedico,
+  EstudoResumo,
+  PacienteResumo,
+  DadosSemanais,
+  AtividadeResumo,
+  EstadoEstudo,
+} from '../../../data/types';
 
-// Mock data for the chart
-const weeklyExamsData = [
-  { week: 'W1', exams: 12, id: 'w1' },
-  { week: 'W2', exams: 19, id: 'w2' },
-  { week: 'W3', exams: 15, id: 'w3' },
-  { week: 'W4', exams: 22, id: 'w4' },
-  { week: 'W5', exams: 18, id: 'w5' },
-  { week: 'W6', exams: 25, id: 'w6' },
-  { week: 'W7', exams: 21, id: 'w7' },
-  { week: 'W8', exams: 28, id: 'w8' },
-];
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-// Mock data for awaiting validation
-const awaitingValidation = [
-  { id: 1, name: 'Maria Silva', date: '2026-04-08', time: '14:30', status: 'analyzed' as const },
-  { id: 2, name: 'João Santos', date: '2026-04-08', time: '13:15', status: 'analyzed' as const },
-  { id: 3, name: 'Ana Costa', date: '2026-04-07', time: '16:45', status: 'analyzed' as const },
-  { id: 4, name: 'Pedro Oliveira', date: '2026-04-07', time: '11:20', status: 'analyzed' as const },
-  { id: 5, name: 'Sofia Pereira', date: '2026-04-06', time: '15:00', status: 'analyzed' as const },
-];
+function semanasFallback(): DadosSemanais[] {
+  return Array.from({ length: 8 }, (_, i) => ({ semana: `S${i + 1}`, exames: 0 }));
+}
 
-// Mock data for recently accessed patients
-const recentPatients = [
-  { id: 1, name: 'Carlos Rodrigues', patientId: 'PT-2024-0847', lastAccess: 'há 2 horas' },
-  { id: 2, name: 'Beatriz Almeida', patientId: 'PT-2024-0812', lastAccess: 'há 3 horas' },
-  { id: 3, name: 'Miguel Fernandes', patientId: 'PT-2024-0756', lastAccess: 'há 5 horas' },
-  { id: 4, name: 'Laura Gomes', patientId: 'PT-2024-0691', lastAccess: 'Ontem' },
-];
+function tempoRelativo(dataISO: string): string {
+  const diff = Date.now() - new Date(dataISO).getTime();
+  const minutos = Math.floor(diff / 60000);
+  if (minutos < 1) return 'agora mesmo';
+  if (minutos < 60) return `há ${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `há ${horas} hora${horas !== 1 ? 's' : ''}`;
+  const dias = Math.floor(horas / 24);
+  if (dias === 1) return 'Ontem';
+  return `há ${dias} dias`;
+}
 
-// Mock data for activity feed
-const activityFeed = [
-  { id: 1, type: 'upload', message: 'Novo exame carregado para Maria Silva', time: 'há 15 min', icon: Upload },
-  { id: 2, type: 'complete', message: 'Análise IA concluída para João Santos', time: 'há 32 min', icon: Activity },
-  { id: 3, type: 'report', message: 'Relatório emitido para Ana Costa', time: 'há 1 hora', icon: FileCheck },
-  { id: 4, type: 'upload', message: 'Novo exame carregado para Pedro Oliveira', time: 'há 2 horas', icon: Upload },
-  { id: 5, type: 'complete', message: 'Análise IA concluída para Sofia Pereira', time: 'há 3 horas', icon: Activity },
-];
+function formatarDataHora(iso: string): { data: string; hora: string } {
+  const d = new Date(iso);
+  return {
+    data: d.toLocaleDateString('pt-PT'),
+    hora: d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+  };
+}
+
+function badgeStatusPorEstado(estado: EstadoEstudo): BadgeStatus {
+  switch (estado) {
+    case 'UPLOADED':          return 'pending';
+    case 'PROCESSING':        return 'in-analysis';
+    case 'PENDING_VALIDATION':return 'analyzed';
+    case 'VALIDATED':         return 'analyzed';
+    case 'DIAGNOSED':         return 'analyzed';
+    case 'SENT':              return 'analyzed';
+    case 'ARCHIVED':          return 'archived';
+    default:                  return 'pending';
+  }
+}
+
+function iconePorEstado(estado: EstadoEstudo): React.ElementType {
+  switch (estado) {
+    case 'UPLOADED':          return Upload;
+    case 'PROCESSING':        return Activity;
+    case 'PENDING_VALIDATION':return Activity;
+    case 'VALIDATED':         return FileCheck;
+    case 'DIAGNOSED':         return FileText;
+    case 'SENT':              return FileBarChart;
+    case 'ARCHIVED':          return FileText;
+    default:                  return Activity;
+  }
+}
+
+function mensagemPorEstado(estado: EstadoEstudo, pacienteNome: string): string {
+  switch (estado) {
+    case 'UPLOADED':          return `Novo exame carregado para ${pacienteNome}`;
+    case 'PROCESSING':        return `Exame em processamento para ${pacienteNome}`;
+    case 'PENDING_VALIDATION':return `Análise IA concluída para ${pacienteNome}`;
+    case 'VALIDATED':         return `Exame validado para ${pacienteNome}`;
+    case 'DIAGNOSED':         return `Diagnóstico emitido para ${pacienteNome}`;
+    case 'SENT':              return `Relatório enviado para ${pacienteNome}`;
+    case 'ARCHIVED':          return `Exame arquivado para ${pacienteNome}`;
+    default:                  return `Atualização de estado para ${pacienteNome}`;
+  }
+}
+
+// ─── Ecrã principal ─────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
-  const currentDate = new Date().toLocaleDateString('pt-PT', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const { utilizador } = useAuth();
+  const navigate = useNavigate();
+
+  const [aCarregar, setACarregar] = useState(true);
+  const [metricas, setMetricas] = useState<MetricasDashboardMedico | null>(null);
+  const [pendentes, setPendentes] = useState<EstudoResumo[]>([]);
+  const [pacientes, setPacientes] = useState<PacienteResumo[]>([]);
+  const [semanal, setSemanal] = useState<DadosSemanais[]>(semanasFallback());
+  const [atividade, setAtividade] = useState<AtividadeResumo[]>([]);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function carregar() {
+      setACarregar(true);
+      try {
+        const [m, p, pa, s, a] = await Promise.all([
+          getMetricasDashboard(),
+          getEstudosPendentesValidacao(),
+          getPacientesAssociados(),
+          getExamesPorSemana(),
+          getAtividadeRecente(),
+        ]);
+        if (!cancelado) {
+          setMetricas(m);
+          setPendentes(p);
+          setPacientes(pa);
+          setSemanal(s);
+          setAtividade(a);
+        }
+      } catch {
+        // dados ficam nos valores iniciais
+      } finally {
+        if (!cancelado) setACarregar(false);
+      }
+    }
+
+    carregar();
+    return () => { cancelado = true; };
+  }, []);
+
+  const currentDate = new Date().toLocaleDateString('pt-PT', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   });
 
-  const navigate = useNavigate();
+  const nomeMedico = utilizador ? `Dr. ${utilizador.nomeCompleto}` : 'Médico';
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
-      {/* Welcome Header */}
+      {/* Cabeçalho de boas-vindas */}
       <div>
-        <h1 className="text-[var(--scolio-text-primary)]">Bom dia, Dr. Ana Martins</h1>
+        <h1 className="text-[var(--scolio-text-primary)]">Bom dia, {nomeMedico}</h1>
         <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
           {currentDate}
         </p>
       </div>
 
-      {/* Metrics Cards Row */}
+      {/* Cartões de métricas */}
       <div className="grid grid-cols-4 gap-6">
         <MetricCard
           icon={Users}
           iconColor="var(--scolio-primary-blue)"
           iconBg="var(--scolio-light-blue-surface)"
           label="Total de pacientes ativos"
-          value="847"
+          value={aCarregar ? '—' : String(metricas?.totalPacientes ?? 0)}
         />
         <MetricCard
           icon={CheckCircle2}
           iconColor="var(--scolio-warning-amber)"
           iconBg="var(--scolio-warning-surface)"
           label="Exames pendentes de validação"
-          value="23"
+          value={aCarregar ? '—' : String(metricas?.examesPendentesValidacao ?? 0)}
         />
         <MetricCard
           icon={FileText}
           iconColor="var(--scolio-success-green)"
           iconBg="var(--scolio-success-surface)"
           label="Exames analisados esta semana"
-          value="128"
+          value={aCarregar ? '—' : String(metricas?.examesAnalisadosEstaSemana ?? 0)}
         />
         <MetricCard
           icon={FileBarChart}
           iconColor="var(--scolio-primary-blue)"
           iconBg="var(--scolio-light-blue-surface)"
           label="Relatórios gerados este mês"
-          value="342"
+          value={aCarregar ? '—' : String(metricas?.relatoriosGeradosEsteMes ?? 0)}
         />
       </div>
 
-      {/* Chart and Validation List Row */}
+      {/* Gráfico + lista de validação pendente */}
       <div className="grid grid-cols-5 gap-6">
-        {/* Chart - 60% width (3 columns) */}
+        {/* Gráfico — 60% */}
         <div className="col-span-3 bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
           <h3 className="text-[var(--scolio-text-primary)] mb-6">Exames por semana (últimas 8 semanas)</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={weeklyExamsData}>
+            <BarChart data={semanal}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--scolio-border-light)" />
-              <XAxis 
-                dataKey="week" 
+              <XAxis
+                dataKey="semana"
                 tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
               />
-              <YAxis 
+              <YAxis
                 tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
               />
-              <Tooltip 
-                contentStyle={{ 
+              <Tooltip
+                contentStyle={{
                   backgroundColor: 'white',
                   border: '1px solid var(--scolio-border-light)',
                   borderRadius: 'var(--radius-component)',
-                  fontSize: '13px'
+                  fontSize: '13px',
                 }}
               />
-              <Bar 
-                dataKey="exams" 
-                fill="var(--scolio-primary-blue)" 
+              <Bar
+                dataKey="exames"
+                fill="var(--scolio-primary-blue)"
                 radius={[4, 4, 0, 0]}
-                key="exams-bar"
+                key="exames-bar"
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Awaiting Validation - 40% width (2 columns) */}
+        {/* À espera de validação — 40% */}
         <div className="col-span-2 bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
           <h3 className="text-[var(--scolio-text-primary)] mb-6">À espera de validação</h3>
-          <div className="space-y-3 max-h-[300px] overflow-y-auto">
-            {awaitingValidation.map((exam) => (
-              <div
-                key={exam.id}
-                className="flex items-center justify-between p-3 bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-light-blue-surface)] transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-[var(--scolio-text-primary)] font-medium truncate" style={{ fontSize: 'var(--text-body)' }}>
-                    {exam.name}
-                  </p>
-                  <p className="text-[var(--scolio-text-secondary)] mt-0.5" style={{ fontSize: 'var(--text-caption)' }}>
-                    {exam.date} às {exam.time}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 ml-3">
-                  <StatusBadge status={exam.status} />
-                  <Button
-                    variant="primary"
-                    className="text-xs px-3 py-1"
-                    onClick={() => navigate('/exam-viewer')}
+          {aCarregar ? (
+            <ExamListSkeleton count={4} />
+          ) : pendentes.length === 0 ? (
+            <p
+              className="text-[var(--scolio-text-secondary)] text-center py-8"
+              style={{ fontSize: 'var(--text-body)' }}
+            >
+              Sem exames pendentes de validação
+            </p>
+          ) : (
+            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+              {pendentes.map((exam) => {
+                const { data, hora } = formatarDataHora(exam.dataSubmissao);
+                return (
+                  <div
+                    key={exam.id}
+                    className="flex items-center justify-between p-3 bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-light-blue-surface)] transition-colors"
                   >
-                    Validar
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-[var(--scolio-text-primary)] font-medium truncate"
+                        style={{ fontSize: 'var(--text-body)' }}
+                      >
+                        {exam.pacienteNome}
+                      </p>
+                      <p
+                        className="text-[var(--scolio-text-secondary)] mt-0.5"
+                        style={{ fontSize: 'var(--text-caption)' }}
+                      >
+                        {data} às {hora}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-3">
+                      <StatusBadge status={badgeStatusPorEstado(exam.estado)} />
+                      <Button
+                        variant="primary"
+                        className="text-xs px-3 py-1"
+                        onClick={() => navigate('/exam-viewer')}
+                      >
+                        Validar
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Recently Accessed and Activity Feed Row */}
+      {/* Pacientes associados + atividade recente */}
       <div className="grid grid-cols-2 gap-6">
-        {/* Recently Accessed Patients */}
+        {/* Pacientes associados */}
         <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-6">Pacientes acedidos recentemente</h3>
-          <div className="space-y-3">
-            {recentPatients.map((patient) => (
-              <div
-                key={patient.id}
-                className="flex items-center gap-3 p-3 hover:bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] transition-colors cursor-pointer"
-                onClick={() => navigate(`/patients/${patient.patientId}`)}
-              >
-                <div className="w-10 h-10 rounded-full bg-[var(--scolio-primary-blue)] flex items-center justify-center text-white font-medium">
-                  {patient.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[var(--scolio-text-primary)] font-medium truncate" style={{ fontSize: 'var(--text-body)' }}>
-                    {patient.name}
-                  </p>
-                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                    {patient.patientId}
-                  </p>
-                </div>
-                <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                  {patient.lastAccess}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Activity Feed */}
-        <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-6">Atividade recente</h3>
-          <div className="space-y-4">
-            {activityFeed.map((activity) => {
-              const Icon = activity.icon;
-              return (
-                <div key={activity.id} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[var(--scolio-light-blue-surface)] flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-4 h-4 text-[var(--scolio-primary-blue)]" />
+          <h3 className="text-[var(--scolio-text-primary)] mb-6">Pacientes associados</h3>
+          {aCarregar ? (
+            <PatientCardSkeleton count={4} />
+          ) : pacientes.length === 0 ? (
+            <p
+              className="text-[var(--scolio-text-secondary)] text-center py-8"
+              style={{ fontSize: 'var(--text-body)' }}
+            >
+              Sem pacientes associados
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {pacientes.map((patient) => (
+                <div
+                  key={patient.id}
+                  className="flex items-center gap-3 p-3 hover:bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] transition-colors cursor-pointer"
+                  onClick={() => navigate(`/patients/${patient.id}`)}
+                >
+                  <div className="w-10 h-10 rounded-full bg-[var(--scolio-primary-blue)] flex items-center justify-center text-white font-medium">
+                    {patient.nomeCompleto.split(' ').map((n) => n[0]).join('')}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      {activity.message}
+                    <p
+                      className="text-[var(--scolio-text-primary)] font-medium truncate"
+                      style={{ fontSize: 'var(--text-body)' }}
+                    >
+                      {patient.nomeCompleto}
                     </p>
-                    <p className="text-[var(--scolio-text-secondary)] mt-0.5" style={{ fontSize: 'var(--text-caption)' }}>
-                      {activity.time}
+                    <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                      {patient.numeroUtente}
                     </p>
                   </div>
+                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                    {tempoRelativo(patient.dataAssociacao)}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Atividade recente */}
+        <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
+          <h3 className="text-[var(--scolio-text-primary)] mb-6">Atividade recente</h3>
+          {aCarregar ? (
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-start gap-3 animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-[var(--scolio-border-light)] flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-[var(--scolio-border-light)] rounded w-3/4" />
+                    <div className="h-3 bg-[var(--scolio-border-light)] rounded w-1/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : atividade.length === 0 ? (
+            <p
+              className="text-[var(--scolio-text-secondary)] text-center py-8"
+              style={{ fontSize: 'var(--text-body)' }}
+            >
+              Sem atividade recente
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {atividade.map((item) => {
+                const Icon = iconePorEstado(item.estadoNovo);
+                return (
+                  <div key={item.id} className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[var(--scolio-light-blue-surface)] flex items-center justify-center flex-shrink-0">
+                      <Icon className="w-4 h-4 text-[var(--scolio-primary-blue)]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
+                        {mensagemPorEstado(item.estadoNovo, item.pacienteNome)}
+                      </p>
+                      <p
+                        className="text-[var(--scolio-text-secondary)] mt-0.5"
+                        style={{ fontSize: 'var(--text-caption)' }}
+                      >
+                        {tempoRelativo(item.dataTransicao)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// Metric Card Component
+// ─── Cartão de métrica ───────────────────────────────────────────────────────
+
 interface MetricCardProps {
   icon: React.ElementType;
   iconColor: string;
@@ -233,7 +379,7 @@ function MetricCard({ icon: Icon, iconColor, iconBg, label, value }: MetricCardP
   return (
     <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
       <div className="flex items-center gap-4">
-        <div 
+        <div
           className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: iconBg }}
         >
@@ -243,7 +389,10 @@ function MetricCard({ icon: Icon, iconColor, iconBg, label, value }: MetricCardP
           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
             {label}
           </p>
-          <p className="text-[var(--scolio-text-primary)] font-semibold mt-1" style={{ fontSize: 'var(--text-h2)' }}>
+          <p
+            className="text-[var(--scolio-text-primary)] font-semibold mt-1"
+            style={{ fontSize: 'var(--text-h2)' }}
+          >
             {value}
           </p>
         </div>

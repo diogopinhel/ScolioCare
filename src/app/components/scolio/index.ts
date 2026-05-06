@@ -29,3 +29,11 @@ export type { ToastProps, ToastType } from './Toast';
 
 export { Modal } from './Modal';
 export type { ModalProps } from './Modal';
+
+export {
+  AIMetricsSkeleton,
+  ExamListSkeleton,
+  PatientCardSkeleton,
+  TableSkeleton,
+  SkeletonBlock,
+} from './SkeletonLoader';

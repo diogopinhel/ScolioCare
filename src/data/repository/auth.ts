@@ -1,23 +1,5 @@
-import type { UtilizadorAutenticado } from '../types';
-import { utilizadoresMock } from '../mocks/utilizadores';
-
-/**
- * Camada de autenticação.
- *
- * Quando a BD estiver ligada, são estas funções (e só estas) que mudam:
- * trocam-se as buscas em memória por chamadas HTTP. Todos os ecrãs e o
- * AuthContext continuam a usar a mesma assinatura.
- */
-
-// ─── Credenciais mock ───────────────────────────────────────────────────────
-// Em produção isto vive no backend hashed. Aqui é só para a demo correr.
-
-const credenciaisMock: Record<string, string> = {
-  'paulo.oliveira@scolio.pt': 'admin123',
-  'ana.martins@scolio.pt': 'medico123',
-  'ricardo.sousa@scolio.pt': 'tecnico123',
-  'maria.silva@scolio.pt': 'paciente123',
-};
+import { supabase } from '../../lib/supabase';
+import type { UtilizadorAutenticado, Perfil } from '../types';
 
 // ─── Erros de autenticação ──────────────────────────────────────────────────
 
@@ -25,7 +7,8 @@ export type AuthError =
   | 'EMAIL_NAO_ENCONTRADO'
   | 'PASSWORD_INCORRETA'
   | 'CONTA_BLOQUEADA'
-  | 'CONTA_INATIVA';
+  | 'CONTA_INATIVA'
+  | 'ERRO_SERVIDOR';
 
 export class AuthenticationError extends Error {
   constructor(public code: AuthError, message: string) {
@@ -34,62 +17,144 @@ export class AuthenticationError extends Error {
   }
 }
 
-// ─── API mock ──────────────────────────────────────────────────────────────
+// ─── Mapeamento DB → tipos TS ───────────────────────────────────────────────
 
-/**
- * Autentica um utilizador. Devolve o utilizador em caso de sucesso ou lança
- * AuthenticationError em caso de falha.
- *
- * Latência simulada de 400 ms para a UI ter um estado de "a entrar..."
- * minimamente realista durante a demo.
- */
-export async function login(
-  email: string,
-  password: string,
-): Promise<UtilizadorAutenticado> {
-  await new Promise((resolve) => setTimeout(resolve, 400));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapUtilizadorDoBD(row: Record<string, any>, email: string): UtilizadorAutenticado {
+  const base = {
+    id: row.id as string,
+    nomeCompleto: row.nome_completo as string,
+    email,
+    perfil: row.perfil as Perfil,
+    ativo: row.ativo as boolean,
+    dataCriacao: row.data_criacao as string,
+    ultimoLogin: (row.ultimo_login ?? undefined) as string | undefined,
+    idioma: (row.idioma ?? 'pt') as string,
+    twoFactorAtivo: row.two_factor_ativo as boolean,
+    contaBloqueada: row.conta_bloqueada as boolean,
+  };
 
-  const emailNormalizado = email.trim().toLowerCase();
-  const utilizador = utilizadoresMock.find(
-    (u) => u.email.toLowerCase() === emailNormalizado,
-  );
+  switch (base.perfil) {
+    case 'ADMIN':
+      return { ...base, perfil: 'ADMIN', nivelAdmin: (row.nivel_admin as number) ?? 1 };
 
-  if (!utilizador) {
-    throw new AuthenticationError(
-      'EMAIL_NAO_ENCONTRADO',
-      'Não existe nenhuma conta associada a este email.',
-    );
+    case 'MEDICO':
+      return {
+        ...base,
+        perfil: 'MEDICO',
+        cedulaProfissional: (row.cedula_profissional ?? '') as string,
+        especialidade: (row.especialidade ?? '') as string,
+        certDigitalEntidade: (row.cert_digital_entidade ?? undefined) as string | undefined,
+        certDigitalExpiracao: (row.cert_digital_expiracao ?? undefined) as string | undefined,
+      };
+
+    case 'TECNICO':
+      return {
+        ...base,
+        perfil: 'TECNICO',
+        codigoFuncionario: (row.codigo_funcionario ?? '') as string,
+        departamento: (row.departamento ?? '') as string,
+      };
+
+    case 'PACIENTE':
+      return {
+        ...base,
+        perfil: 'PACIENTE',
+        dataNascimento: (row.data_nascimento ?? '') as string,
+        genero: (row.genero ?? '') as string,
+        numeroUtente: (row.numero_utente ?? '') as string,
+        contacto: (row.contacto ?? undefined) as string | undefined,
+        morada: (row.morada ?? undefined) as string | undefined,
+        contaAtivada: (row.conta_ativada ?? false) as boolean,
+      };
+
+    default:
+      throw new AuthenticationError('ERRO_SERVIDOR', 'Perfil de utilizador desconhecido.');
+  }
+}
+
+// ─── Fetch do perfil completo ───────────────────────────────────────────────
+
+async function fetchPerfil(userId: string, email: string): Promise<UtilizadorAutenticado> {
+  const { data, error } = await supabase
+    .from('utilizadores')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error || !data) {
+    throw new AuthenticationError('ERRO_SERVIDOR', 'Não foi possível carregar o perfil.');
   }
 
-  if (!utilizador.ativo) {
+  if (!data.ativo) {
     throw new AuthenticationError(
       'CONTA_INATIVA',
       'A sua conta está inativa. Contacte o administrador.',
     );
   }
 
-  if (utilizador.contaBloqueada) {
+  if (data.conta_bloqueada) {
     throw new AuthenticationError(
       'CONTA_BLOQUEADA',
       'A sua conta foi bloqueada. Contacte o administrador.',
     );
   }
 
-  const passwordEsperada = credenciaisMock[emailNormalizado];
-  if (password !== passwordEsperada) {
-    throw new AuthenticationError(
-      'PASSWORD_INCORRETA',
-      'Email ou password incorretos.',
-    );
+  return mapUtilizadorDoBD(data, email);
+}
+
+// ─── API pública ────────────────────────────────────────────────────────────
+
+/**
+ * Autentica um utilizador via Supabase Auth e devolve o perfil completo.
+ */
+export async function login(
+  email: string,
+  password: string,
+): Promise<UtilizadorAutenticado> {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    if (error.message.toLowerCase().includes('invalid login')) {
+      throw new AuthenticationError('PASSWORD_INCORRETA', 'Email ou password incorretos.');
+    }
+    if (error.message.toLowerCase().includes('email not confirmed')) {
+      throw new AuthenticationError('CONTA_INATIVA', 'A conta ainda não foi confirmada.');
+    }
+    throw new AuthenticationError('ERRO_SERVIDOR', 'Erro ao autenticar. Tente novamente.');
   }
 
-  return utilizador;
+  return fetchPerfil(data.user.id, data.user.email!);
 }
 
 /**
- * Logout. No mock só limpa storage local; em produção invalidará o token
- * no servidor.
+ * Termina a sessão no Supabase.
  */
 export async function logout(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await supabase.auth.signOut();
+}
+
+/**
+ * Subscreve mudanças de autenticação (restauro de sessão, logout externo, etc.).
+ * Devolve uma função de cancelamento.
+ */
+export function subscribeToMudancasAuth(
+  callback: (utilizador: UtilizadorAutenticado | null) => void,
+): () => void {
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    if (!session) {
+      callback(null);
+      return;
+    }
+    try {
+      const utilizador = await fetchPerfil(session.user.id, session.user.email!);
+      callback(utilizador);
+    } catch {
+      callback(null);
+    }
+  });
+
+  return () => subscription.unsubscribe();
 }

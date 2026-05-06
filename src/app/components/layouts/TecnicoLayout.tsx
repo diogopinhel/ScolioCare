@@ -66,7 +66,7 @@ export default function TecnicoLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-[var(--scolio-page-surface)] w-[1440px] mx-auto">
+    <div className="flex h-screen bg-[var(--scolio-page-surface)] w-full">
       <aside className="w-60 bg-white border-r border-[var(--scolio-border-light)] flex flex-col">
         <div className="p-6 border-b border-[var(--scolio-border-light)]">
           <div className="flex items-center gap-3">

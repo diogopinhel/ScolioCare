@@ -4,17 +4,19 @@ import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button, Input } from '../../components/scolio';
 import { useAuth, rotaInicialPara } from '../../auth/AuthContext';
 import { AuthenticationError } from '../../../data/repository/auth';
+import type { Perfil } from '../../../data/types';
 
-/**
- * Lista de contas mock visíveis no fundo do ecrã para facilitar a demo.
- * Carregar numa entrada preenche os campos automaticamente.
- */
-const contasDemo = [
-  { perfil: 'Médico', email: 'ana.martins@scolio.pt', password: 'medico123' },
-  { perfil: 'Técnico', email: 'ricardo.sousa@scolio.pt', password: 'tecnico123' },
-  { perfil: 'Administrador', email: 'paulo.oliveira@scolio.pt', password: 'admin123' },
-  { perfil: 'Paciente', email: 'maria.silva@scolio.pt', password: 'paciente123' },
-];
+const prefixosPorPerfil: Record<Perfil, (p: string) => boolean> = {
+  MEDICO:   (p) => p !== '/login' && p !== '/403' && !p.startsWith('/tecnico') && !p.startsWith('/admin-panel') && !p.startsWith('/mobile'),
+  TECNICO:  (p) => p.startsWith('/tecnico'),
+  ADMIN:    (p) => p.startsWith('/admin-panel'),
+  PACIENTE: (p) => p.startsWith('/mobile'),
+};
+
+function destinoSeguro(from: string | undefined, perfil: Perfil): string {
+  if (from && prefixosPorPerfil[perfil](from)) return from;
+  return rotaInicialPara(perfil);
+}
 
 export default function LoginScreen() {
   const navigate = useNavigate();
@@ -31,10 +33,8 @@ export default function LoginScreen() {
   // vez de useEffect+navigate evita um flicker quando a sessão é
   // restaurada do localStorage.)
   if (!aCarregar && estaAutenticado && utilizador) {
-    const destino =
-      (location.state as { from?: string } | null)?.from ??
-      rotaInicialPara(utilizador.perfil);
-    return <Navigate to={destino} replace />;
+    const from = (location.state as { from?: string } | null)?.from;
+    return <Navigate to={destinoSeguro(from, utilizador.perfil)} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,10 +44,8 @@ export default function LoginScreen() {
 
     try {
       const u = await login(email, password);
-      const destino =
-        (location.state as { from?: string } | null)?.from ??
-        rotaInicialPara(u.perfil);
-      navigate(destino, { replace: true });
+      const from = (location.state as { from?: string } | null)?.from;
+      navigate(destinoSeguro(from, u.perfil), { replace: true });
     } catch (err) {
       if (err instanceof AuthenticationError) {
         setErro(err.message);
@@ -57,12 +55,6 @@ export default function LoginScreen() {
     } finally {
       setASubmeter(false);
     }
-  };
-
-  const preencherConta = (conta: typeof contasDemo[number]) => {
-    setEmail(conta.email);
-    setPassword(conta.password);
-    setErro(null);
   };
 
   return (
@@ -75,7 +67,7 @@ export default function LoginScreen() {
             <div className="w-16 h-16 bg-[var(--scolio-primary-blue)] rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="text-white text-3xl font-semibold">S</span>
             </div>
-            <h1 className="text-[var(--scolio-text-primary)] mb-2">ScolioScan</h1>
+            <h1 className="text-[var(--scolio-text-primary)] mb-2">ScolioCare</h1>
             <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
               Plataforma clínica para gestão de escoliose
             </p>
@@ -157,40 +149,37 @@ export default function LoginScreen() {
           </form>
         </div>
 
-        {/* Contas de demonstração */}
-        <div className="mt-6 bg-white rounded-[var(--radius-card)] shadow-sm p-5 border border-[var(--scolio-border-light)]">
-          <p
-            className="text-[var(--scolio-text-secondary)] mb-3"
-            style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}
-          >
-            Contas de demonstração (clique para preencher)
+        {/* Cards de demonstração */}
+        <div className="mt-6">
+          <p className="text-center text-[var(--scolio-text-secondary)] mb-3" style={{ fontSize: 'var(--text-caption)' }}>
+            Credenciais de demonstração — clique para preencher
           </p>
           <div className="grid grid-cols-2 gap-2">
-            {contasDemo.map((conta) => (
+            {credenciaisDemo.map((cred) => (
               <button
-                key={conta.email}
+                key={cred.perfil}
                 type="button"
-                onClick={() => preencherConta(conta)}
-                className="text-left px-3 py-2 rounded-[var(--radius-component)] border border-[var(--scolio-border-light)] hover:border-[var(--scolio-primary-blue)] hover:bg-[var(--scolio-light-blue-surface)] transition-colors"
+                onClick={() => { setEmail(cred.email); setPassword(cred.password); setErro(null); }}
+                className="text-left p-3 bg-white rounded-[var(--radius-component)] border border-[var(--scolio-border-light)] hover:border-[var(--scolio-primary-blue)] hover:shadow-sm transition-all"
               >
                 <span
-                  className="block text-[var(--scolio-text-primary)]"
-                  style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
+                  className="block font-medium mb-1"
+                  style={{ fontSize: 'var(--text-caption)', color: cred.cor }}
                 >
-                  {conta.perfil}
+                  {cred.label}
                 </span>
-                <span
-                  className="block text-[var(--scolio-text-secondary)] truncate"
-                  style={{ fontSize: 'var(--text-caption)' }}
-                >
-                  {conta.email}
+                <span className="block text-[var(--scolio-text-secondary)] truncate" style={{ fontSize: 'var(--text-caption)' }}>
+                  {cred.email}
+                </span>
+                <span className="block text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                  {cred.password}
                 </span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="mt-6 text-center">
+        <div className="mt-4 text-center">
           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
             © 2026 ScolioScan. Todos os direitos reservados.
           </p>
@@ -199,3 +188,10 @@ export default function LoginScreen() {
     </div>
   );
 }
+
+const credenciaisDemo = [
+  { perfil: 'MEDICO',   label: 'Médico',    email: 'ana.martins@scolio.pt',    password: 'medico123',    cor: 'var(--scolio-primary-blue)' },
+  { perfil: 'TECNICO',  label: 'Técnico',   email: 'ricardo.sousa@scolio.pt',  password: 'tecnico123',   cor: 'var(--scolio-success-green)' },
+  { perfil: 'ADMIN',    label: 'Admin',     email: 'paulo.oliveira@scolio.pt', password: 'admin123',     cor: 'var(--scolio-warning-amber)' },
+  { perfil: 'PACIENTE', label: 'Paciente',  email: 'maria.silva@scolio.pt',    password: 'paciente123',  cor: 'var(--scolio-danger-coral)' },
+];

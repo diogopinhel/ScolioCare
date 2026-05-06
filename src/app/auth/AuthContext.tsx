@@ -5,12 +5,10 @@ import * as authRepo from '../../data/repository/auth';
 /**
  * Contexto de autenticação.
  *
- * Mantém o utilizador autenticado em memória e persiste-o em localStorage
- * para sobreviver a reloads. Quando passarmos para BD, esta camada continua
- * idêntica — só as chamadas a authRepo.* é que falam com a API real.
+ * A sessão é gerida pelo Supabase SDK (persiste em localStorage automaticamente).
+ * `onAuthStateChange` dispara no arranque (restauro de sessão) e em qualquer
+ * mudança posterior (login, logout, expiração). Os ecrãs não precisam de mudar.
  */
-
-const STORAGE_KEY = 'scolioscan.auth.user';
 
 interface AuthContextValue {
   utilizador: UtilizadorAutenticado | null;
@@ -22,56 +20,47 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// ─── Helpers de persistência ───────────────────────────────────────────────
-
-function lerSessaoArmazenada(): UtilizadorAutenticado | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as UtilizadorAutenticado;
-  } catch {
-    return null;
-  }
-}
-
-function guardarSessao(utilizador: UtilizadorAutenticado | null): void {
-  try {
-    if (utilizador) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(utilizador));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  } catch {
-    // localStorage indisponível (modo privado, quota cheia, etc.) — ignorar.
-  }
-}
-
 // ─── Provider ──────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [utilizador, setUtilizador] = useState<UtilizadorAutenticado | null>(null);
   const [aCarregar, setACarregar] = useState(true);
 
-  // Restaurar sessão à entrada
   useEffect(() => {
-    const armazenado = lerSessaoArmazenada();
-    if (armazenado) {
-      setUtilizador(armazenado);
-    }
-    setACarregar(false);
+    let ativo = true;
+
+    // Fallback: se o Supabase não responder em 5 s (rede lenta ou down),
+    // assume sem sessão para não deixar o ecrã em branco indefinidamente.
+    const timeout = window.setTimeout(() => {
+      if (ativo) setACarregar(false);
+    }, 5000);
+
+    const cancelar = authRepo.subscribeToMudancasAuth((u) => {
+      if (ativo) {
+        clearTimeout(timeout);
+        setUtilizador(u);
+        setACarregar(false);
+      }
+    });
+
+    return () => {
+      ativo = false;
+      clearTimeout(timeout);
+      cancelar();
+    };
   }, []);
 
   const fazerLogin = async (email: string, password: string) => {
     const u = await authRepo.login(email, password);
+    // Definir imediatamente para que o redirect via <Navigate> seja instantâneo.
+    // O subscriber também vai disparar, mas com o mesmo valor — sem consequências.
     setUtilizador(u);
-    guardarSessao(u);
     return u;
   };
 
   const fazerLogout = async () => {
     await authRepo.logout();
-    setUtilizador(null);
-    guardarSessao(null);
+    // O subscriber irá limpar utilizador quando onAuthStateChange disparar.
   };
 
   const value: AuthContextValue = {

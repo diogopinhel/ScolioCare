@@ -1,74 +1,156 @@
 import React from 'react';
-import { Edit, FileText, Download, MapPin, Phone, Mail, Calendar, User, Stethoscope, Plus, FileDown } from 'lucide-react';
-import { Button, StatusBadge, Textarea, Toast, ExamCard } from '../../components/scolio';
+import { Edit, FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown } from 'lucide-react';
+import { Button, StatusBadge, type BadgeStatus, Textarea, Toast, ExamCard, SkeletonBlock } from '../../components/scolio';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Dot } from 'recharts';
 import { useNavigate, useParams } from 'react-router';
-
-// Mock data for Cobb angle evolution
-const cobbAngleData = [
-  { date: 'Jan 15', angle: 8.5, examId: '001' },
-  { date: 'Apr 12', angle: 10.2, examId: '002' },
-  { date: 'Jul 20', angle: 12.8, examId: '003' },
-  { date: 'Oct 05', angle: 15.3, examId: '004' },
-  { date: 'Jan 18', angle: 16.1, examId: '005' },
-  { date: 'Apr 08', angle: 15.7, examId: '006' },
-];
+import { useAuth } from '../../auth/AuthContext';
+import { getPaciente } from '../../../data/repository/pacientes';
+import { getEstudosDoPaciente, getHistoricoEstadoDoPaciente } from '../../../data/repository/estudos';
+import { getWellnessLogDoPaciente } from '../../../data/repository/wellness';
+import type { PacienteDetalhe, EstudoComResultado, WellnessLogEntry, HistoricoEstadoEntry, EstadoEstudo } from '../../../data/types';
 
 type TabKey = 'overview' | 'exams' | 'reports' | 'evolution' | 'notes' | 'feedback' | 'audit';
 
-// Mock exam data
-const examsData = [
-  { id: '006', date: 'Apr 08, 2026', angle: 15.7, apical: 'T8', status: 'analyzed' as const },
-  { id: '005', date: 'Jan 18, 2026', angle: 16.1, apical: 'T8', status: 'analyzed' as const },
-  { id: '004', date: 'Oct 05, 2025', angle: 15.3, apical: 'T8', status: 'analyzed' as const },
-  { id: '003', date: 'Jul 20, 2025', angle: 12.8, apical: 'T7', status: 'analyzed' as const },
-];
+function estadoParaBadge(estado: EstadoEstudo): BadgeStatus {
+  switch (estado) {
+    case 'UPLOADED':
+    case 'PROCESSING':
+      return 'in-analysis';
+    case 'PENDING_VALIDATION':
+      return 'pending';
+    case 'VALIDATED':
+    case 'DIAGNOSED':
+    case 'SENT':
+      return 'analyzed';
+    case 'ARCHIVED':
+      return 'archived';
+    default:
+      return 'pending';
+  }
+}
 
-// Mock reports data
-const reportsData = [
-  { id: 1, date: '2026-04-08', type: 'Relatório clínico', status: 'Concluído', doctor: 'Dr. Ana Martins' },
-  { id: 2, date: '2026-01-18', type: 'Relatório clínico', status: 'Concluído', doctor: 'Dr. Ana Martins' },
-  { id: 3, date: '2025-10-05', type: 'Relatório clínico', status: 'Concluído', doctor: 'Dr. Ana Martins' },
-];
+function calcularIdade(dataNascimento: string | null): string {
+  if (!dataNascimento) return '—';
+  const nascimento = new Date(dataNascimento);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nascimento.getFullYear();
+  const m = hoje.getMonth() - nascimento.getMonth();
+  if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) idade--;
+  return `${idade} anos`;
+}
 
-// Mock clinical notes
-const clinicalNotesData = [
-  { id: 1, date: '2026-04-08 15:42', author: 'Dr. Ana Martins', note: 'Paciente apresenta melhoria relativamente ao exame anterior. Ângulo de Cobb diminuiu 0,4 graus. Recomendar continuar com plano de tratamento atual.' },
-  { id: 2, date: '2026-01-18 14:20', author: 'Dr. Ana Martins', note: 'Ligeiro agravamento desde último exame. Reforçar fisioterapia e agendar reavaliação em 3 meses.' },
-  { id: 3, date: '2025-10-05 16:10', author: 'Dr. Ana Martins', note: 'Evolução positiva. Paciente relata menos dor. Continuar monitorização.' },
-];
+function iniciaisDe(nome: string): string {
+  return nome
+    .split(' ')
+    .filter(Boolean)
+    .map((p) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
 
-// Mock wellness feedback
-const wellnessFeedbackData = [
-  { id: 1, date: '2026-04-07', painLevel: 3, comfort: 7, note: 'Sentindo-me muito melhor depois dos exercícios. A dor reduziu significativamente.' },
-  { id: 2, date: '2026-04-01', painLevel: 5, comfort: 5, note: 'Algum desconforto após atividade física intensa.' },
-  { id: 3, date: '2026-03-25', painLevel: 4, comfort: 6, note: 'Semana tranquila, mobilidade melhorada.' },
-];
+function formatarDataPT(isoDate: string | null): string {
+  if (!isoDate) return '—';
+  return new Date(isoDate).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
-// Mock audit logs
-const auditLogsData = [
-  { id: 1, dateTime: '2026-04-08 15:42:18', user: 'Dr. Ana Martins', action: 'Validação de exame', resource: 'Exame #006', ip: '192.168.1.45' },
-  { id: 2, dateTime: '2026-04-08 15:38:05', user: 'Ricardo Sousa', action: 'Upload de exame', resource: 'Exame #006', ip: '192.168.1.52' },
-  { id: 3, dateTime: '2026-01-18 14:25:33', user: 'Dr. Ana Martins', action: 'Validação de exame', resource: 'Exame #005', ip: '192.168.1.45' },
-];
+function formatarDataHoraPT(isoDateTime: string): string {
+  return new Date(isoDateTime).toLocaleString('pt-PT', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+}
+
+function estadoParaTexto(estado: string): string {
+  const mapa: Record<string, string> = {
+    UPLOADED: 'Carregado',
+    PROCESSING: 'Em processamento',
+    PENDING_VALIDATION: 'Pendente de validação',
+    VALIDATED: 'Validado',
+    DIAGNOSED: 'Diagnosticado',
+    SENT: 'Enviado',
+    ARCHIVED: 'Arquivado',
+  };
+  return mapa[estado] ?? estado;
+}
+
+function calcularLimitePeriodo(periodo: '3m' | '6m' | '1y' | 'all'): Date | null {
+  if (periodo === 'all') return null;
+  const limite = new Date();
+  if (periodo === '3m') limite.setMonth(limite.getMonth() - 3);
+  else if (periodo === '6m') limite.setMonth(limite.getMonth() - 6);
+  else limite.setFullYear(limite.getFullYear() - 1);
+  return limite;
+}
 
 export default function PatientRecordScreen() {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
+  const { utilizador } = useAuth();
+
   const [activeTab, setActiveTab] = React.useState<TabKey>('overview');
   const [showToast, setShowToast] = React.useState(false);
+  const [toastMsg, setToastMsg] = React.useState('');
   const [evolutionPeriod, setEvolutionPeriod] = React.useState<'3m' | '6m' | '1y' | 'all'>('all');
   const [newNote, setNewNote] = React.useState('');
 
-  const handleExport = () => {
+  const [paciente, setPaciente] = React.useState<PacienteDetalhe | null>(null);
+  const [estudos, setEstudos] = React.useState<EstudoComResultado[]>([]);
+  const [wellnessLog, setWellnessLog] = React.useState<WellnessLogEntry[]>([]);
+  const [historico, setHistorico] = React.useState<HistoricoEstadoEntry[]>([]);
+  const [aCarregar, setACarregar] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!id) {
+      setACarregar(false);
+      return;
+    }
+
+    let cancelado = false;
+    setACarregar(true);
+
+    const timeout = window.setTimeout(() => {
+      if (!cancelado) setACarregar(false);
+    }, 15000);
+
+    Promise.all([
+      getPaciente(id),
+      getEstudosDoPaciente(id),
+      getWellnessLogDoPaciente(id),
+      getHistoricoEstadoDoPaciente(id),
+    ]).then(([p, e, w, h]) => {
+      if (!cancelado) {
+        clearTimeout(timeout);
+        setPaciente(p);
+        setEstudos(e);
+        setWellnessLog(w);
+        setHistorico(h);
+        setACarregar(false);
+      }
+    }).catch(() => {
+      if (!cancelado) {
+        clearTimeout(timeout);
+        setACarregar(false);
+      }
+    });
+
+    return () => {
+      cancelado = true;
+      clearTimeout(timeout);
+    };
+  }, [id]);
+
+  const mostrarToast = (msg: string) => {
+    setToastMsg(msg);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
   };
 
+  const handleExport = () => mostrarToast('Exportação iniciada...');
+
   const handleSaveNote = () => {
     setNewNote('');
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
+    mostrarToast('Nota guardada com sucesso.');
   };
 
   const tabs = [
@@ -81,38 +163,95 @@ export default function PatientRecordScreen() {
     { key: 'audit' as TabKey, label: 'Auditoria' },
   ];
 
+  // Derived data
+  const ultimoExame = estudos[0] ?? null;
+  const ultimoWellness = wellnessLog[0] ?? null;
+  const nomeMedico = utilizador ? `Dr. ${utilizador.nomeCompleto}` : '—';
+
+  const cobbData = estudos
+    .filter((e) => e.resultado !== null)
+    .map((e) => ({
+      rawDate: e.dataEstudo,
+      date: new Date(e.dataEstudo).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }),
+      angle: e.resultado!.anguloCobbCorrigido ?? e.resultado!.anguloCobb,
+    }))
+    .reverse();
+
+  const limitePeriodo = calcularLimitePeriodo(evolutionPeriod);
+  const cobbDataFiltrado = limitePeriodo
+    ? cobbData.filter((d) => new Date(d.rawDate) >= limitePeriodo)
+    : cobbData;
+
+  const diagnostico = ultimoExame?.resultado
+    ? [ultimoExame.resultado.grauCurvatura, ultimoExame.resultado.localizacaoCurva]
+        .filter(Boolean)
+        .join(' — ')
+    : null;
+
+  const dataInicioTratamento =
+    estudos.length > 0 ? formatarDataPT(estudos[estudos.length - 1].dataEstudo) : null;
+
   const handleChartClick = (data: any) => {
-    if (data && data.activePayload) {
-      // Navigate to exam viewer
-      navigate('/exam-viewer');
-    }
+    if (data?.activePayload) navigate('/exam-viewer');
   };
+
+  // ─── Loading ──────────────────────────────────────────────────────
+  if (aCarregar) {
+    return (
+      <div className="p-8 space-y-6">
+        <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
+          <SkeletonBlock height="80px" />
+        </div>
+        <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
+          <SkeletonBlock height="400px" />
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Paciente não encontrado ──────────────────────────────────────
+  if (!paciente) {
+    return (
+      <div className="p-8 flex items-center justify-center h-full">
+        <div className="text-center">
+          <p
+            className="text-[var(--scolio-text-primary)] mb-2"
+            style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--weight-semibold)' }}
+          >
+            Paciente não encontrado
+          </p>
+          <p className="text-[var(--scolio-text-secondary)] mb-4" style={{ fontSize: 'var(--text-body)' }}>
+            O paciente solicitado não existe ou não tem acesso a este registo.
+          </p>
+          <Button variant="secondary" onClick={() => navigate(-1)}>Voltar</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const badgeStatus: BadgeStatus = ultimoExame ? estadoParaBadge(ultimoExame.estado) : 'pending';
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
-      {/* Large Header */}
+      {/* Header */}
       <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
         <div className="flex items-start justify-between">
-          {/* Patient Info */}
           <div className="flex items-center gap-6">
-            {/* Avatar */}
             <div className="w-20 h-20 rounded-full bg-[var(--scolio-primary-blue)] flex items-center justify-center text-white text-3xl font-semibold">
-              MS
+              {iniciaisDe(paciente.nomeCompleto)}
             </div>
-            
-            {/* Details */}
             <div className="space-y-2">
-              <h1 className="text-[var(--scolio-text-primary)]">Maria Silva</h1>
+              <h1 className="text-[var(--scolio-text-primary)]">{paciente.nomeCompleto}</h1>
               <div className="flex items-center gap-6 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                <span className="font-medium">ID: PT-2024-0847</span>
-                <span>Female</span>
-                <span>41 years old</span>
-                <StatusBadge status="analyzed" />
+                {paciente.numeroUtente && (
+                  <span className="font-medium">Nº Utente: {paciente.numeroUtente}</span>
+                )}
+                {paciente.genero && <span>{paciente.genero}</span>}
+                <span>{calcularIdade(paciente.dataNascimento)}</span>
+                <StatusBadge status={badgeStatus} />
               </div>
             </div>
           </div>
-
-          {/* Action Buttons */}
           <div className="flex items-center gap-3">
             <Button variant="secondary" onClick={() => navigate(`/patients/${id}/edit`)}>
               <Edit className="w-4 h-4 mr-2" />
@@ -130,7 +269,7 @@ export default function PatientRecordScreen() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tabs */}
       <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)]">
         <div className="border-b border-[var(--scolio-border-light)]">
           <nav className="flex">
@@ -154,223 +293,180 @@ export default function PatientRecordScreen() {
           </nav>
         </div>
 
-        {/* Tab Content - Overview */}
+        {/* ── Tab: Visão Geral ── */}
         {activeTab === 'overview' && (
           <div className="p-6">
             <div className="grid grid-cols-5 gap-6">
-              {/* Left Column - 60% (3 columns) */}
               <div className="col-span-3 space-y-6">
-                {/* Demographic Data Section */}
                 <section>
                   <h3 className="text-[var(--scolio-text-primary)] mb-4">Dados demográficos</h3>
                   <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-5 space-y-4">
-                    <DataRow
-                      icon={MapPin}
-                      label="Morada"
-                      value="Rua das Flores, 123, 4º Andar, Lisboa, 1200-001"
-                    />
-                    <DataRow
-                      icon={Phone}
-                      label="Telefone de contacto"
-                      value="+351 912 345 678"
-                    />
-                    <DataRow
-                      icon={Mail}
-                      label="Email"
-                      value="maria.silva@email.com"
-                    />
-                    <DataRow
-                      icon={FileText}
-                      label="Número de seguro"
-                      value="123456789"
-                    />
+                    <DataRow icon={MapPin} label="Morada" value={paciente.morada || '—'} />
+                    <DataRow icon={Phone} label="Contacto" value={paciente.contacto || '—'} />
+                    <DataRow icon={Calendar} label="Data de nascimento" value={formatarDataPT(paciente.dataNascimento)} />
                   </div>
                 </section>
 
-                {/* Clinical Data Section */}
                 <section>
                   <h3 className="text-[var(--scolio-text-primary)] mb-4">Dados clínicos</h3>
                   <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-5 space-y-4">
-                    <DataRow
-                      icon={Stethoscope}
-                      label="Diagnóstico"
-                      value="Escoliose idiopática - curva torácica"
-                    />
-                    <DataRow
-                      icon={User}
-                      label="Médico responsável"
-                      value="Dr. Ana Martins (Ortopedista)"
-                    />
-                    <DataRow
-                      icon={Calendar}
-                      label="Data de início do tratamento"
-                      value="15 de janeiro de 2024"
-                    />
+                    <DataRow icon={Stethoscope} label="Diagnóstico" value={diagnostico || '—'} />
+                    <DataRow icon={User} label="Médico responsável" value={nomeMedico} />
+                    {dataInicioTratamento && (
+                      <DataRow icon={Calendar} label="Primeiro exame" value={dataInicioTratamento} />
+                    )}
                   </div>
                 </section>
 
-                {/* Cobb Angle Evolution Chart */}
                 <section>
                   <h3 className="text-[var(--scolio-text-primary)] mb-4">Evolução do ângulo de Cobb ao longo do tempo</h3>
-                  <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] p-5">
-                    <ResponsiveContainer width="100%" height={320}>
-                      <LineChart 
-                        data={cobbAngleData}
-                        onClick={handleChartClick}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--scolio-border-light)" />
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
-                          label={{ value: 'Exam dates', position: 'insideBottom', offset: -5, fill: 'var(--scolio-text-secondary)' }}
-                        />
-                        <YAxis
-                          tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
-                          label={{ value: 'Degrees', angle: -90, position: 'insideLeft', fill: 'var(--scolio-text-secondary)' }}
-                          domain={[0, 20]}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid var(--scolio-border-light)',
-                            borderRadius: 'var(--radius-component)',
-                            fontSize: '13px'
-                          }}
-                          formatter={(value: any) => [`${value}°`, 'Cobb angle']}
-                        />
-                        <ReferenceLine
-                          y={10}
-                          stroke="var(--scolio-warning-amber)"
-                          strokeDasharray="5 5"
-                          strokeWidth={2}
-                        >
-                          <text
-                            x="50%"
-                            y={10}
-                            dy={-10}
-                            textAnchor="middle"
-                            fill="var(--scolio-warning-amber)"
-                            fontSize={13}
-                            fontWeight={500}
-                          >
-                            Scoliosis threshold
-                          </text>
-                        </ReferenceLine>
-                        <Line
-                          type="monotone"
-                          dataKey="angle"
-                          stroke="var(--scolio-primary-blue)"
-                          strokeWidth={3}
-                          dot={<Dot r={6} fill="var(--scolio-primary-blue)" cursor="pointer" />}
-                          activeDot={{ r: 8, cursor: 'pointer' }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                  {cobbData.length > 0 ? (
+                    <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] p-5">
+                      <ResponsiveContainer width="100%" height={320}>
+                        <LineChart data={cobbData} onClick={handleChartClick}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--scolio-border-light)" />
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
+                            label={{ value: 'Datas dos exames', position: 'insideBottom', offset: -5, fill: 'var(--scolio-text-secondary)' }}
+                          />
+                          <YAxis
+                            tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
+                            label={{ value: 'Graus', angle: -90, position: 'insideLeft', fill: 'var(--scolio-text-secondary)' }}
+                            domain={[0, 'auto']}
+                          />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: 'white', border: '1px solid var(--scolio-border-light)', borderRadius: 'var(--radius-component)', fontSize: '13px' }}
+                            formatter={(value: any) => [`${value}°`, 'Ângulo de Cobb']}
+                          />
+                          <ReferenceLine y={10} stroke="var(--scolio-warning-amber)" strokeDasharray="5 5" strokeWidth={2}>
+                            <text x="50%" y={10} dy={-10} textAnchor="middle" fill="var(--scolio-warning-amber)" fontSize={13} fontWeight={500}>
+                              Limiar de escoliose
+                            </text>
+                          </ReferenceLine>
+                          <Line
+                            type="monotone"
+                            dataKey="angle"
+                            stroke="var(--scolio-primary-blue)"
+                            strokeWidth={3}
+                            dot={<Dot r={6} fill="var(--scolio-primary-blue)" cursor="pointer" />}
+                            activeDot={{ r: 8, cursor: 'pointer' }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-8 text-center">
+                      <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                        Sem exames com ângulo de Cobb registado.
+                      </p>
+                    </div>
+                  )}
                 </section>
               </div>
 
-              {/* Right Column - 40% (2 columns) */}
               <div className="col-span-2 space-y-6">
-                {/* Last Exam Summary Card */}
                 <section>
-                  <h3 className="text-[var(--scolio-text-primary)] mb-4">Last exam summary</h3>
-                  <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-card)] p-5 space-y-4">
-                    {/* Image Thumbnail */}
-                    <div className="w-full h-48 bg-black rounded-[var(--radius-component)] overflow-hidden">
-                      <img
-                        src="https://images.unsplash.com/photo-1728347053156-cf9066af4d9f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWRpY2FsJTIwc3BpbmUlMjB4cmF5fGVufDF8fHx8MTc3NTY2NTYzMHww&ixlib=rb-4.1.0&q=80&w=400"
-                        alt="Last exam"
-                        className="w-full h-full object-contain"
-                      />
+                  <h3 className="text-[var(--scolio-text-primary)] mb-4">Último exame</h3>
+                  {ultimoExame ? (
+                    <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-card)] p-5 space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                            Data do exame
+                          </span>
+                          <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
+                            {new Date(ultimoExame.dataEstudo).toLocaleDateString('pt-PT')}
+                          </span>
+                        </div>
+                        {ultimoExame.resultado && (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                                Ângulo de Cobb
+                              </span>
+                              <span className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>
+                                {(ultimoExame.resultado.anguloCobbCorrigido ?? ultimoExame.resultado.anguloCobb).toFixed(1)}°
+                              </span>
+                            </div>
+                            {ultimoExame.resultado.nivelVertebras && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                                  Nível vertebral
+                                </span>
+                                <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
+                                  {ultimoExame.resultado.nivelVertebras}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>Estado</span>
+                          <StatusBadge status={estadoParaBadge(ultimoExame.estado)} />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => navigate('/exam-viewer')}
+                        className="w-full text-[var(--scolio-primary-blue)] hover:underline text-center"
+                        style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
+                      >
+                        Ver exame →
+                      </button>
                     </div>
-
-                    {/* Metrics */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          Exam date
-                        </span>
-                        <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-                          April 8, 2026
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          Cobb angle
-                        </span>
-                        <span className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>
-                          15.7°
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          Apical vertebra
-                        </span>
-                        <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-                          T8
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          Status
-                        </span>
-                        <StatusBadge status="analyzed" />
-                      </div>
+                  ) : (
+                    <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5 text-center">
+                      <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                        Sem exames registados.
+                      </p>
                     </div>
-
-                    {/* View Exam Link */}
-                    <button
-                      onClick={() => navigate('/exam-viewer')}
-                      className="w-full text-[var(--scolio-primary-blue)] hover:underline text-center"
-                      style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
-                    >
-                      View exam →
-                    </button>
-                  </div>
+                  )}
                 </section>
 
-                {/* Patient Feedback Summary */}
                 <section>
-                  <h3 className="text-[var(--scolio-text-primary)] mb-4">Patient feedback summary</h3>
-                  <div className="bg-[var(--scolio-success-surface)] border border-[var(--scolio-success-green)] rounded-[var(--radius-card)] p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        Last wellness entry
-                      </span>
-                      <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                        April 7, 2026
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                        Pain level
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-3 bg-white rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-[var(--scolio-success-green)] rounded-full"
-                            style={{ width: '30%' }}
-                          />
-                        </div>
-                        <span className="text-[var(--scolio-success-green)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>
-                          3/10
+                  <h3 className="text-[var(--scolio-text-primary)] mb-4">Resumo de bem-estar</h3>
+                  {ultimoWellness ? (
+                    <div className="bg-[var(--scolio-success-surface)] border border-[var(--scolio-success-green)] rounded-[var(--radius-card)] p-5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>Último registo</span>
+                        <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                          {new Date(ultimoWellness.dataRegisto).toLocaleDateString('pt-PT')}
                         </span>
                       </div>
+                      <div className="space-y-2">
+                        <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Nível de dor</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-3 bg-white rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[var(--scolio-success-green)] rounded-full"
+                              style={{ width: `${(ultimoWellness.nivelDor / 9) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-[var(--scolio-success-green)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>
+                            {ultimoWellness.nivelDor}/9
+                          </span>
+                        </div>
+                      </div>
+                      {ultimoWellness.notas && (
+                        <p className="text-[var(--scolio-text-secondary)] italic" style={{ fontSize: 'var(--text-body)' }}>
+                          "{ultimoWellness.notas}"
+                        </p>
+                      )}
                     </div>
-
-                    <p className="text-[var(--scolio-text-secondary)] italic" style={{ fontSize: 'var(--text-body)' }}>
-                      "Feeling much better after the exercises. Pain has reduced significantly."
-                    </p>
-                  </div>
+                  ) : (
+                    <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5 text-center">
+                      <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                        Sem registos de bem-estar.
+                      </p>
+                    </div>
+                  )}
                 </section>
               </div>
             </div>
           </div>
         )}
 
-        {/* Tab Content - Exams */}
+        {/* ── Tab: Exames ── */}
         {activeTab === 'exams' && (
           <div className="p-6 space-y-6">
             <div className="flex justify-end">
@@ -379,164 +475,154 @@ export default function PatientRecordScreen() {
                 Novo exame
               </Button>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {examsData.map((exam) => (
-                <ExamCard
-                  key={exam.id}
-                  date={exam.date}
-                  cobbAngle={exam.angle}
-                  apicalVertebra={exam.apical}
-                  status={exam.status}
-                  onClick={() => navigate('/exam-viewer')}
-                />
-              ))}
-            </div>
+            {estudos.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {estudos.map((exame) => (
+                  <ExamCard
+                    key={exame.id}
+                    date={new Date(exame.dataEstudo).toLocaleDateString('pt-PT')}
+                    cobbAngle={exame.resultado ? (exame.resultado.anguloCobbCorrigido ?? exame.resultado.anguloCobb) : 0}
+                    apicalVertebra={exame.resultado?.nivelVertebras ?? undefined}
+                    status={estadoParaBadge(exame.estado)}
+                    onClick={() => navigate('/exam-viewer')}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center">
+                <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                  Sem exames registados para este paciente.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Tab Content - Reports */}
+        {/* ── Tab: Relatórios ── */}
         {activeTab === 'reports' && (
           <div className="p-6">
-            <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-                    <th className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                      DATA
-                    </th>
-                    <th className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                      TIPO
-                    </th>
-                    <th className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                      ESTADO
-                    </th>
-                    <th className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                      MÉDICO
-                    </th>
-                    <th className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                      AÇÕES
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportsData.map((report) => (
-                    <tr key={report.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
-                      <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        {new Date(report.date).toLocaleDateString('pt-PT')}
-                      </td>
-                      <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        {report.type}
-                      </td>
-                      <td className="p-4">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-[var(--scolio-success-surface)] text-[var(--scolio-success-green)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                          {report.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        {report.doctor}
-                      </td>
-                      <td className="p-4">
-                        <button className="flex items-center gap-2 text-[var(--scolio-primary-blue)] hover:underline">
-                          <FileDown className="w-4 h-4" />
-                          Descarregar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {(() => {
+              const relatorios = estudos.filter((e) => e.ficheiroPdf !== null);
+              return relatorios.length > 0 ? (
+                <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
+                        {['DATA', 'TIPO', 'ESTADO', 'MÉDICO', 'AÇÕES'].map((h) => (
+                          <th key={h} className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {relatorios.map((r) => (
+                        <tr key={r.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
+                          <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
+                            {new Date(r.dataEstudo).toLocaleDateString('pt-PT')}
+                          </td>
+                          <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
+                            Relatório clínico
+                          </td>
+                          <td className="p-4">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-[var(--scolio-success-surface)] text-[var(--scolio-success-green)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
+                              Concluído
+                            </span>
+                          </td>
+                          <td className="p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                            {nomeMedico}
+                          </td>
+                          <td className="p-4">
+                            <button
+                              onClick={() => window.open(r.ficheiroPdf!, '_blank')}
+                              className="flex items-center gap-2 text-[var(--scolio-primary-blue)] hover:underline"
+                            >
+                              <FileDown className="w-4 h-4" />
+                              Descarregar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="py-12 text-center">
+                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                    Sem relatórios disponíveis para este paciente.
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         )}
 
-        {/* Tab Content - Evolution */}
+        {/* ── Tab: Histórico de Evolução ── */}
         {activeTab === 'evolution' && (
           <div className="p-6 space-y-6">
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setEvolutionPeriod('3m')}
-                className={`px-4 py-2 rounded-[var(--radius-component)] transition-colors ${evolutionPeriod === '3m' ? 'bg-[var(--scolio-primary-blue)] text-white' : 'bg-white border border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)] hover:bg-[var(--scolio-page-surface)]'}`}
-              >
-                3 meses
-              </button>
-              <button
-                onClick={() => setEvolutionPeriod('6m')}
-                className={`px-4 py-2 rounded-[var(--radius-component)] transition-colors ${evolutionPeriod === '6m' ? 'bg-[var(--scolio-primary-blue)] text-white' : 'bg-white border border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)] hover:bg-[var(--scolio-page-surface)]'}`}
-              >
-                6 meses
-              </button>
-              <button
-                onClick={() => setEvolutionPeriod('1y')}
-                className={`px-4 py-2 rounded-[var(--radius-component)] transition-colors ${evolutionPeriod === '1y' ? 'bg-[var(--scolio-primary-blue)] text-white' : 'bg-white border border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)] hover:bg-[var(--scolio-page-surface)]'}`}
-              >
-                1 ano
-              </button>
-              <button
-                onClick={() => setEvolutionPeriod('all')}
-                className={`px-4 py-2 rounded-[var(--radius-component)] transition-colors ${evolutionPeriod === 'all' ? 'bg-[var(--scolio-primary-blue)] text-white' : 'bg-white border border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)] hover:bg-[var(--scolio-page-surface)]'}`}
-              >
-                Tudo
-              </button>
+              {(['3m', '6m', '1y', 'all'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setEvolutionPeriod(p)}
+                  className={`px-4 py-2 rounded-[var(--radius-component)] transition-colors ${
+                    evolutionPeriod === p
+                      ? 'bg-[var(--scolio-primary-blue)] text-white'
+                      : 'bg-white border border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)] hover:bg-[var(--scolio-page-surface)]'
+                  }`}
+                  style={{ fontSize: 'var(--text-body)' }}
+                >
+                  {p === '3m' ? '3 meses' : p === '6m' ? '6 meses' : p === '1y' ? '1 ano' : 'Tudo'}
+                </button>
+              ))}
             </div>
-
             <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-card)] p-6">
               <h3 className="text-[var(--scolio-text-primary)] mb-6">Evolução do ângulo de Cobb ao longo do tempo</h3>
-              <ResponsiveContainer width="100%" height={480}>
-                <LineChart data={cobbAngleData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--scolio-border-light)" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
-                    label={{ value: 'Datas dos exames', position: 'insideBottom', offset: -5, fill: 'var(--scolio-text-secondary)' }}
-                  />
-                  <YAxis
-                    tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
-                    label={{ value: 'Graus', angle: -90, position: 'insideLeft', fill: 'var(--scolio-text-secondary)' }}
-                    domain={[0, 20]}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid var(--scolio-border-light)',
-                      borderRadius: 'var(--radius-component)',
-                      fontSize: '13px'
-                    }}
-                    formatter={(value: any) => [`${value}°`, 'Ângulo de Cobb']}
-                  />
-                  <ReferenceLine
-                    y={10}
-                    stroke="var(--scolio-warning-amber)"
-                    strokeDasharray="5 5"
-                    strokeWidth={2}
-                  >
-                    <text
-                      x="50%"
-                      y={10}
-                      dy={-10}
-                      textAnchor="middle"
-                      fill="var(--scolio-warning-amber)"
-                      fontSize={13}
-                      fontWeight={500}
-                    >
-                      Limiar de escoliose
-                    </text>
-                  </ReferenceLine>
-                  <Line
-                    type="monotone"
-                    dataKey="angle"
-                    stroke="var(--scolio-primary-blue)"
-                    strokeWidth={3}
-                    dot={<Dot r={6} fill="var(--scolio-primary-blue)" cursor="pointer" />}
-                    activeDot={{ r: 8, cursor: 'pointer' }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {cobbDataFiltrado.length > 0 ? (
+                <ResponsiveContainer width="100%" height={480}>
+                  <LineChart data={cobbDataFiltrado}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--scolio-border-light)" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
+                      label={{ value: 'Datas dos exames', position: 'insideBottom', offset: -5, fill: 'var(--scolio-text-secondary)' }}
+                    />
+                    <YAxis
+                      tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
+                      label={{ value: 'Graus', angle: -90, position: 'insideLeft', fill: 'var(--scolio-text-secondary)' }}
+                      domain={[0, 'auto']}
+                    />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'white', border: '1px solid var(--scolio-border-light)', borderRadius: 'var(--radius-component)', fontSize: '13px' }}
+                      formatter={(value: any) => [`${value}°`, 'Ângulo de Cobb']}
+                    />
+                    <ReferenceLine y={10} stroke="var(--scolio-warning-amber)" strokeDasharray="5 5" strokeWidth={2}>
+                      <text x="50%" y={10} dy={-10} textAnchor="middle" fill="var(--scolio-warning-amber)" fontSize={13} fontWeight={500}>
+                        Limiar de escoliose
+                      </text>
+                    </ReferenceLine>
+                    <Line
+                      type="monotone"
+                      dataKey="angle"
+                      stroke="var(--scolio-primary-blue)"
+                      strokeWidth={3}
+                      dot={<Dot r={6} fill="var(--scolio-primary-blue)" cursor="pointer" />}
+                      activeDot={{ r: 8, cursor: 'pointer' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="py-12 text-center">
+                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                    Sem dados de ângulo de Cobb no período selecionado.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Tab Content - Clinical Notes */}
+        {/* ── Tab: Notas Clínicas ── */}
         {activeTab === 'notes' && (
           <div className="p-6 space-y-6">
             <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-6">
@@ -548,157 +634,154 @@ export default function PatientRecordScreen() {
                 placeholder="Escreva a sua nota clínica..."
               />
               <div className="mt-3">
-                <Button variant="primary" onClick={handleSaveNote}>
-                  Guardar nota
-                </Button>
+                <Button variant="primary" onClick={handleSaveNote}>Guardar nota</Button>
               </div>
             </div>
-
             <div className="space-y-4">
               <h3 className="text-[var(--scolio-text-primary)]">Notas anteriores</h3>
-              {clinicalNotesData.map((note) => (
-                <div key={note.id} className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-                        {note.author}
-                      </p>
-                      <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                        {note.date}
+              {(() => {
+                const notasExames = estudos.filter((e) => e.notasClinicas);
+                return notasExames.length > 0 ? (
+                  notasExames.map((exame) => (
+                    <div key={exame.id} className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
+                            {nomeMedico}
+                          </p>
+                          <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                            {new Date(exame.dataEstudo).toLocaleDateString('pt-PT')}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', lineHeight: '1.6' }}>
+                        {exame.notasClinicas}
                       </p>
                     </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center">
+                    <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                      Sem notas clínicas registadas.
+                    </p>
                   </div>
-                  <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', lineHeight: '1.6' }}>
-                    {note.note}
-                  </p>
-                </div>
-              ))}
+                );
+              })()}
             </div>
           </div>
         )}
 
-        {/* Tab Content - Patient Feedback */}
+        {/* ── Tab: Feedback do Paciente ── */}
         {activeTab === 'feedback' && (
           <div className="p-6 space-y-4">
             <h3 className="text-[var(--scolio-text-primary)]">Registos de bem-estar do paciente</h3>
-            {wellnessFeedbackData.map((feedback) => (
-              <div key={feedback.id} className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                    {new Date(feedback.date).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <p className="text-[var(--scolio-text-secondary)] mb-2" style={{ fontSize: 'var(--text-caption)' }}>
-                      Nível de dor
+            {wellnessLog.length > 0 ? (
+              wellnessLog.map((fb) => (
+                <div key={fb.id} className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                      {new Date(fb.dataRegisto).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-[var(--scolio-page-surface)] rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${feedback.painLevel <= 3 ? 'bg-[var(--scolio-success-green)]' : feedback.painLevel <= 6 ? 'bg-[var(--scolio-warning-amber)]' : 'bg-[var(--scolio-danger-coral)]'}`}
-                          style={{ width: `${(feedback.painLevel / 10) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-body)' }}>
-                        {feedback.painLevel}/10
-                      </span>
-                    </div>
                   </div>
-
-                  <div>
-                    <p className="text-[var(--scolio-text-secondary)] mb-2" style={{ fontSize: 'var(--text-caption)' }}>
-                      Conforto
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-[var(--scolio-text-secondary)] mb-2" style={{ fontSize: 'var(--text-caption)' }}>Nível de dor</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-[var(--scolio-page-surface)] rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${fb.nivelDor <= 3 ? 'bg-[var(--scolio-success-green)]' : fb.nivelDor <= 6 ? 'bg-[var(--scolio-warning-amber)]' : 'bg-[var(--scolio-danger-coral)]'}`}
+                            style={{ width: `${(fb.nivelDor / 9) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-body)' }}>
+                          {fb.nivelDor}/9
+                        </span>
+                      </div>
+                    </div>
+                    {fb.desconforto && (
+                      <div>
+                        <p className="text-[var(--scolio-text-secondary)] mb-2" style={{ fontSize: 'var(--text-caption)' }}>Desconforto</p>
+                        <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
+                          {fb.desconforto === 'none' ? 'Nenhum' : fb.desconforto === 'mild' ? 'Ligeiro' : fb.desconforto === 'moderate' ? 'Moderado' : 'Intenso'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {fb.notas && (
+                    <p className="text-[var(--scolio-text-secondary)] italic" style={{ fontSize: 'var(--text-body)' }}>
+                      "{fb.notas}"
                     </p>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-[var(--scolio-page-surface)] rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[var(--scolio-primary-blue)] rounded-full"
-                          style={{ width: `${(feedback.comfort / 10) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-body)' }}>
-                        {feedback.comfort}/10
-                      </span>
-                    </div>
-                  </div>
+                  )}
                 </div>
-
-                <p className="text-[var(--scolio-text-secondary)] italic" style={{ fontSize: 'var(--text-body)' }}>
-                  "{feedback.note}"
+              ))
+            ) : (
+              <div className="py-12 text-center">
+                <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                  Sem registos de bem-estar do paciente.
                 </p>
               </div>
-            ))}
+            )}
           </div>
         )}
 
-        {/* Tab Content - Audit */}
+        {/* ── Tab: Auditoria ── */}
         {activeTab === 'audit' && (
           <div className="p-6">
-            <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-                    <th className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                      DATA/HORA
-                    </th>
-                    <th className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                      UTILIZADOR
-                    </th>
-                    <th className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                      AÇÃO
-                    </th>
-                    <th className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                      RECURSO AFETADO
-                    </th>
-                    <th className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                      ENDEREÇO IP
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLogsData.map((log) => (
-                    <tr key={log.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
-                      <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        {log.dateTime}
-                      </td>
-                      <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        {log.user}
-                      </td>
-                      <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        {log.action}
-                      </td>
-                      <td className="p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        {log.resource}
-                      </td>
-                      <td className="p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        {log.ip}
-                      </td>
+            {historico.length > 0 ? (
+              <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
+                      {['DATA/HORA', 'UTILIZADOR', 'ESTADO ANTERIOR', 'ESTADO NOVO', 'OBSERVAÇÃO'].map((h) => (
+                        <th key={h} className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {historico.map((entrada) => (
+                      <tr key={entrada.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
+                        <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
+                          {formatarDataHoraPT(entrada.dataTransicao)}
+                        </td>
+                        <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
+                          {entrada.utilizadorNome}
+                        </td>
+                        <td className="p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                          {entrada.estadoAnterior ? estadoParaTexto(entrada.estadoAnterior) : '—'}
+                        </td>
+                        <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
+                          {estadoParaTexto(entrada.estadoNovo)}
+                        </td>
+                        <td className="p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                          {entrada.observacao || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-12 text-center">
+                <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                  Sem registos de auditoria para este paciente.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-8 right-8 z-50">
-          <Toast
-            title="Exportação iniciada..."
-            type="success"
-            onClose={() => setShowToast(false)}
-          />
+          <Toast title={toastMsg} type="success" onClose={() => setShowToast(false)} />
         </div>
       )}
     </div>
   );
 }
 
-// Data Row Component
 interface DataRowProps {
   icon: React.ElementType;
   label: string;

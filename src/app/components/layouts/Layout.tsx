@@ -42,7 +42,7 @@ export default function Layout() {
       : 'Médico Especialista';
 
   return (
-    <div className="flex h-screen bg-[var(--scolio-page-surface)] w-[1440px] mx-auto">
+    <div className="flex h-screen bg-[var(--scolio-page-surface)] w-full">
       {/* Sidebar fixa - 240px */}
       <aside className="w-60 bg-white border-r border-[var(--scolio-border-light)] flex flex-col">
         {/* Logo */}

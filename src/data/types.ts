@@ -68,3 +68,111 @@ export type UtilizadorAutenticado =
   | MedicoEspecialista
   | TecnicoSaude
   | Paciente;
+
+// ─── Estudos ───────────────────────────────────────────────────────────────
+
+export type EstadoEstudo =
+  | 'UPLOADED'
+  | 'PROCESSING'
+  | 'PENDING_VALIDATION'
+  | 'VALIDATED'
+  | 'DIAGNOSED'
+  | 'SENT'
+  | 'ARCHIVED';
+
+export interface EstudoResumo {
+  id: string;
+  pacienteNome: string;
+  dataSubmissao: string;   // ISO 8601
+  estado: EstadoEstudo;
+}
+
+export interface DadosSemanais {
+  semana: string;
+  exames: number;
+}
+
+export interface AtividadeResumo {
+  id: string;
+  estadoNovo: EstadoEstudo;
+  dataTransicao: string;   // ISO 8601
+  utilizadorNome: string;
+  pacienteNome: string;
+}
+
+// ─── Pacientes ─────────────────────────────────────────────────────────────
+
+export interface PacienteResumo {
+  id: string;
+  nomeCompleto: string;
+  numeroUtente: string;
+  dataAssociacao: string;  // ISO 8601
+}
+
+export interface PacienteListagem {
+  id: string;
+  nomeCompleto: string;
+  numeroUtente: string;
+  dataNascimento: string | null;   // ISO 8601 date
+  genero: string | null;
+  totalExames: number;
+  ultimoExame: string | null;      // ISO 8601 date
+  estadoUltimoExame: EstadoEstudo | null;
+}
+
+// ─── Dashboard médico ──────────────────────────────────────────────────────
+
+export interface MetricasDashboardMedico {
+  totalPacientes: number;
+  examesPendentesValidacao: number;
+  examesAnalisadosEstaSemana: number;
+  relatoriosGeradosEsteMes: number;
+}
+
+// ─── Ficha de Paciente ─────────────────────────────────────────────────────
+
+export interface PacienteDetalhe {
+  id: string;
+  nomeCompleto: string;
+  dataNascimento: string | null;
+  genero: string | null;
+  numeroUtente: string | null;
+  contacto: string | null;
+  morada: string | null;
+}
+
+export interface ResultadoEstudo {
+  id: string;
+  anguloCobb: number;
+  anguloCobbCorrigido: number | null;
+  grauCurvatura: string;
+  localizacaoCurva: string | null;
+  nivelVertebras: string | null;
+}
+
+export interface EstudoComResultado {
+  id: string;
+  dataEstudo: string;          // ISO date
+  estado: EstadoEstudo;
+  notasClinicas: string | null;
+  ficheiroPdf: string | null;
+  resultado: ResultadoEstudo | null;
+}
+
+export interface WellnessLogEntry {
+  id: string;
+  dataRegisto: string;         // ISO date
+  nivelDor: number;            // 0-9
+  desconforto: string | null;  // 'none' | 'mild' | 'moderate' | 'intense'
+  notas: string | null;
+}
+
+export interface HistoricoEstadoEntry {
+  id: string;
+  dataTransicao: string;       // ISO datetime
+  utilizadorNome: string;
+  utilizadorPerfil: string;
+  estadoAnterior: string | null;
+  estadoNovo: string;
+  observacao: string | null;
+}
