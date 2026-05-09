@@ -70,8 +70,165 @@ export default function ReportGenerationScreen() {
   const toggleSection = (s: keyof typeof includedSections) =>
     setIncludedSections((prev) => ({ ...prev, [s]: !prev[s] }));
 
-  const handleGenerate = () =>
-    mostrarToast('Geração de PDF em desenvolvimento. Por enquanto use Ctrl+P para imprimir esta prévia.', 'error');
+  const handleGenerate = () => {
+    if (!estudo) return;
+
+    // ── Traduções PT / EN ──────────────────────────────────────────────────
+    const tr = {
+      pt: {
+        title: 'Relatório Clínico de Escoliose', subtitle: 'Análise Clínica da Coluna Vertebral',
+        patient: 'Informação do paciente', fullName: 'Nome completo', utente: 'Nº utente',
+        dob: 'Data de nascimento', gender: 'Género',
+        examDate: 'Data do exame', reportDate: 'Data do relatório',
+        examImage: 'Imagem do exame', metrics: 'Métricas validadas',
+        cobbAI: 'Ângulo de Cobb (IA)', cobbCorr: 'Ângulo de Cobb (corrigido)',
+        vertebra: 'Vértebra apical', classif: 'Classificação',
+        notes: 'Observações do médico', sig: 'Assinatura digital',
+        sigBy: 'Médico', license: 'Cédula', specialty: 'Especialidade',
+        pending: 'Documento por assinar',
+        footer: 'Documento gerado automaticamente pelo ScolioScan — não substitui relatório clínico assinado.',
+        metric: 'Métrica', value: 'Valor',
+      },
+      en: {
+        title: 'Clinical Scoliosis Report', subtitle: 'Clinical Spine Analysis',
+        patient: 'Patient information', fullName: 'Full name', utente: 'Patient ID',
+        dob: 'Date of birth', gender: 'Gender',
+        examDate: 'Exam date', reportDate: 'Report date',
+        examImage: 'Exam image', metrics: 'Validated metrics',
+        cobbAI: 'Cobb angle (AI)', cobbCorr: 'Cobb angle (corrected)',
+        vertebra: 'Apical vertebra', classif: 'Classification',
+        notes: "Doctor's observations", sig: 'Digital signature',
+        sigBy: 'Physician', license: 'Medical license', specialty: 'Specialty',
+        pending: 'Document pending signature',
+        footer: 'Automatically generated document — does not replace a signed clinical report.',
+        metric: 'Metric', value: 'Value',
+      },
+    } as const;
+
+    const s = tr[idioma as 'pt' | 'en'] ?? tr.pt;
+    const agora = new Date().toLocaleString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const dataExameStr = formatarDataPT(estudo.dataEstudo);
+    const r = estudo.resultado;
+
+    const secaoPaciente = includedSections.dadosPaciente ? `
+      <h2>${s.patient}</h2>
+      <div class="grid">
+        <div class="field"><label>${s.fullName}</label><span>${estudo.pacienteNome}</span></div>
+        ${paciente?.numeroUtente ? `<div class="field"><label>${s.utente}</label><span>${paciente.numeroUtente}</span></div>` : ''}
+        ${paciente?.dataNascimento ? `<div class="field"><label>${s.dob}</label><span>${formatarDataPT(paciente.dataNascimento)}${calcularIdade(paciente.dataNascimento)}</span></div>` : ''}
+        ${paciente?.genero ? `<div class="field"><label>${s.gender}</label><span>${paciente.genero}</span></div>` : ''}
+      </div>` : '';
+
+    const secaoDatas = `
+      <div class="grid2">
+        <div><h4>${s.examDate}</h4><p>${dataExameStr}</p></div>
+        <div><h4>${s.reportDate}</h4><p>${agora}</p></div>
+      </div>`;
+
+    const secaoImagem = includedSections.imagemExame && urlImagem ? `
+      <h2>${s.examImage}</h2>
+      <div style="background:#000;padding:16px;border-radius:6px;display:flex;justify-content:center;">
+        <div style="position:relative;width:192px;height:256px;">
+          <img src="${urlImagem}" alt="Exame" style="width:100%;height:100%;object-fit:contain;" />
+          ${includedSections.overlayIA && r ? `
+          <svg style="position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:screen;" xmlns="http://www.w3.org/2000/svg">
+            <line x1="30%" y1="30%" x2="70%" y2="30%" stroke="#1A6FAF" stroke-width="2" stroke-dasharray="3,3"/>
+            <line x1="25%" y1="60%" x2="75%" y2="60%" stroke="#1A6FAF" stroke-width="2" stroke-dasharray="3,3"/>
+            <text x="55%" y="45%" fill="#1A6FAF" font-size="12" font-weight="600">${r.anguloCobb.toFixed(1)}°</text>
+          </svg>` : ''}
+        </div>
+      </div>` : '';
+
+    const secaoMetricas = includedSections.metricasValidadas && r ? `
+      <h2>${s.metrics}</h2>
+      <table>
+        <thead><tr><th>${s.metric}</th><th>${s.value}</th></tr></thead>
+        <tbody>
+          <tr><td>${s.cobbAI}</td><td><strong>${r.anguloCobb.toFixed(1)}°</strong></td></tr>
+          ${r.anguloCobbCorrigido !== null ? `<tr><td>${s.cobbCorr}</td><td><strong>${r.anguloCobbCorrigido.toFixed(1)}°</strong></td></tr>` : ''}
+          ${r.nivelVertebras ? `<tr><td>${s.vertebra}</td><td>${r.nivelVertebras}</td></tr>` : ''}
+          <tr><td>${s.classif}</td><td>${r.grauCurvatura}</td></tr>
+        </tbody>
+      </table>` : '';
+
+    const secaoNotas = includedSections.notasClinicas && estudo.notasClinicas ? `
+      <h2>${s.notes}</h2>
+      <div class="notes-box">${estudo.notasClinicas}</div>` : '';
+
+    const secaoAssinatura = includedSections.assinaturaDigital ? `
+      <div class="sig-block">
+        <div class="sig-header">🔒 ${s.sig}</div>
+        <div class="field"><label>${s.sigBy}</label><span>${nomeMedico}</span></div>
+        ${medico?.cedulaProfissional ? `<div class="field"><label>${s.license}</label><span>${medico.cedulaProfissional}</span></div>` : ''}
+        ${medico?.especialidade ? `<div class="field"><label>${s.specialty}</label><span>${medico.especialidade}</span></div>` : ''}
+        <p style="font-size:11px;color:#999;margin-top:8px">${s.pending}</p>
+      </div>` : '';
+
+    const html = `<!DOCTYPE html>
+<html lang="${idioma}">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${s.title} — ${estudo.pacienteNome}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1a1a2e;line-height:1.5;padding:32px}
+    h2{font-size:13px;font-weight:600;color:#1a6faf;margin:20px 0 8px;border-bottom:1px solid #e0e6f0;padding-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+    h4{font-size:12px;font-weight:600;color:#444;margin-bottom:4px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a6faf;padding-bottom:12px;margin-bottom:4px}
+    .logo{display:flex;align-items:center;gap:10px}
+    .logo-box{width:40px;height:40px;background:#1a6faf;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:700}
+    .doc-title{font-size:20px;font-weight:700;color:#1a6faf;margin-top:8px}
+    .meta{text-align:right;font-size:11px;color:#666}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+    .field{display:flex;gap:8px;padding:3px 0}
+    .field label{color:#666;min-width:120px;flex-shrink:0;font-size:12px}
+    .field span{font-weight:500}
+    table{width:100%;border-collapse:collapse;margin-top:4px}
+    th{background:#f0f4fa;text-align:left;padding:6px 10px;font-size:11px;font-weight:600;color:#555;text-transform:uppercase}
+    td{padding:6px 10px;border-bottom:1px solid #eef1f7}
+    tr:last-child td{border-bottom:none}
+    .notes-box{background:#f8fafc;border:1px solid #e0e6f0;border-radius:6px;padding:12px;white-space:pre-wrap;font-size:12px;color:#444;line-height:1.7}
+    .sig-block{margin-top:24px;padding:12px 16px;border:1px solid #1a6faf;border-radius:6px;background:#f0f6ff}
+    .sig-header{font-weight:600;color:#1a6faf;margin-bottom:8px}
+    .footer{margin-top:32px;padding-top:12px;border-top:1px solid #e0e6f0;font-size:10px;color:#aaa;text-align:center}
+    p{color:#555;font-size:12px}
+    @media print{body{padding:0}@page{margin:1.5cm}}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <div class="logo-box">S</div>
+      <div>
+        <div style="font-size:13px;color:#666">${s.subtitle}</div>
+        <div class="doc-title">${s.title}</div>
+      </div>
+    </div>
+    <div class="meta">
+      <div>${s.reportDate}: ${agora}</div>
+      <div>${s.sigBy}: ${nomeMedico}</div>
+    </div>
+  </div>
+  ${secaoPaciente}
+  ${secaoDatas}
+  ${secaoImagem}
+  ${secaoMetricas}
+  ${secaoNotas}
+  ${secaoAssinatura}
+  <div class="footer">${s.footer}</div>
+  <script>window.onload=()=>window.print()</script>
+</body>
+</html>`;
+
+    const janela = window.open('', '_blank', 'width=900,height=750');
+    if (janela) {
+      janela.document.write(html);
+      janela.document.close();
+    } else {
+      mostrarToast('O browser bloqueou o pop-up. Permite pop-ups para este site e tenta novamente.', 'error');
+    }
+  };
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (aCarregar) {
@@ -163,7 +320,7 @@ export default function ReportGenerationScreen() {
 
           <div className="bg-[var(--scolio-light-blue-surface)] rounded-[var(--radius-card)] border border-[var(--scolio-primary-blue)] p-4">
             <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-caption)' }}>
-              A geração de PDF estará disponível numa próxima versão. Use Ctrl+P para imprimir a prévia.
+              O PDF abre numa nova janela de impressão. Selecciona <strong>"Guardar como PDF"</strong> no diálogo do browser.
             </p>
           </div>
         </div>
