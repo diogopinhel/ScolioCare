@@ -158,7 +158,145 @@ export default function PatientRecordScreen() {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  const handleExport = () => mostrarToast('Exportação iniciada...');
+  const handleExport = () => {
+    if (!paciente) return;
+
+    const agora = new Date().toLocaleString('pt-PT', {
+      day: '2-digit', month: 'long', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+
+    const estadoTexto: Record<string, string> = {
+      UPLOADED: 'Carregado', PROCESSING: 'Em processamento',
+      PENDING_VALIDATION: 'Pendente de validação', VALIDATED: 'Validado',
+      DIAGNOSED: 'Diagnosticado', SENT: 'Enviado', ARCHIVED: 'Arquivado',
+    };
+
+    const linhaExame = (e: typeof estudos[0]) => {
+      const angulo = e.resultado
+        ? (e.resultado.anguloCobbCorrigido ?? e.resultado.anguloCobb).toFixed(1) + '°'
+        : '—';
+      const classif = e.resultado?.grauCurvatura ?? '—';
+      const vertebra = e.resultado?.nivelVertebras ?? '—';
+      const estado = estadoTexto[e.estado] ?? e.estado;
+      const data = new Date(e.dataEstudo).toLocaleDateString('pt-PT');
+      return `<tr>
+        <td>${data}</td>
+        <td style="font-weight:600">${angulo}</td>
+        <td>${vertebra}</td>
+        <td>${classif}</td>
+        <td>${estado}</td>
+        <td style="font-size:11px;color:#555">${e.notasClinicas ?? '—'}</td>
+      </tr>`;
+    };
+
+    const linhaWellness = (w: typeof wellnessLog[0]) => {
+      const nivel = ['😊','😊','😌','😐','😐','😕','😟','😟','😣','😭'][w.nivelDor] ?? w.nivelDor;
+      const desconforto: Record<string, string> = {
+        none: 'Nenhum', mild: 'Ligeiro', moderate: 'Moderado', intense: 'Intenso',
+      };
+      return `<tr>
+        <td>${new Date(w.dataRegisto).toLocaleDateString('pt-PT')}</td>
+        <td>${nivel} ${w.nivelDor}/9</td>
+        <td>${w.desconforto ? desconforto[w.desconforto] ?? w.desconforto : '—'}</td>
+        <td style="font-size:11px;color:#555">${w.notas ?? '—'}</td>
+      </tr>`;
+    };
+
+    const html = `<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Ficha de Paciente — ${paciente.nomeCompleto}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1a1a2e; line-height: 1.5; padding: 32px; }
+    h1 { font-size: 20px; font-weight: 700; }
+    h2 { font-size: 14px; font-weight: 600; color: #1a6faf; margin: 20px 0 8px; border-bottom: 1px solid #e0e6f0; padding-bottom: 4px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1a6faf; padding-bottom: 12px; margin-bottom: 20px; }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-box { width: 36px; height: 36px; background: #1a6faf; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; font-weight: 700; }
+    .meta { text-align: right; font-size: 11px; color: #666; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
+    .field { display: flex; gap: 8px; padding: 3px 0; }
+    .field label { color: #666; min-width: 120px; flex-shrink: 0; }
+    .field span { font-weight: 500; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    th { background: #f0f4fa; text-align: left; padding: 6px 10px; font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: .04em; }
+    td { padding: 6px 10px; border-bottom: 1px solid #eef1f7; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e0e6f0; font-size: 11px; color: #999; display: flex; justify-content: space-between; }
+    @media print {
+      body { padding: 16px; }
+      @page { margin: 1.5cm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <div class="logo-box">S</div>
+      <div>
+        <h1>ScolioScan</h1>
+        <div style="font-size:11px;color:#666">Ficha clínica do paciente</div>
+      </div>
+    </div>
+    <div class="meta">
+      <div>Exportado em ${agora}</div>
+      <div>Médico: ${nomeMedico}</div>
+    </div>
+  </div>
+
+  <h2>Identificação do paciente</h2>
+  <div class="grid">
+    <div class="field"><label>Nome completo</label><span>${paciente.nomeCompleto}</span></div>
+    <div class="field"><label>Nº utente</label><span>${paciente.numeroUtente ?? '—'}</span></div>
+    <div class="field"><label>Data de nascimento</label><span>${paciente.dataNascimento ? new Date(paciente.dataNascimento).toLocaleDateString('pt-PT') : '—'}</span></div>
+    <div class="field"><label>Género</label><span>${paciente.genero ?? '—'}</span></div>
+    <div class="field"><label>Contacto</label><span>${paciente.contacto ?? '—'}</span></div>
+    <div class="field"><label>Morada</label><span>${paciente.morada ?? '—'}</span></div>
+  </div>
+
+  <h2>Dados clínicos</h2>
+  <div class="grid">
+    <div class="field"><label>Diagnóstico</label><span>${diagnostico ?? 'Sem diagnóstico registado'}</span></div>
+    <div class="field"><label>Médico responsável</label><span>${nomeMedico}</span></div>
+    ${dataInicioTratamento ? `<div class="field"><label>Primeiro exame</label><span>${dataInicioTratamento}</span></div>` : ''}
+    <div class="field"><label>Total de exames</label><span>${estudos.length}</span></div>
+  </div>
+
+  ${estudos.length > 0 ? `
+  <h2>Histórico de exames</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Ângulo Cobb</th><th>Vértebra</th><th>Classificação</th><th>Estado</th><th>Notas clínicas</th></tr></thead>
+    <tbody>${estudos.map(linhaExame).join('')}</tbody>
+  </table>` : '<h2>Histórico de exames</h2><p style="color:#999;margin-top:4px">Sem exames registados.</p>'}
+
+  ${wellnessLog.length > 0 ? `
+  <h2>Registos de bem-estar (últimos ${Math.min(wellnessLog.length, 10)})</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Nível de dor</th><th>Desconforto</th><th>Notas</th></tr></thead>
+    <tbody>${wellnessLog.slice(0, 10).map(linhaWellness).join('')}</tbody>
+  </table>` : ''}
+
+  <div class="footer">
+    <span>ScolioScan — documento gerado automaticamente, não substituindo relatório clínico assinado</span>
+    <span>${agora}</span>
+  </div>
+
+  <script>window.onload = () => { window.print(); }</script>
+</body>
+</html>`;
+
+    const janela = window.open('', '_blank', 'width=900,height=700');
+    if (janela) {
+      janela.document.write(html);
+      janela.document.close();
+    } else {
+      mostrarToast('O browser bloqueou a janela de exportação. Permite pop-ups para este site.');
+    }
+  };
 
   const handleSaveNote = () => {
     setNewNote('');
