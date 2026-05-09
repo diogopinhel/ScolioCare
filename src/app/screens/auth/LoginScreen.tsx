@@ -7,10 +7,10 @@ import { AuthenticationError } from '../../../data/repository/auth';
 import type { Perfil } from '../../../data/types';
 
 const prefixosPorPerfil: Record<Perfil, (p: string) => boolean> = {
-  MEDICO:   (p) => p !== '/login' && p !== '/403' && !p.startsWith('/tecnico') && !p.startsWith('/admin-panel') && !p.startsWith('/mobile'),
+  MEDICO:   (p) => p !== '/login' && p !== '/403' && !p.startsWith('/tecnico') && !p.startsWith('/admin-panel'),
   TECNICO:  (p) => p.startsWith('/tecnico'),
   ADMIN:    (p) => p.startsWith('/admin-panel'),
-  PACIENTE: (p) => p.startsWith('/mobile'),
+  PACIENTE: (_p) => false, // pacientes usam a app React Native — sem acesso web
 };
 
 function destinoSeguro(from: string | undefined, perfil: Perfil): string {
@@ -190,8 +190,7 @@ export default function LoginScreen() {
 }
 
 const credenciaisDemo = [
-  { perfil: 'MEDICO',   label: 'Médico',    email: 'ana.martins@scolio.pt',    password: 'medico123',    cor: 'var(--scolio-primary-blue)' },
-  { perfil: 'TECNICO',  label: 'Técnico',   email: 'ricardo.sousa@scolio.pt',  password: 'tecnico123',   cor: 'var(--scolio-success-green)' },
-  { perfil: 'ADMIN',    label: 'Admin',     email: 'paulo.oliveira@scolio.pt', password: 'admin123',     cor: 'var(--scolio-warning-amber)' },
-  { perfil: 'PACIENTE', label: 'Paciente',  email: 'maria.silva@scolio.pt',    password: 'paciente123',  cor: 'var(--scolio-danger-coral)' },
+  { perfil: 'MEDICO',  label: 'Médico',   email: 'ana.martins@scolio.pt',    password: 'medico123',  cor: 'var(--scolio-primary-blue)' },
+  { perfil: 'TECNICO', label: 'Técnico',  email: 'ricardo.sousa@scolio.pt',  password: 'tecnico123', cor: 'var(--scolio-success-green)' },
+  { perfil: 'ADMIN',   label: 'Admin',    email: 'paulo.oliveira@scolio.pt', password: 'admin123',   cor: 'var(--scolio-warning-amber)' },
 ];

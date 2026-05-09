@@ -254,7 +254,7 @@ export default function DashboardScreen() {
                       <Button
                         variant="primary"
                         className="text-xs px-3 py-1"
-                        onClick={() => navigate('/exam-viewer')}
+                        onClick={() => navigate(`/exam-viewer/${exam.id}`)}
                       >
                         Validar
                       </Button>

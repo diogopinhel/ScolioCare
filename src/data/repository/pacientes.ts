@@ -1,5 +1,13 @@
 import { supabase } from '../../lib/supabase';
-import type { PacienteResumo, PacienteListagem, PacienteDetalhe, EstadoEstudo } from '../types';
+import type {
+  PacienteResumo,
+  PacienteListagem,
+  PacienteDetalhe,
+  EstadoEstudo,
+  DadosCriacaoPaciente,
+  DadosAtualizacaoPaciente,
+  MedicoResumo,
+} from '../types';
 
 /**
  * Devolve todos os pacientes associados ao médico autenticado (paciente_medico.data_fim IS NULL),
@@ -90,6 +98,98 @@ export async function getPaciente(id: string): Promise<PacienteDetalhe | null> {
     contacto: row.contacto as string | null,
     morada: row.morada as string | null,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Pesquisa global de pacientes (acesso de emergência / glass-break)
+// ═══════════════════════════════════════════════════════════════════
+
+export interface PacienteResultadoGlobal {
+  id: string;
+  nomeCompleto: string;
+  numeroUtente: string | null;
+  dataNascimento: string | null;
+  genero: string | null;
+}
+
+/**
+ * Pesquisa todos os pacientes activos pelo nome ou número de utente.
+ * Usado exclusivamente no fluxo de acesso de emergência (glass-break).
+ * Requer que a RLS de `utilizadores` permita MEDICO ler rows de PACIENTE.
+ */
+export async function pesquisarPacientesGlobal(query: string): Promise<PacienteResultadoGlobal[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const { data, error } = await supabase
+    .from('utilizadores')
+    .select('id, nome_completo, numero_utente, data_nascimento, genero')
+    .eq('perfil', 'PACIENTE')
+    .eq('ativo', true)
+    .or(`nome_completo.ilike.%${q}%,numero_utente.ilike.%${q}%`)
+    .order('nome_completo')
+    .limit(15);
+
+  if (error || !data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((row) => ({
+    id: row.id as string,
+    nomeCompleto: row.nome_completo as string,
+    numeroUtente: (row.numero_utente ?? null) as string | null,
+    dataNascimento: (row.data_nascimento ?? null) as string | null,
+    genero: (row.genero ?? null) as string | null,
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Lista de médicos (para dropdown no formulário de novo paciente)
+// ═══════════════════════════════════════════════════════════════════
+
+export async function getMedicos(): Promise<MedicoResumo[]> {
+  const { data, error } = await supabase
+    .from('utilizadores')
+    .select('id, nome_completo, especialidade')
+    .eq('perfil', 'MEDICO')
+    .eq('ativo', true)
+    .order('nome_completo');
+
+  if (error || !data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((row) => ({
+    id: row.id as string,
+    nomeCompleto: row.nome_completo as string,
+    especialidade: (row.especialidade ?? '') as string,
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Criação de paciente via Edge Function (service_role)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Atualiza os dados editáveis de um paciente via Edge Function (service_role).
+ * A Edge Function verifica que o MEDICO está associado ao paciente antes de
+ * permitir a atualização.
+ */
+export async function atualizarPaciente(dados: DadosAtualizacaoPaciente): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('atualizar-paciente', {
+    body: dados,
+  });
+
+  if (error) throw new Error(error.message ?? 'Erro ao invocar a Edge Function');
+  if (data?.erro) throw new Error(data.erro as string);
+}
+
+export async function criarPaciente(dados: DadosCriacaoPaciente): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('criar-paciente', {
+    body: dados,
+  });
+
+  if (error) throw new Error(error.message ?? 'Erro ao invocar a Edge Function');
+  if (data?.erro) throw new Error(data.erro as string);
+  return data.id as string;
 }
 
 export async function getPacientesAssociados(): Promise<PacienteResumo[]> {

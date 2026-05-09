@@ -1,14 +1,13 @@
 import React from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { Button, Input, Toast } from '../../components/scolio';
+import { Button, Input } from '../../components/scolio';
 import { useNavigate } from 'react-router';
-import { useAuth } from '../../auth/AuthContext';
+import { Toast } from '../../components/scolio';
 import { getMedicos, criarPaciente } from '../../../data/repository/pacientes';
 import type { MedicoResumo } from '../../../data/types';
 
-export default function NewPatientScreen() {
+export default function TecnicoNewPatientScreen() {
   const navigate = useNavigate();
-  const { utilizador } = useAuth();
 
   const [medicos, setMedicos] = React.useState<MedicoResumo[]>([]);
   const [aCarregarMedicos, setACarregarMedicos] = React.useState(true);
@@ -30,17 +29,11 @@ export default function NewPatientScreen() {
     setTimeout(() => setToast(null), 5000);
   };
 
-  // Carregar lista de médicos e pré-seleccionar o médico autenticado (se aplicável)
   React.useEffect(() => {
     getMedicos()
-      .then((lista) => {
-        setMedicos(lista);
-        if (utilizador?.perfil === 'MEDICO') {
-          setFormData((prev) => ({ ...prev, medicoId: utilizador.id }));
-        }
-      })
+      .then(setMedicos)
       .finally(() => setACarregarMedicos(false));
-  }, [utilizador]);
+  }, []);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -52,17 +45,9 @@ export default function NewPatientScreen() {
     setASubmeter(true);
 
     try {
-      await criarPaciente({
-        nomeCompleto: formData.nomeCompleto,
-        email: formData.email,
-        dataNascimento: formData.dataNascimento,
-        genero: formData.genero,
-        numeroUtente: formData.numeroUtente,
-        medicoId: formData.medicoId,
-      });
-
+      await criarPaciente(formData);
       mostrarToast('Paciente criado com sucesso.');
-      setTimeout(() => navigate('/patients'), 1500);
+      setTimeout(() => navigate('/tecnico/patients'), 1500);
     } catch (err) {
       mostrarToast(
         err instanceof Error ? err.message : 'Erro ao criar paciente. Tente novamente.',
@@ -77,7 +62,7 @@ export default function NewPatientScreen() {
       {/* Cabeçalho */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/patients')}
+          onClick={() => navigate('/tecnico/patients')}
           className="p-2 -ml-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -116,7 +101,7 @@ export default function NewPatientScreen() {
                 required
               />
               <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
-                Usado para o paciente aceder à aplicação móvel. Pode ser alterado depois.
+                Usado pelo paciente para aceder à aplicação móvel.
               </p>
             </div>
 
@@ -141,7 +126,7 @@ export default function NewPatientScreen() {
               <select
                 value={formData.genero}
                 onChange={(e) => handleChange('genero', e.target.value)}
-                className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
                 required
               >
                 <option value="">Selecionar género...</option>
@@ -178,7 +163,7 @@ export default function NewPatientScreen() {
                 <select
                   value={formData.medicoId}
                   onChange={(e) => handleChange('medicoId', e.target.value)}
-                  className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                  className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
                   required
                 >
                   <option value="">Selecionar médico...</option>
@@ -198,7 +183,7 @@ export default function NewPatientScreen() {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => navigate('/patients')}
+            onClick={() => navigate('/tecnico/patients')}
             disabled={aSubmeter}
           >
             Cancelar

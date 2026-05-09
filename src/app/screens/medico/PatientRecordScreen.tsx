@@ -1,11 +1,12 @@
 import React from 'react';
-import { Edit, FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown } from 'lucide-react';
+import { Edit, FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown, GitCompare, ShieldAlert, Lock } from 'lucide-react';
 import { Button, StatusBadge, type BadgeStatus, Textarea, Toast, ExamCard, SkeletonBlock } from '../../components/scolio';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Dot } from 'recharts';
 import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { getPaciente } from '../../../data/repository/pacientes';
 import { getEstudosDoPaciente, getHistoricoEstadoDoPaciente } from '../../../data/repository/estudos';
+import { supabase } from '../../../lib/supabase';
 import { getWellnessLogDoPaciente } from '../../../data/repository/wellness';
 import type { PacienteDetalhe, EstudoComResultado, WellnessLogEntry, HistoricoEstadoEntry, EstadoEstudo } from '../../../data/types';
 
@@ -99,6 +100,8 @@ export default function PatientRecordScreen() {
   const [wellnessLog, setWellnessLog] = React.useState<WellnessLogEntry[]>([]);
   const [historico, setHistorico] = React.useState<HistoricoEstadoEntry[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
+  // null = ainda a verificar; true = associado; false = não associado (glass-break ativo ou necessário)
+  const [estaAssociado, setEstaAssociado] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
     if (!id) {
@@ -113,18 +116,27 @@ export default function PatientRecordScreen() {
       if (!cancelado) setACarregar(false);
     }, 15000);
 
+    // Verificar associação médico-paciente e carregar dados em paralelo
+    const verificarAssociacao = supabase
+      .from('paciente_medico')
+      .select('paciente_id', { count: 'exact', head: true })
+      .eq('paciente_id', id)
+      .is('data_fim', null);
+
     Promise.all([
       getPaciente(id),
       getEstudosDoPaciente(id),
       getWellnessLogDoPaciente(id),
       getHistoricoEstadoDoPaciente(id),
-    ]).then(([p, e, w, h]) => {
+      verificarAssociacao,
+    ]).then(([p, e, w, h, assoc]) => {
       if (!cancelado) {
         clearTimeout(timeout);
         setPaciente(p);
         setEstudos(e);
         setWellnessLog(w);
         setHistorico(h);
+        setEstaAssociado((assoc.count ?? 0) > 0);
         setACarregar(false);
       }
     }).catch(() => {
@@ -171,6 +183,7 @@ export default function PatientRecordScreen() {
   const cobbData = estudos
     .filter((e) => e.resultado !== null)
     .map((e) => ({
+      estudoId: e.id,
       rawDate: e.dataEstudo,
       date: new Date(e.dataEstudo).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }),
       angle: e.resultado!.anguloCobbCorrigido ?? e.resultado!.anguloCobb,
@@ -192,7 +205,8 @@ export default function PatientRecordScreen() {
     estudos.length > 0 ? formatarDataPT(estudos[estudos.length - 1].dataEstudo) : null;
 
   const handleChartClick = (data: any) => {
-    if (data?.activePayload) navigate('/exam-viewer');
+    const estudoId = data?.activePayload?.[0]?.payload?.estudoId as string | undefined;
+    if (estudoId) navigate(`/exam-viewer/${estudoId}`);
   };
 
   // ─── Loading ──────────────────────────────────────────────────────
@@ -233,6 +247,28 @@ export default function PatientRecordScreen() {
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
+
+      {/* Banner de acesso de emergência — visível quando não associado */}
+      {estaAssociado === false && (
+        <div className="flex items-center justify-between gap-4 px-5 py-4 bg-[var(--scolio-danger-surface)] border border-[var(--scolio-danger-coral)] rounded-[var(--radius-card)]">
+          <div className="flex items-center gap-3">
+            <ShieldAlert className="w-5 h-5 text-[var(--scolio-danger-coral)] flex-shrink-0" />
+            <div>
+              <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-semibold)' }}>
+                Acesso de emergência ativo
+              </p>
+              <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                Este paciente não está associado à sua lista. O acesso foi permitido via protocolo Glass-Break e está a ser auditado.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[var(--scolio-danger-coral)] rounded-[var(--radius-component)] flex-shrink-0">
+            <Lock className="w-4 h-4 text-[var(--scolio-danger-coral)]" />
+            <span className="text-[var(--scolio-danger-coral)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>Glass-Break</span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
         <div className="flex items-start justify-between">
@@ -257,7 +293,7 @@ export default function PatientRecordScreen() {
               <Edit className="w-4 h-4 mr-2" />
               Editar dados
             </Button>
-            <Button variant="primary" onClick={() => navigate('/exam-viewer')}>
+            <Button variant="primary" onClick={() => navigate('/tecnico/upload')}>
               <FileText className="w-4 h-4 mr-2" />
               Novo exame
             </Button>
@@ -407,7 +443,7 @@ export default function PatientRecordScreen() {
                         </div>
                       </div>
                       <button
-                        onClick={() => navigate('/exam-viewer')}
+                        onClick={() => navigate(`/exam-viewer/${ultimoExame.id}`)}
                         className="w-full text-[var(--scolio-primary-blue)] hover:underline text-center"
                         style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
                       >
@@ -470,7 +506,7 @@ export default function PatientRecordScreen() {
         {activeTab === 'exams' && (
           <div className="p-6 space-y-6">
             <div className="flex justify-end">
-              <Button variant="primary" onClick={() => navigate('/exam-viewer')}>
+              <Button variant="primary" onClick={() => navigate('/tecnico/upload')}>
                 <Plus className="w-4 h-4 mr-2" />
                 Novo exame
               </Button>
@@ -484,7 +520,7 @@ export default function PatientRecordScreen() {
                     cobbAngle={exame.resultado ? (exame.resultado.anguloCobbCorrigido ?? exame.resultado.anguloCobb) : 0}
                     apicalVertebra={exame.resultado?.nivelVertebras ?? undefined}
                     status={estadoParaBadge(exame.estado)}
-                    onClick={() => navigate('/exam-viewer')}
+                    onClick={() => navigate(`/exam-viewer/${exame.id}`)}
                   />
                 ))}
               </div>
@@ -501,66 +537,87 @@ export default function PatientRecordScreen() {
         {/* ── Tab: Relatórios ── */}
         {activeTab === 'reports' && (
           <div className="p-6">
-            {(() => {
-              const relatorios = estudos.filter((e) => e.ficheiroPdf !== null);
-              return relatorios.length > 0 ? (
-                <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-                        {['DATA', 'TIPO', 'ESTADO', 'MÉDICO', 'AÇÕES'].map((h) => (
-                          <th key={h} className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {relatorios.map((r) => (
-                        <tr key={r.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
-                          <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                            {new Date(r.dataEstudo).toLocaleDateString('pt-PT')}
-                          </td>
-                          <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                            Relatório clínico
-                          </td>
-                          <td className="p-4">
+            {estudos.length > 0 ? (
+              <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
+                      {['DATA DO EXAME', 'TIPO', 'ESTADO', 'MÉDICO', 'AÇÕES'].map((h) => (
+                        <th key={h} className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {estudos.map((exame) => (
+                      <tr key={exame.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
+                        <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
+                          {new Date(exame.dataEstudo).toLocaleDateString('pt-PT')}
+                        </td>
+                        <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
+                          Relatório clínico
+                        </td>
+                        <td className="p-4">
+                          {exame.ficheiroPdf ? (
                             <span className="inline-flex items-center px-3 py-1 rounded-full bg-[var(--scolio-success-surface)] text-[var(--scolio-success-green)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                              Concluído
+                              PDF gerado
                             </span>
-                          </td>
-                          <td className="p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                            {nomeMedico}
-                          </td>
-                          <td className="p-4">
+                          ) : (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-[var(--scolio-page-surface)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
+                              Por gerar
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                          {nomeMedico}
+                        </td>
+                        <td className="p-4 flex items-center gap-3">
+                          <button
+                            onClick={() => navigate(`/report-generation/${exame.id}`)}
+                            className="flex items-center gap-2 text-[var(--scolio-primary-blue)] hover:underline"
+                            style={{ fontSize: 'var(--text-body)' }}
+                          >
+                            <FileText className="w-4 h-4" />
+                            Gerar relatório
+                          </button>
+                          {exame.ficheiroPdf && (
                             <button
-                              onClick={() => window.open(r.ficheiroPdf!, '_blank')}
-                              className="flex items-center gap-2 text-[var(--scolio-primary-blue)] hover:underline"
+                              onClick={() => window.open(exame.ficheiroPdf!, '_blank')}
+                              className="flex items-center gap-2 text-[var(--scolio-text-secondary)] hover:underline"
+                              style={{ fontSize: 'var(--text-body)' }}
                             >
                               <FileDown className="w-4 h-4" />
                               Descarregar
                             </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="py-12 text-center">
-                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                    Sem relatórios disponíveis para este paciente.
-                  </p>
-                </div>
-              );
-            })()}
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-12 text-center">
+                <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                  Sem exames registados. Os relatórios são gerados por exame.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {/* ── Tab: Histórico de Evolução ── */}
         {activeTab === 'evolution' && (
           <div className="p-6 space-y-6">
-            <div className="flex justify-end gap-2">
+            <div className="flex items-center justify-between">
+              {estudos.filter((e) => e.resultado !== null).length >= 2 && (
+                <Button variant="secondary" onClick={() => navigate(`/exam-comparison/${id}`)}>
+                  <GitCompare className="w-4 h-4 mr-2" />
+                  Comparar exames
+                </Button>
+              )}
+              <div className="flex gap-2 ml-auto">
               {(['3m', '6m', '1y', 'all'] as const).map((p) => (
                 <button
                   key={p}
@@ -575,6 +632,7 @@ export default function PatientRecordScreen() {
                   {p === '3m' ? '3 meses' : p === '6m' ? '6 meses' : p === '1y' ? '1 ano' : 'Tudo'}
                 </button>
               ))}
+              </div>
             </div>
             <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-card)] p-6">
               <h3 className="text-[var(--scolio-text-primary)] mb-6">Evolução do ângulo de Cobb ao longo do tempo</h3>

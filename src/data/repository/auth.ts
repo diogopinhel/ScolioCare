@@ -143,17 +143,33 @@ export function subscribeToMudancasAuth(
 ): () => void {
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange(async (_event, session) => {
-    if (!session) {
+  } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // SIGNED_OUT: limpar sessão
+    if (event === 'SIGNED_OUT') {
       callback(null);
       return;
     }
-    try {
-      const utilizador = await fetchPerfil(session.user.id, session.user.email!);
-      callback(utilizador);
-    } catch {
-      callback(null);
+
+    // INITIAL_SESSION: restauro de sessão ao (re)carregar a página.
+    // É o único caso em que o subscriber precisa de buscar o perfil,
+    // porque authRepo.login() ainda não foi chamado.
+    if (event === 'INITIAL_SESSION') {
+      if (!session) {
+        callback(null);
+      } else {
+        try {
+          const utilizador = await fetchPerfil(session.user.id, session.user.email!);
+          callback(utilizador);
+        } catch {
+          callback(null);
+        }
+      }
+      return;
     }
+
+    // SIGNED_IN: tratado diretamente por authRepo.login() — ignorar aqui
+    // para evitar dois fetchPerfil concorrentes que causam race condition.
+    // TOKEN_REFRESHED / USER_UPDATED: o perfil não muda com um refresh de token.
   });
 
   return () => subscription.unsubscribe();

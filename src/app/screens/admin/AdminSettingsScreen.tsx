@@ -1,10 +1,16 @@
 import React from 'react';
 import { Save, Building2, Lock, Plug, Wrench } from 'lucide-react';
-import { Button } from '../../components/scolio';
+import { Button, Toast } from '../../components/scolio';
 
 export default function AdminSettingsScreen() {
   const [maintenance, setMaintenance] = React.useState(false);
   const [force2FA, setForce2FA] = React.useState({ medico: true, tecnico: true, admin: true });
+  const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  const handleGuardar = () => {
+    setToast({ msg: 'Persistência de configurações em desenvolvimento — as alterações não foram gravadas.', type: 'error' });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
@@ -13,7 +19,7 @@ export default function AdminSettingsScreen() {
           <h1 className="text-[var(--scolio-text-primary)]">Definições do sistema</h1>
           <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>Configurações hospitalares, segurança e integrações</p>
         </div>
-        <Button variant="primary"><Save className="w-4 h-4 mr-2 inline" /> Guardar alterações</Button>
+        <Button variant="primary" onClick={handleGuardar}><Save className="w-4 h-4 mr-2 inline" /> Guardar alterações</Button>
       </div>
 
       {/* Hospital */}
@@ -75,6 +81,12 @@ export default function AdminSettingsScreen() {
           <Field label="Retenção de backups (dias)" defaultValue="30" type="number" />
         </Grid2>
       </Section>
+
+      {toast && (
+        <div className="fixed top-8 right-8 z-50">
+          <Toast title={toast.msg} type={toast.type} onClose={() => setToast(null)} />
+        </div>
+      )}
     </div>
   );
 }

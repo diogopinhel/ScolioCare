@@ -96,10 +96,11 @@ export function rotaInicialPara(perfil: Perfil): string {
       return '/admin-panel';
     case 'TECNICO':
       return '/tecnico';
-    case 'PACIENTE':
-      return '/mobile/home';
     case 'MEDICO':
-    default:
       return '/';
+    case 'PACIENTE':
+    default:
+      // Pacientes utilizam a app React Native — acesso web não suportado
+      return '/login';
   }
 }

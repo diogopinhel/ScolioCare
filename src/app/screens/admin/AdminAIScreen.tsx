@@ -1,8 +1,10 @@
 import React from 'react';
-import { Cpu, TrendingUp, Database, GitBranch } from 'lucide-react';
+import { Cpu, TrendingUp, Database, GitBranch, Info } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Button } from '../../components/scolio';
+import { supabase } from '../../../lib/supabase';
 
+// Métricas estáticas do pipeline ML (não estão na DB — vêm do sistema de treino externo)
 const accuracyHistory = [
   { v: 'v3.0', acc: 87.2 },
   { v: 'v3.1', acc: 89.4 },
@@ -17,19 +19,19 @@ const ageGroups = [
   { range: '16–17 anos', precision: 94.8, recall: 92.9, f1: 93.8 },
 ];
 
-const consents = [
-  { name: 'Maria Silva', id: 'PT-2024-0847', given: true, date: '2026-01-12' },
-  { name: 'João Santos', id: 'PT-2024-0812', given: true, date: '2026-02-08' },
-  { name: 'Ana Costa', id: 'PT-2024-0756', given: false, date: '2026-03-22' },
-  { name: 'Pedro Oliveira', id: 'PT-2024-0691', given: true, date: '2026-01-05' },
-  { name: 'Sofia Pereira', id: 'PT-2024-0903', given: false, date: '2026-04-01' },
-];
-
 export default function AdminAIScreen() {
   const [autoAccept, setAutoAccept] = React.useState(95);
   const [minDisplay, setMinDisplay] = React.useState(70);
+  const [totalPacientes, setTotalPacientes] = React.useState<number | null>(null);
 
-  const totalGiven = consents.filter(c => c.given).length;
+  React.useEffect(() => {
+    supabase
+      .from('utilizadores')
+      .select('*', { count: 'exact', head: true })
+      .eq('perfil', 'PACIENTE')
+      .eq('ativo', true)
+      .then(({ count }) => setTotalPacientes(count ?? 0));
+  }, []);
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
@@ -109,39 +111,24 @@ export default function AdminAIScreen() {
         </table>
       </div>
 
-      {/* Consents */}
-      <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] overflow-hidden">
-        <div className="p-6 flex items-center justify-between">
+      {/* Consentimentos de treino */}
+      <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-[var(--scolio-text-primary)]">Consentimentos de treino IA</h3>
-            <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>{totalGiven} de {consents.length} pacientes deste ecrã com consentimento dado</p>
+            <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
+              {totalPacientes !== null ? `${totalPacientes} pacientes activos no sistema` : 'A carregar...'}
+            </p>
           </div>
-          <Button variant="secondary">Ver todos os consentimentos</Button>
         </div>
-        <table className="w-full">
-          <thead>
-            <tr className="border-y border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-              <th className="text-left px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>PACIENTE</th>
-              <th className="text-left px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>ID</th>
-              <th className="text-left px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>CONSENTIMENTO</th>
-              <th className="text-left px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>DATA</th>
-            </tr>
-          </thead>
-          <tbody>
-            {consents.map(c => (
-              <tr key={c.id} className="border-b border-[var(--scolio-border-light)]">
-                <td className="px-6 py-3 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>{c.name}</td>
-                <td className="px-6 py-3"><code className="px-2 py-0.5 bg-[var(--scolio-neutral-surface)] rounded" style={{ fontSize: 'var(--text-caption)' }}>{c.id}</code></td>
-                <td className="px-6 py-3">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full" style={{ backgroundColor: c.given ? 'var(--scolio-success-surface)' : 'var(--scolio-neutral-surface)', color: c.given ? 'var(--scolio-success-green)' : 'var(--scolio-neutral-gray)', fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                    {c.given ? 'Dado' : 'Revogado'}
-                  </span>
-                </td>
-                <td className="px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{c.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="flex items-start gap-3 p-4 bg-[var(--scolio-light-blue-surface)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)]">
+          <Info className="w-5 h-5 text-[var(--scolio-primary-blue)] flex-shrink-0 mt-0.5" />
+          <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+            O rastreio individual de consentimento de treino por paciente requer uma tabela dedicada
+            (<code>consentimentos_ia</code>) que ainda não está configurada na base de dados.
+            Quando disponível, esta secção listará cada paciente com o seu estado de consentimento e data.
+          </p>
+        </div>
       </div>
     </div>
   );
