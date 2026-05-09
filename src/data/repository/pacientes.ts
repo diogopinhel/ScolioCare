@@ -7,6 +7,7 @@ import type {
   DadosCriacaoPaciente,
   DadosAtualizacaoPaciente,
   MedicoResumo,
+  NotaPaciente,
 } from '../types';
 
 /**
@@ -98,6 +99,73 @@ export async function getPaciente(id: string): Promise<PacienteDetalhe | null> {
     contacto: row.contacto as string | null,
     morada: row.morada as string | null,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Notas clínicas gerais por paciente
+// ═══════════════════════════════════════════════════════════════════
+
+/** Carrega todas as notas do paciente, da mais recente para a mais antiga. */
+export async function getNotasDoPaciente(pacienteId: string): Promise<NotaPaciente[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from('notas_paciente')
+    .select('id, medico_id, medico_nome, conteudo, data_criacao')
+    .eq('paciente_id', pacienteId)
+    .order('data_criacao', { ascending: false });
+
+  if (error || !data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((row) => ({
+    id: row.id as string,
+    medicoNome: row.medico_nome as string,
+    conteudo: row.conteudo as string,
+    dataCriacao: row.data_criacao as string,
+    eMinhaAutoria: row.medico_id === user?.id,
+  }));
+}
+
+/** Cria uma nova nota para o paciente e devolve o registo criado. */
+export async function criarNotaPaciente(
+  pacienteId: string,
+  conteudo: string,
+  medicoId: string,
+  medicoNome: string,
+): Promise<NotaPaciente> {
+  const { data, error } = await supabase
+    .from('notas_paciente')
+    .insert({
+      paciente_id: pacienteId,
+      medico_id: medicoId,
+      medico_nome: medicoNome,
+      conteudo: conteudo.trim(),
+    })
+    .select('id, medico_id, medico_nome, conteudo, data_criacao')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Falha ao guardar nota.');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const row = data as any;
+  return {
+    id: row.id as string,
+    medicoNome: row.medico_nome as string,
+    conteudo: row.conteudo as string,
+    dataCriacao: row.data_criacao as string,
+    eMinhaAutoria: true,
+  };
+}
+
+/** Apaga uma nota. Só funciona se o autor for o médico autenticado (RLS). */
+export async function apagarNotaPaciente(notaId: string): Promise<void> {
+  const { error } = await supabase
+    .from('notas_paciente')
+    .delete()
+    .eq('id', notaId);
+
+  if (error) throw error;
 }
 
 // ═══════════════════════════════════════════════════════════════════

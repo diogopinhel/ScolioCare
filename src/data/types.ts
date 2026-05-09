@@ -260,6 +260,16 @@ export interface MetricasDashboardAdmin {
   alertasSeguranca: number;
 }
 
+// ─── Notas por paciente ───────────────────────────────────────────────────
+
+export interface NotaPaciente {
+  id: string;
+  medicoNome: string;
+  conteudo: string;
+  dataCriacao: string;    // ISO datetime
+  eMinhaAutoria: boolean; // true se o médico autenticado é o autor
+}
+
 // ─── Edição de paciente ───────────────────────────────────────────────────
 
 export interface DadosAtualizacaoPaciente {

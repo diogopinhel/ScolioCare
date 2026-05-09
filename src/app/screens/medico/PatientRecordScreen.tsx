@@ -1,14 +1,14 @@
 import React from 'react';
-import { Edit, FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown, GitCompare, ShieldAlert, Lock } from 'lucide-react';
+import { Edit, FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown, GitCompare, ShieldAlert, Lock, Trash2 } from 'lucide-react';
 import { Button, StatusBadge, type BadgeStatus, Textarea, Toast, ExamCard, SkeletonBlock } from '../../components/scolio';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Dot } from 'recharts';
 import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
-import { getPaciente } from '../../../data/repository/pacientes';
+import { getPaciente, getNotasDoPaciente, criarNotaPaciente, apagarNotaPaciente } from '../../../data/repository/pacientes';
 import { getEstudosDoPaciente, getHistoricoEstadoDoPaciente } from '../../../data/repository/estudos';
 import { supabase } from '../../../lib/supabase';
 import { getWellnessLogDoPaciente } from '../../../data/repository/wellness';
-import type { PacienteDetalhe, EstudoComResultado, WellnessLogEntry, HistoricoEstadoEntry, EstadoEstudo } from '../../../data/types';
+import type { PacienteDetalhe, EstudoComResultado, WellnessLogEntry, HistoricoEstadoEntry, EstadoEstudo, NotaPaciente } from '../../../data/types';
 
 type TabKey = 'overview' | 'exams' | 'reports' | 'evolution' | 'notes' | 'feedback' | 'audit';
 
@@ -99,7 +99,10 @@ export default function PatientRecordScreen() {
   const [estudos, setEstudos] = React.useState<EstudoComResultado[]>([]);
   const [wellnessLog, setWellnessLog] = React.useState<WellnessLogEntry[]>([]);
   const [historico, setHistorico] = React.useState<HistoricoEstadoEntry[]>([]);
+  const [notas, setNotas] = React.useState<NotaPaciente[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
+  const [aGuardarNota, setAGuardarNota] = React.useState(false);
+  const [aApagarNota, setAApagarNota] = React.useState<string | null>(null); // id da nota a apagar
   // null = ainda a verificar; true = associado; false = não associado (glass-break ativo ou necessário)
   const [estaAssociado, setEstaAssociado] = React.useState<boolean | null>(null);
 
@@ -128,14 +131,16 @@ export default function PatientRecordScreen() {
       getEstudosDoPaciente(id),
       getWellnessLogDoPaciente(id),
       getHistoricoEstadoDoPaciente(id),
+      getNotasDoPaciente(id),
       verificarAssociacao,
-    ]).then(([p, e, w, h, assoc]) => {
+    ]).then(([p, e, w, h, n, assoc]) => {
       if (!cancelado) {
         clearTimeout(timeout);
         setPaciente(p);
         setEstudos(e);
         setWellnessLog(w);
         setHistorico(h);
+        setNotas(n);
         setEstaAssociado((assoc.count ?? 0) > 0);
         setACarregar(false);
       }
@@ -298,9 +303,31 @@ export default function PatientRecordScreen() {
     }
   };
 
-  const handleSaveNote = () => {
-    setNewNote('');
-    mostrarToast('Nota guardada com sucesso.');
+  const handleSaveNote = async () => {
+    if (!id || !utilizador || !newNote.trim() || aGuardarNota) return;
+    setAGuardarNota(true);
+    try {
+      const nota = await criarNotaPaciente(id, newNote, utilizador.id, utilizador.nomeCompleto);
+      setNotas((prev) => [nota, ...prev]);
+      setNewNote('');
+      mostrarToast('Nota guardada com sucesso.');
+    } catch {
+      mostrarToast('Erro ao guardar nota. Tente novamente.');
+    } finally {
+      setAGuardarNota(false);
+    }
+  };
+
+  const handleApagarNota = async (notaId: string) => {
+    setAApagarNota(notaId);
+    try {
+      await apagarNotaPaciente(notaId);
+      setNotas((prev) => prev.filter((n) => n.id !== notaId));
+    } catch {
+      mostrarToast('Erro ao apagar nota.');
+    } finally {
+      setAApagarNota(null);
+    }
   };
 
   const tabs = [
@@ -821,49 +848,107 @@ export default function PatientRecordScreen() {
         {/* ── Tab: Notas Clínicas ── */}
         {activeTab === 'notes' && (
           <div className="p-6 space-y-6">
+            {/* Adicionar nova nota */}
             <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-6">
               <h3 className="text-[var(--scolio-text-primary)] mb-4">Adicionar nova nota</h3>
               <Textarea
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 rows={4}
-                placeholder="Escreva a sua nota clínica..."
+                placeholder="Escreva a sua nota clínica sobre este paciente..."
+                disabled={aGuardarNota}
               />
               <div className="mt-3">
-                <Button variant="primary" onClick={handleSaveNote}>Guardar nota</Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSaveNote}
+                  disabled={!newNote.trim() || aGuardarNota}
+                >
+                  {aGuardarNota ? (
+                    <span className="flex items-center gap-2">
+                      <Plus className="w-4 h-4 animate-spin" />
+                      A guardar...
+                    </span>
+                  ) : 'Guardar nota'}
+                </Button>
               </div>
             </div>
-            <div className="space-y-4">
-              <h3 className="text-[var(--scolio-text-primary)]">Notas anteriores</h3>
-              {(() => {
-                const notasExames = estudos.filter((e) => e.notasClinicas);
-                return notasExames.length > 0 ? (
-                  notasExames.map((exame) => (
-                    <div key={exame.id} className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-                            {nomeMedico}
-                          </p>
-                          <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                            {new Date(exame.dataEstudo).toLocaleDateString('pt-PT')}
-                          </p>
-                        </div>
+
+            {/* Notas gerais do paciente */}
+            <div className="space-y-3">
+              <h3 className="text-[var(--scolio-text-primary)]">Notas gerais do paciente</h3>
+              {notas.length > 0 ? (
+                notas.map((nota) => (
+                  <div key={nota.id} className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
+                          {nota.eMinhaAutoria ? nomeMedico : nota.medicoNome}
+                        </p>
+                        <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                          {new Date(nota.dataCriacao).toLocaleString('pt-PT', {
+                            day: 'numeric', month: 'long', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          })}
+                        </p>
                       </div>
-                      <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', lineHeight: '1.6' }}>
+                      {nota.eMinhaAutoria && (
+                        <button
+                          onClick={() => handleApagarNota(nota.id)}
+                          disabled={aApagarNota === nota.id}
+                          className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)] rounded transition-colors disabled:opacity-50"
+                          title="Apagar nota"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                      {nota.conteudo}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)]">
+                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                    Sem notas gerais registadas. Use o formulário acima para adicionar a primeira.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Notas clínicas por exame (read-only) */}
+            {(() => {
+              const notasExames = estudos.filter((e) => e.notasClinicas);
+              if (notasExames.length === 0) return null;
+              return (
+                <div className="space-y-3">
+                  <h3 className="text-[var(--scolio-text-primary)]">Notas associadas a exames</h3>
+                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                    Notas escritas no contexto de um exame específico. Para editar, abre o exame correspondente.
+                  </p>
+                  {notasExames.map((exame) => (
+                    <div key={exame.id} className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
+                          Exame de {new Date(exame.dataEstudo).toLocaleDateString('pt-PT')}
+                        </p>
+                        <button
+                          onClick={() => navigate(`/exam-viewer/${exame.id}`)}
+                          className="text-[var(--scolio-primary-blue)] hover:underline"
+                          style={{ fontSize: 'var(--text-caption)' }}
+                        >
+                          Ver exame →
+                        </button>
+                      </div>
+                      <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
                         {exame.notasClinicas}
                       </p>
                     </div>
-                  ))
-                ) : (
-                  <div className="py-8 text-center">
-                    <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      Sem notas clínicas registadas.
-                    </p>
-                  </div>
-                );
-              })()}
-            </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
