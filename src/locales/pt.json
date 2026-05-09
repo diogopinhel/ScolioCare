@@ -394,7 +394,13 @@
     "customAssessmentPlaceholder": "Escreva a sua avaliação clínica...",
     "noImage": "Sem imagem disponível",
     "tableMetric": "MÉTRICA",
-    "variationMsg": "Variação de {{variation}}° no ângulo de Cobb entre os dois exames selecionados."
+    "variationMsg": "Variação de {{variation}}° no ângulo de Cobb entre os dois exames selecionados.",
+    "savingAssessment": "A guardar avaliação...",
+    "assessmentSaved": "Avaliação guardada",
+    "assessmentSavedBy": "por {{nome}} em {{date}}",
+    "assessmentTypeAI": "Avaliação IA confirmada",
+    "assessmentTypeOwn": "Avaliação própria do médico",
+    "errorSavingAssessment": "Erro ao guardar avaliação. Tente novamente."
   },
   "glassBreak": {
     "bannerText": "PROTOCOLO GLASS-BREAK ATIVO — Todos os acessos são registados e auditados em tempo real",

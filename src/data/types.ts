@@ -260,6 +260,19 @@ export interface MetricasDashboardAdmin {
   alertasSeguranca: number;
 }
 
+// ─── Avaliação de comparação de exames ───────────────────────────────────
+
+export type TipoAvaliacao = 'CONFIRMADO_IA' | 'AVALIACAO_PROPRIA';
+
+export interface AvaliacaoComparacao {
+  id: string;
+  medicoNome: string;
+  tipo: TipoAvaliacao;
+  texto: string | null;
+  variacaoAngulo: number | null;
+  dataCriacao: string;  // ISO datetime
+}
+
 // ─── Notas por paciente ───────────────────────────────────────────────────
 
 export interface NotaPaciente {

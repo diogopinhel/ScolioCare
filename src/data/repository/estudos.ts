@@ -11,6 +11,8 @@ import type {
   ResultadoCompleto,
   ImagemEstudoInfo,
   EstudoComparacao,
+  AvaliacaoComparacao,
+  TipoAvaliacao,
 } from '../types';
 
 /**
@@ -202,6 +204,86 @@ export async function getHistoricoEstadoDoPaciente(pacienteId: string): Promise<
   }));
 }
 
+
+// ═══════════════════════════════════════════════════════════════════
+// Avaliações de comparação de exames
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Guarda a avaliação do médico para uma comparação de dois exames.
+ * Substitui a avaliação anterior para o mesmo par (A, B) se existir.
+ */
+export async function guardarAvaliacaoComparacao(
+  pacienteId: string,
+  estudoAId: string,
+  estudoBId: string,
+  medicoId: string,
+  medicoNome: string,
+  tipo: TipoAvaliacao,
+  texto: string | null,
+  variacaoAngulo: number | null,
+): Promise<AvaliacaoComparacao> {
+  const { data, error } = await supabase
+    .from('avaliacoes_comparacao')
+    .insert({
+      paciente_id: pacienteId,
+      estudo_a_id: estudoAId,
+      estudo_b_id: estudoBId,
+      medico_id: medicoId,
+      medico_nome: medicoNome,
+      tipo,
+      texto: texto ?? null,
+      variacao_angulo: variacaoAngulo ?? null,
+    })
+    .select('id, medico_nome, tipo, texto, variacao_angulo, data_criacao')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Falha ao guardar avaliação.');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const row = data as any;
+  return {
+    id: row.id as string,
+    medicoNome: row.medico_nome as string,
+    tipo: row.tipo as TipoAvaliacao,
+    texto: (row.texto ?? null) as string | null,
+    variacaoAngulo: (row.variacao_angulo ?? null) as number | null,
+    dataCriacao: row.data_criacao as string,
+  };
+}
+
+/**
+ * Carrega a avaliação mais recente para um par de exames.
+ * Retorna null se ainda não existir avaliação.
+ */
+export async function getAvaliacaoComparacao(
+  estudoAId: string,
+  estudoBId: string,
+): Promise<AvaliacaoComparacao | null> {
+  const { data, error } = await supabase
+    .from('avaliacoes_comparacao')
+    .select('id, medico_nome, tipo, texto, variacao_angulo, data_criacao')
+    .or(
+      `and(estudo_a_id.eq.${estudoAId},estudo_b_id.eq.${estudoBId}),` +
+      `and(estudo_a_id.eq.${estudoBId},estudo_b_id.eq.${estudoAId})`,
+    )
+    .order('data_criacao', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const row = data as any;
+  return {
+    id: row.id as string,
+    medicoNome: row.medico_nome as string,
+    tipo: row.tipo as TipoAvaliacao,
+    texto: (row.texto ?? null) as string | null,
+    variacaoAngulo: (row.variacao_angulo ?? null) as number | null,
+    dataCriacao: row.data_criacao as string,
+  };
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // ExamComparisonScreen — exames de um paciente com ângulo e imagem

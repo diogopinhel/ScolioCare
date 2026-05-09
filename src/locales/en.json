@@ -394,7 +394,13 @@
     "customAssessmentPlaceholder": "Write your clinical assessment...",
     "noImage": "No image available",
     "tableMetric": "METRIC",
-    "variationMsg": "Variation of {{variation}}° in Cobb angle between the two selected exams."
+    "variationMsg": "Variation of {{variation}}° in Cobb angle between the two selected exams.",
+    "savingAssessment": "Saving assessment...",
+    "assessmentSaved": "Assessment saved",
+    "assessmentSavedBy": "by {{nome}} on {{date}}",
+    "assessmentTypeAI": "AI assessment confirmed",
+    "assessmentTypeOwn": "Doctor's own assessment",
+    "errorSavingAssessment": "Error saving assessment. Please try again."
   },
   "glassBreak": {
     "bannerText": "GLASS-BREAK PROTOCOL ACTIVE — All access is recorded and audited in real time",

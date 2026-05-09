@@ -7,14 +7,16 @@ import {
 import { Button, Textarea } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { getEstudosParaComparacao } from '../../../data/repository/estudos';
+import { getEstudosParaComparacao, guardarAvaliacaoComparacao, getAvaliacaoComparacao } from '../../../data/repository/estudos';
 import { getPaciente } from '../../../data/repository/pacientes';
-import type { EstudoComparacao, PacienteDetalhe } from '../../../data/types';
+import { useAuth } from '../../auth/AuthContext';
+import type { EstudoComparacao, PacienteDetalhe, AvaliacaoComparacao } from '../../../data/types';
 
 export default function ExamComparisonScreen() {
   const navigate = useNavigate();
   const { pacienteId } = useParams<{ pacienteId: string }>();
   const { t } = useTranslation();
+  const { utilizador } = useAuth();
 
   const [exames, setExames] = React.useState<EstudoComparacao[]>([]);
   const [paciente, setPaciente] = React.useState<PacienteDetalhe | null>(null);
@@ -28,9 +30,13 @@ export default function ExamComparisonScreen() {
   const [zoomA, setZoomA] = React.useState(100);
   const [zoomB, setZoomB] = React.useState(100);
   const [syncViewers, setSyncViewers] = React.useState(false);
-  const [assessmentConfirmed, setAssessmentConfirmed] = React.useState(false);
   const [showCustomAssessment, setShowCustomAssessment] = React.useState(false);
   const [customAssessment, setCustomAssessment] = React.useState('');
+
+  // Avaliação persistida na DB
+  const [avaliacao, setAvaliacao] = React.useState<AvaliacaoComparacao | null>(null);
+  const [aGuardandoAvaliacao, setAGuardandoAvaliacao] = React.useState(false);
+  const [erroAvaliacao, setErroAvaliacao] = React.useState('');
 
   React.useEffect(() => {
     if (!pacienteId) { setACarregar(false); return; }
@@ -51,6 +57,53 @@ export default function ExamComparisonScreen() {
       }
     }).finally(() => setACarregar(false));
   }, [pacienteId]);
+
+  // Carregar avaliação existente quando o par de exames muda
+  React.useEffect(() => {
+    if (!examA || !examB) return;
+    setAvaliacao(null);
+    setErroAvaliacao('');
+    getAvaliacaoComparacao(examA.id, examB.id).then(setAvaliacao);
+  }, [examA?.id, examB?.id]);
+
+  const handleConfirmarIA = async () => {
+    if (!examA || !examB || !pacienteId || !utilizador || aGuardandoAvaliacao) return;
+    setAGuardandoAvaliacao(true);
+    setErroAvaliacao('');
+    try {
+      const nova = await guardarAvaliacaoComparacao(
+        pacienteId, examA.id, examB.id,
+        utilizador.id, utilizador.nomeCompleto,
+        'CONFIRMADO_IA', null,
+        Number((examB.anguloCobb - examA.anguloCobb).toFixed(1)),
+      );
+      setAvaliacao(nova);
+    } catch {
+      setErroAvaliacao(t('examComparison.errorSavingAssessment'));
+    } finally {
+      setAGuardandoAvaliacao(false);
+    }
+  };
+
+  const handleGuardarAvaliacaoPropria = async () => {
+    if (!examA || !examB || !pacienteId || !utilizador || !customAssessment.trim() || aGuardandoAvaliacao) return;
+    setAGuardandoAvaliacao(true);
+    setErroAvaliacao('');
+    try {
+      const nova = await guardarAvaliacaoComparacao(
+        pacienteId, examA.id, examB.id,
+        utilizador.id, utilizador.nomeCompleto,
+        'AVALIACAO_PROPRIA', customAssessment.trim(),
+        Number((examB.anguloCobb - examA.anguloCobb).toFixed(1)),
+      );
+      setAvaliacao(nova);
+      setShowCustomAssessment(false);
+    } catch {
+      setErroAvaliacao(t('examComparison.errorSavingAssessment'));
+    } finally {
+      setAGuardandoAvaliacao(false);
+    }
+  };
 
   const handleZoomA = (v: number) => { setZoomA(v); if (syncViewers) setZoomB(v); };
   const handleZoomB = (v: number) => { setZoomB(v); if (syncViewers) setZoomA(v); };
@@ -176,31 +229,86 @@ export default function ExamComparisonScreen() {
               </p>
             </div>
 
-            {!assessmentConfirmed && !showCustomAssessment && (
+            {/* Avaliação guardada */}
+            {avaliacao && !showCustomAssessment && (
               <div className="space-y-2">
-                <Button variant="primary" className="w-full text-sm py-2" onClick={() => setAssessmentConfirmed(true)}>
-                  <Check className="w-4 h-4 mr-2" />{t('examComparison.confirmAssessment')}
+                <div className="p-3 bg-[var(--scolio-success-surface)] border border-[var(--scolio-success-green)] rounded-[var(--radius-component)]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Check className="w-4 h-4 text-[var(--scolio-success-green)]" />
+                    <p className="text-[var(--scolio-success-green)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>
+                      {t(`examComparison.${avaliacao.tipo === 'CONFIRMADO_IA' ? 'assessmentTypeAI' : 'assessmentTypeOwn'}`)}
+                    </p>
+                  </div>
+                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                    {t('examComparison.assessmentSavedBy', {
+                      nome: avaliacao.medicoNome,
+                      date: new Date(avaliacao.dataCriacao).toLocaleString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                    })}
+                  </p>
+                  {avaliacao.texto && (
+                    <p className="text-[var(--scolio-text-primary)] mt-2 italic" style={{ fontSize: 'var(--text-caption)', whiteSpace: 'pre-wrap' }}>
+                      "{avaliacao.texto}"
+                    </p>
+                  )}
+                </div>
+                <Button variant="ghost" className="w-full text-sm py-1.5" onClick={() => { setAvaliacao(null); setShowCustomAssessment(false); }}>
+                  <X className="w-3.5 h-3.5 mr-1.5" />{t('examComparison.writeOwn')}
                 </Button>
-                <Button variant="ghost" className="w-full text-sm py-2" onClick={() => setShowCustomAssessment(true)}>
+              </div>
+            )}
+
+            {/* Sem avaliação ainda */}
+            {!avaliacao && !showCustomAssessment && (
+              <div className="space-y-2">
+                <Button
+                  variant="primary"
+                  className="w-full text-sm py-2"
+                  onClick={handleConfirmarIA}
+                  disabled={aGuardandoAvaliacao}
+                >
+                  {aGuardandoAvaliacao
+                    ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('examComparison.savingAssessment')}</>
+                    : <><Check className="w-4 h-4 mr-2" />{t('examComparison.confirmAssessment')}</>}
+                </Button>
+                <Button variant="ghost" className="w-full text-sm py-2" onClick={() => setShowCustomAssessment(true)} disabled={aGuardandoAvaliacao}>
                   <X className="w-4 h-4 mr-2" />{t('examComparison.writeOwn')}
                 </Button>
               </div>
             )}
-            {assessmentConfirmed && (
-              <div className="flex items-center gap-2 p-3 bg-[var(--scolio-success-surface)] border border-[var(--scolio-success-green)] rounded-[var(--radius-component)]">
-                <Check className="w-5 h-5 text-[var(--scolio-success-green)]" />
-                <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                  {t('examComparison.confirmedAt', { date: new Date().toLocaleString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' }) })}
-                </p>
-              </div>
-            )}
+
+            {/* Avaliação própria */}
             {showCustomAssessment && (
               <div className="space-y-3">
-                <Textarea value={customAssessment} onChange={(e) => setCustomAssessment(e.target.value)} rows={4} placeholder={t('examComparison.customAssessmentPlaceholder')} />
-                <Button variant="primary" className="w-full text-sm py-2" onClick={() => setShowCustomAssessment(false)}>
-                  {t('examComparison.saveAssessment')}
-                </Button>
+                <Textarea
+                  value={customAssessment}
+                  onChange={(e) => setCustomAssessment(e.target.value)}
+                  rows={4}
+                  placeholder={t('examComparison.customAssessmentPlaceholder')}
+                  disabled={aGuardandoAvaliacao}
+                />
+                <div className="flex gap-2">
+                  <Button variant="ghost" className="flex-1 text-sm py-2" onClick={() => setShowCustomAssessment(false)} disabled={aGuardandoAvaliacao}>
+                    {t('common.cancel')}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="flex-1 text-sm py-2"
+                    onClick={handleGuardarAvaliacaoPropria}
+                    disabled={!customAssessment.trim() || aGuardandoAvaliacao}
+                  >
+                    {aGuardandoAvaliacao
+                      ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />{t('examComparison.savingAssessment')}</>
+                      : t('examComparison.saveAssessment')}
+                  </Button>
+                </div>
               </div>
+            )}
+
+            {/* Erro */}
+            {erroAvaliacao && (
+              <p className="text-[var(--scolio-danger-coral)] mt-2" style={{ fontSize: 'var(--text-caption)' }}>
+                {erroAvaliacao}
+              </p>
             )}
           </div>
 
