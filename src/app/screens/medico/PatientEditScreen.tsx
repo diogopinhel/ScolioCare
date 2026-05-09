@@ -4,10 +4,12 @@ import { Button, Input, Toast } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { getPaciente, atualizarPaciente } from '../../../data/repository/pacientes';
 import type { PacienteDetalhe } from '../../../data/types';
+import { useTranslation } from 'react-i18next';
 
 export default function PatientEditScreen() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { t } = useTranslation();
 
   const [aCarregar, setACarregar] = React.useState(true);
   const [aSubmeter, setASubmeter] = React.useState(false);
@@ -66,11 +68,11 @@ export default function PatientEditScreen() {
         contacto: formData.contacto,
         morada: formData.morada,
       });
-      mostrarToast('Dados do paciente actualizados com sucesso.');
+      mostrarToast(t('patientEdit.successMessage'));
       setTimeout(() => navigate(`/patients/${id}`), 1500);
     } catch (err) {
       mostrarToast(
-        err instanceof Error ? err.message : 'Erro ao actualizar dados. Tente novamente.',
+        err instanceof Error ? err.message : t('patientEdit.errorMessage'),
         'error',
       );
       setASubmeter(false);
@@ -91,9 +93,9 @@ export default function PatientEditScreen() {
       <div className="p-8 flex items-center justify-center h-full">
         <div className="text-center">
           <p className="text-[var(--scolio-text-primary)] mb-4" style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--weight-semibold)' }}>
-            Paciente não encontrado
+            {t('patients.notFoundTitle')}
           </p>
-          <Button variant="secondary" onClick={() => navigate(-1)}>Voltar</Button>
+          <Button variant="secondary" onClick={() => navigate(-1)}>{t('common.back')}</Button>
         </div>
       </div>
     );
@@ -110,7 +112,7 @@ export default function PatientEditScreen() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-[var(--scolio-text-primary)]">Editar paciente</h1>
+          <h1 className="text-[var(--scolio-text-primary)]">{t('patientEdit.title')}</h1>
           <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
             {pacienteOriginal.nomeCompleto}
           </p>
@@ -124,19 +126,19 @@ export default function PatientEditScreen() {
             <div className="w-8 h-8 rounded-lg bg-[var(--scolio-light-blue-surface)] flex items-center justify-center">
               <User className="w-4 h-4 text-[var(--scolio-primary-blue)]" />
             </div>
-            <h3 className="text-[var(--scolio-text-primary)]">Dados pessoais</h3>
+            <h3 className="text-[var(--scolio-text-primary)]">{t('patientEdit.personalData')}</h3>
           </div>
 
           {/* Nome completo */}
           <div>
             <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-              Nome completo *
+              {t('patientEdit.fullName')}
             </label>
             <Input
               type="text"
               value={formData.nomeCompleto}
               onChange={(e) => handleChange('nomeCompleto', e.target.value)}
-              placeholder="Nome completo do paciente"
+              placeholder={t('patientEdit.fullNamePlaceholder')}
               required
             />
           </div>
@@ -145,7 +147,7 @@ export default function PatientEditScreen() {
             {/* Data de nascimento */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Data de nascimento
+                {t('patientEdit.dob')}
               </label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)] pointer-events-none" />
@@ -161,17 +163,17 @@ export default function PatientEditScreen() {
             {/* Género */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Género
+                {t('patientEdit.gender')}
               </label>
               <select
                 value={formData.genero}
                 onChange={(e) => handleChange('genero', e.target.value)}
                 className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
               >
-                <option value="">Não especificado</option>
-                <option value="female">Feminino</option>
-                <option value="male">Masculino</option>
-                <option value="other">Outro</option>
+                <option value="">{t('patientEdit.genderUnspecified')}</option>
+                <option value="female">{t('patientEdit.genderFemale')}</option>
+                <option value="male">{t('patientEdit.genderMale')}</option>
+                <option value="other">{t('patientEdit.genderOther')}</option>
               </select>
             </div>
           </div>
@@ -179,13 +181,13 @@ export default function PatientEditScreen() {
           {/* Número de utente */}
           <div>
             <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-              Número de identificação clínica
+              {t('patientEdit.clinicalId')}
             </label>
             <Input
               type="text"
               value={formData.numeroUtente}
               onChange={(e) => handleChange('numeroUtente', e.target.value)}
-              placeholder="Ex: PT-2024-0848"
+              placeholder={t('patientEdit.clinicalIdPlaceholder')}
             />
           </div>
         </div>
@@ -196,14 +198,14 @@ export default function PatientEditScreen() {
             <div className="w-8 h-8 rounded-lg bg-[var(--scolio-light-blue-surface)] flex items-center justify-center">
               <Phone className="w-4 h-4 text-[var(--scolio-primary-blue)]" />
             </div>
-            <h3 className="text-[var(--scolio-text-primary)]">Contacto</h3>
+            <h3 className="text-[var(--scolio-text-primary)]">{t('patientEdit.contactSection')}</h3>
           </div>
 
           <div className="grid grid-cols-2 gap-5">
             {/* Contacto */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Telefone / telemóvel
+                {t('patientEdit.phone')}
               </label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)] pointer-events-none" />
@@ -211,7 +213,7 @@ export default function PatientEditScreen() {
                   type="tel"
                   value={formData.contacto}
                   onChange={(e) => handleChange('contacto', e.target.value)}
-                  placeholder="Ex: +351 912 345 678"
+                  placeholder={t('patientEdit.phonePlaceholder')}
                   className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
                 />
               </div>
@@ -220,7 +222,7 @@ export default function PatientEditScreen() {
             {/* Morada */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Morada
+                {t('patientEdit.address')}
               </label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)] pointer-events-none" />
@@ -228,7 +230,7 @@ export default function PatientEditScreen() {
                   type="text"
                   value={formData.morada}
                   onChange={(e) => handleChange('morada', e.target.value)}
-                  placeholder="Rua, nº, código postal, cidade"
+                  placeholder={t('patientEdit.addressPlaceholder')}
                   className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
                 />
               </div>
@@ -240,7 +242,7 @@ export default function PatientEditScreen() {
         <div className="flex items-start gap-3 p-4 bg-[var(--scolio-light-blue-surface)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)]">
           <div className="w-2 h-2 rounded-full bg-[var(--scolio-primary-blue)] flex-shrink-0 mt-2" />
           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-            O email de acesso à aplicação móvel não é editável aqui. Para alteração de email, contacte o administrador do sistema.
+            {t('patientEdit.emailNote')}
           </p>
         </div>
 
@@ -252,16 +254,16 @@ export default function PatientEditScreen() {
             onClick={() => navigate(`/patients/${id}`)}
             disabled={aSubmeter}
           >
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button type="submit" variant="primary" disabled={aSubmeter}>
             {aSubmeter ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                A guardar...
+                {t('patientEdit.saving')}
               </span>
             ) : (
-              'Guardar alterações'
+              t('common.save')
             )}
           </Button>
         </div>

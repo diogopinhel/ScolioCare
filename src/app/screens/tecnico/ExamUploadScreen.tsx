@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Upload, FileImage, X, CheckCircle2, Loader2, Image as ImageIcon, Search } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
 import { useAuth } from '../../auth/AuthContext';
+import { useTranslation } from 'react-i18next';
 import {
   getPacientesTecnico,
   getMedicoResponsavelDoPaciente,
@@ -14,6 +15,7 @@ import type { PacienteTecnico } from '../../../data/types';
 export default function ExamUploadScreen() {
   const navigate = useNavigate();
   const { utilizador } = useAuth();
+  const { t } = useTranslation();
 
   const [ficheiro, setFicheiro] = React.useState<File | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
@@ -58,7 +60,7 @@ export default function ExamUploadScreen() {
       // 1. Descobrir o médico responsável pelo paciente
       const medicoId = await getMedicoResponsavelDoPaciente(pacienteSelecionado.id);
       if (!medicoId) {
-        mostrarToast('Não foi possível determinar o médico responsável por este paciente. Contacte um administrador.', 'error');
+        mostrarToast(t('upload.noMedicoError'), 'error');
         setFase('erro');
         return;
       }
@@ -76,13 +78,13 @@ export default function ExamUploadScreen() {
       await uploadImagemEstudo(estudoId, pacienteSelecionado.id, ficheiro!);
 
       setFase('done');
-      mostrarToast('Exame submetido para análise IA com sucesso.');
+      mostrarToast(t('upload.successToast'));
 
       // Navegar para a fila após 2 s
       setTimeout(() => navigate('/tecnico/queue'), 2000);
     } catch (err) {
       console.error('Erro ao submeter exame:', err);
-      mostrarToast('Erro ao submeter o exame. Verifica as permissões do bucket de armazenamento.', 'error');
+      mostrarToast(t('upload.uploadError'), 'error');
       setFase('erro');
     }
   };
@@ -90,9 +92,9 @@ export default function ExamUploadScreen() {
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
       <div>
-        <h1 className="text-[var(--scolio-text-primary)]">Carregar novo exame</h1>
+        <h1 className="text-[var(--scolio-text-primary)]">{t('upload.title')}</h1>
         <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
-          Aceita ficheiros DICOM, PNG ou JPG. Tamanho máximo: 50 MB.
+          {t('upload.subtitle')}
         </p>
       </div>
 
@@ -119,9 +121,9 @@ export default function ExamUploadScreen() {
                   <Upload className="w-8 h-8 text-[var(--scolio-success-green)]" />
                 </div>
                 <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--weight-medium)' }}>
-                  Arrasta o ficheiro DICOM para aqui
+                  {t('upload.dragHere')}
                 </p>
-                <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>ou</p>
+                <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>{t('upload.or')}</p>
                 <label className="inline-block mt-3">
                   <input
                     type="file"
@@ -130,7 +132,7 @@ export default function ExamUploadScreen() {
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFicheiro(f); }}
                   />
                   <span className="cursor-pointer inline-block px-4 py-2 bg-[var(--scolio-success-green)] text-white rounded-[var(--radius-component)] hover:opacity-90">
-                    Selecionar ficheiro
+                    {t('upload.selectFile')}
                   </span>
                 </label>
               </>
@@ -158,13 +160,13 @@ export default function ExamUploadScreen() {
 
           {/* Formulário de associação */}
           <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6 space-y-5">
-            <h3 className="text-[var(--scolio-text-primary)]">Associação do exame</h3>
+            <h3 className="text-[var(--scolio-text-primary)]">{t('upload.examAssociation')}</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Seleção de paciente */}
               <div className="col-span-2">
                 <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                  Paciente *
+                  {t('upload.patientLabel')}
                 </label>
                 <div className="relative">
                   <div className="relative">
@@ -178,7 +180,7 @@ export default function ExamUploadScreen() {
                         setMostrarDropdown(true);
                       }}
                       onFocus={() => setMostrarDropdown(true)}
-                      placeholder={aCarregarPacientes ? 'A carregar pacientes...' : 'Pesquisar por nome ou nº utente...'}
+                      placeholder={aCarregarPacientes ? t('upload.loadingPatients') : t('upload.searchPatientPlaceholder')}
                       className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
                       disabled={aCarregarPacientes}
                     />
@@ -187,7 +189,7 @@ export default function ExamUploadScreen() {
                     <div className="absolute z-10 w-full bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] shadow-lg mt-1 max-h-48 overflow-y-auto">
                       {pacientesFiltrados.length === 0 ? (
                         <p className="px-3 py-2 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          Nenhum paciente encontrado
+                          {t('upload.noPatientFound')}
                         </p>
                       ) : (
                         pacientesFiltrados.map((p) => (
@@ -233,7 +235,7 @@ export default function ExamUploadScreen() {
               {/* Data do exame */}
               <div>
                 <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                  Data do exame *
+                  {t('upload.examDateLabel')}
                 </label>
                 <input
                   type="date"
@@ -247,7 +249,7 @@ export default function ExamUploadScreen() {
               {/* Técnico responsável (read-only) */}
               <div>
                 <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                  Técnico responsável
+                  {t('upload.responsibleTech')}
                 </label>
                 <input
                   type="text"
@@ -259,16 +261,16 @@ export default function ExamUploadScreen() {
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
-              <Button variant="secondary" onClick={() => navigate('/tecnico')}>Cancelar</Button>
+              <Button variant="secondary" onClick={() => navigate('/tecnico')}>{t('common.cancel')}</Button>
               <Button
                 variant="primary"
                 onClick={submeter}
                 disabled={!podeSubmeter || fase !== 'idle'}
               >
-                {fase === 'idle' && 'Submeter para análise IA'}
-                {fase === 'uploading' && <><Loader2 className="w-4 h-4 mr-2 inline animate-spin" />A enviar...</>}
-                {fase === 'done' && <><CheckCircle2 className="w-4 h-4 mr-2 inline" />Submetido com sucesso</>}
-                {fase === 'erro' && 'Erro — tentar novamente'}
+                {fase === 'idle' && t('upload.submitIdle')}
+                {fase === 'uploading' && <><Loader2 className="w-4 h-4 mr-2 inline animate-spin" />{t('upload.submitting')}</>}
+                {fase === 'done' && <><CheckCircle2 className="w-4 h-4 mr-2 inline" />{t('upload.submitDone')}</>}
+                {fase === 'erro' && t('upload.submitError')}
               </Button>
             </div>
           </div>
@@ -277,7 +279,7 @@ export default function ExamUploadScreen() {
         {/* Pré-visualização */}
         <div className="space-y-6">
           <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-            <h3 className="text-[var(--scolio-text-primary)] mb-4">Pré-visualização</h3>
+            <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('upload.preview')}</h3>
             <div className="aspect-[3/4] rounded-[var(--radius-component)] bg-[var(--scolio-page-surface)] border border-dashed border-[var(--scolio-border-light)] flex flex-col items-center justify-center">
               {ficheiro && ficheiro.type.startsWith('image/') ? (
                 <img
@@ -289,7 +291,7 @@ export default function ExamUploadScreen() {
                 <>
                   <ImageIcon className="w-12 h-12 text-[var(--scolio-neutral-gray)]" />
                   <p className="text-[var(--scolio-text-secondary)] mt-2" style={{ fontSize: 'var(--text-caption)' }}>
-                    {ficheiro ? 'Ficheiro DICOM' : 'Sem imagem'}
+                    {ficheiro ? t('upload.dicomFile') : t('upload.noImage')}
                   </p>
                   {ficheiro && (
                     <p className="font-mono text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>

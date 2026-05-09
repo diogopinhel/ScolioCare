@@ -4,6 +4,7 @@ import { Users, Activity, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getMetricasDashboardAdmin } from '../../../data/repository/admin';
 import type { MetricasDashboardAdmin } from '../../../data/types';
+import { useTranslation } from 'react-i18next';
 
 // Dados de uso semanal ficam como mock enquanto não existe endpoint de métricas por perfil
 const usageData = [
@@ -18,6 +19,7 @@ const usageData = [
 
 export default function AdminDashboardScreen() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [aCarregar, setACarregar] = React.useState(true);
   const [metricas, setMetricas] = React.useState<MetricasDashboardAdmin | null>(null);
 
@@ -33,33 +35,33 @@ export default function AdminDashboardScreen() {
     ? [
         {
           icon: Users,
-          label: 'Utilizadores ativos',
+          label: t('dashboard.activeUsers'),
           value: String(metricas.totalUtilizadoresAtivos),
-          delta: 'total no sistema',
+          delta: t('dashboard.totalSystem'),
           color: 'var(--scolio-primary-blue)',
           bg: 'var(--scolio-light-blue-surface)',
         },
         {
           icon: Activity,
-          label: 'Exames últimas 24h',
+          label: t('dashboard.examsLast24h'),
           value: String(metricas.examesUltimas24h),
-          delta: 'novos exames',
+          delta: t('dashboard.newExams'),
           color: 'var(--scolio-success-green)',
           bg: 'var(--scolio-success-surface)',
         },
         {
           icon: ShieldAlert,
-          label: 'Glass-Break ativos',
+          label: t('dashboard.activeGlassBreak'),
           value: String(metricas.glassbreakAtivos),
-          delta: 'sessões de emergência',
+          delta: t('dashboard.emergencySessions'),
           color: metricas.glassbreakAtivos > 0 ? 'var(--scolio-danger-coral)' : 'var(--scolio-success-green)',
           bg: metricas.glassbreakAtivos > 0 ? 'var(--scolio-danger-surface)' : 'var(--scolio-success-surface)',
         },
         {
           icon: AlertTriangle,
-          label: 'Eventos de auditoria 24h',
+          label: t('dashboard.auditEvents24h'),
           value: String(metricas.alertasSeguranca),
-          delta: 'últimas 24 horas',
+          delta: t('dashboard.last24hours'),
           color: 'var(--scolio-warning-amber)',
           bg: 'var(--scolio-warning-surface)',
         },
@@ -69,9 +71,9 @@ export default function AdminDashboardScreen() {
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
       <div>
-        <h1 className="text-[var(--scolio-text-primary)]">Painel de administração</h1>
+        <h1 className="text-[var(--scolio-text-primary)]">{t('dashboard.adminTitle')}</h1>
         <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
-          Visão global do sistema
+          {t('dashboard.adminSubtitle')}
         </p>
       </div>
 
@@ -103,9 +105,9 @@ export default function AdminDashboardScreen() {
       <div className="grid grid-cols-3 gap-6">
         {/* Gráfico de uso */}
         <div className="col-span-2 bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-1">Utilização por módulo (últimos 7 dias)</h3>
+          <h3 className="text-[var(--scolio-text-primary)] mb-1">{t('dashboard.usageByModule')}</h3>
           <p className="text-[var(--scolio-text-secondary)] mb-4" style={{ fontSize: 'var(--text-caption)' }}>
-            Métricas detalhadas por perfil disponíveis em breve.
+            {t('dashboard.detailedMetricsSoon')}
           </p>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={usageData}>
@@ -141,12 +143,12 @@ export default function AdminDashboardScreen() {
 
         {/* Atalhos */}
         <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6 space-y-3">
-          <h3 className="text-[var(--scolio-text-primary)] mb-4">Atalhos</h3>
+          <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('dashboard.shortcuts')}</h3>
           {[
-            { label: 'Gestão de utilizadores', path: '/admin-panel/users' },
-            { label: 'Auditoria global', path: '/admin-panel/audit' },
-            { label: 'Configurações IA', path: '/admin-panel/ai' },
-            { label: 'Compliance RGPD', path: '/admin-panel/compliance' },
+            { label: t('dashboard.shortcutUsers'), path: '/admin-panel/users' },
+            { label: t('dashboard.shortcutAudit'), path: '/admin-panel/audit' },
+            { label: t('dashboard.shortcutAIConfig'), path: '/admin-panel/ai' },
+            { label: t('dashboard.shortcutRGPD'), path: '/admin-panel/compliance' },
           ].map((s) => (
             <button
               key={s.path}

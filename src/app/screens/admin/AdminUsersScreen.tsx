@@ -3,13 +3,14 @@ import { Power, CheckCircle, XCircle, Filter } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
 import { getUtilizadoresAdmin, toggleAtivoUtilizador, toggleBloqueioUtilizador } from '../../../data/repository/admin';
 import type { UtilizadorAdmin } from '../../../data/types';
+import { useTranslation } from 'react-i18next';
 
-function perfilStyle(perfil: string) {
+function perfilStyle(perfil: string, t: (key: string) => string) {
   const map: Record<string, { bg: string; fg: string; label: string }> = {
-    MEDICO:   { bg: 'var(--scolio-light-blue-surface)', fg: 'var(--scolio-primary-blue)', label: 'Médico' },
-    TECNICO:  { bg: 'var(--scolio-success-surface)', fg: 'var(--scolio-success-green)', label: 'Técnico' },
-    ADMIN:    { bg: 'var(--scolio-warning-surface)', fg: 'var(--scolio-warning-amber)', label: 'Admin' },
-    PACIENTE: { bg: 'var(--scolio-neutral-surface)', fg: 'var(--scolio-neutral-gray)', label: 'Paciente' },
+    MEDICO:   { bg: 'var(--scolio-light-blue-surface)', fg: 'var(--scolio-primary-blue)', label: t('admin.profileDoctor') },
+    TECNICO:  { bg: 'var(--scolio-success-surface)', fg: 'var(--scolio-success-green)', label: t('admin.profileTechnician') },
+    ADMIN:    { bg: 'var(--scolio-warning-surface)', fg: 'var(--scolio-warning-amber)', label: t('admin.profileAdmin') },
+    PACIENTE: { bg: 'var(--scolio-neutral-surface)', fg: 'var(--scolio-neutral-gray)', label: t('admin.profilePatient') },
   };
   return map[perfil] ?? { bg: 'var(--scolio-neutral-surface)', fg: 'var(--scolio-neutral-gray)', label: perfil };
 }
@@ -29,6 +30,7 @@ function formatarData(iso: string | null): string {
 type ConfirmAction = { kind: 'toggle_ativo' | 'toggle_bloqueio'; user: UtilizadorAdmin };
 
 export default function AdminUsersScreen() {
+  const { t } = useTranslation();
   const [utilizadores, setUtilizadores] = React.useState<UtilizadorAdmin[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
 
@@ -75,17 +77,17 @@ export default function AdminUsersScreen() {
         setUtilizadores((prev) =>
           prev.map((x) => x.id === u.id ? { ...x, ativo: !u.ativo } : x),
         );
-        mostrarToast(`Conta ${!u.ativo ? 'ativada' : 'desativada'} com sucesso.`);
+        mostrarToast(!u.ativo ? t('admin.activateSuccess') : t('admin.deactivateSuccess'));
       } else {
         await toggleBloqueioUtilizador(u.id, !u.contaBloqueada);
         setUtilizadores((prev) =>
           prev.map((x) => x.id === u.id ? { ...x, contaBloqueada: !u.contaBloqueada } : x),
         );
-        mostrarToast(`Conta ${!u.contaBloqueada ? 'bloqueada' : 'desbloqueada'} com sucesso.`);
+        mostrarToast(!u.contaBloqueada ? t('admin.blockSuccess') : t('admin.unblockSuccess'));
       }
       setConfirm(null);
     } catch {
-      mostrarToast('Erro ao atualizar o utilizador.', 'error');
+      mostrarToast(t('admin.updateError'), 'error');
     } finally {
       setAConfirmar(false);
     }
@@ -95,9 +97,9 @@ export default function AdminUsersScreen() {
     <div className="p-8 space-y-6 overflow-auto h-full">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-[var(--scolio-text-primary)]">Gestão de utilizadores</h1>
+          <h1 className="text-[var(--scolio-text-primary)]">{t('admin.usersTitle')}</h1>
           <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
-            {aCarregar ? 'A carregar...' : `${filtrados.length} de ${utilizadores.length} utilizadores`}
+            {aCarregar ? t('common.loading') : t('admin.usersSubtitle', { filtered: filtrados.length, total: utilizadores.length })}
           </p>
         </div>
       </div>
@@ -110,7 +112,7 @@ export default function AdminUsersScreen() {
               value={pesquisa}
               onChange={(e) => setPesquisa(e.target.value)}
               type="search"
-              placeholder="Pesquisar por nome..."
+              placeholder={t('admin.searchUsers')}
               className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
             />
           </div>
@@ -119,23 +121,23 @@ export default function AdminUsersScreen() {
             onChange={(e) => setPerfilFiltro(e.target.value)}
             className="w-36 px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)]"
           >
-            <option value="all">Todos os perfis</option>
-            <option value="MEDICO">Médico</option>
-            <option value="TECNICO">Técnico</option>
-            <option value="ADMIN">Admin</option>
-            <option value="PACIENTE">Paciente</option>
+            <option value="all">{t('common.allProfiles')}</option>
+            <option value="MEDICO">{t('admin.profileDoctor')}</option>
+            <option value="TECNICO">{t('admin.profileTechnician')}</option>
+            <option value="ADMIN">{t('admin.profileAdmin')}</option>
+            <option value="PACIENTE">{t('admin.profilePatient')}</option>
           </select>
           <select
             value={estadoFiltro}
             onChange={(e) => setEstadoFiltro(e.target.value)}
             className="w-36 px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)]"
           >
-            <option value="all">Todos os estados</option>
-            <option value="ativo">Ativo</option>
-            <option value="inativo">Inativo</option>
+            <option value="all">{t('common.allStatuses')}</option>
+            <option value="ativo">{t('common.active')}</option>
+            <option value="inativo">{t('common.inactive')}</option>
           </select>
           <Button variant="secondary">
-            <Filter className="w-4 h-4 mr-2 inline" />Aplicar
+            <Filter className="w-4 h-4 mr-2 inline" />{t('common.apply')}
           </Button>
         </div>
       </div>
@@ -145,7 +147,7 @@ export default function AdminUsersScreen() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-              {['UTILIZADOR', 'PERFIL', 'ESTADO', '2FA', 'ÚLTIMO ACESSO', 'CRIADO EM', 'AÇÕES'].map((h) => (
+              {[t('admin.colUser'), t('admin.colProfile'), t('admin.colStatus'), t('admin.col2FA'), t('admin.colLastAccess'), t('admin.colCreatedAt'), t('common.actions')].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>
                   {h}
                 </th>
@@ -166,12 +168,12 @@ export default function AdminUsersScreen() {
             ) : filtrados.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Nenhum utilizador corresponde aos filtros.
+                  {t('admin.noMatchUsers')}
                 </td>
               </tr>
             ) : (
               filtrados.map((u) => {
-                const ps = perfilStyle(u.perfil);
+                const ps = perfilStyle(u.perfil, t);
                 return (
                   <tr key={u.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)]">
                     {/* Nome */}
@@ -188,7 +190,7 @@ export default function AdminUsersScreen() {
                             {u.nomeCompleto}
                           </p>
                           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                            {u.contaBloqueada ? '🔒 Bloqueada' : ''}
+                            {u.contaBloqueada ? t('admin.blocked') : ''}
                           </p>
                         </div>
                       </div>
@@ -209,7 +211,7 @@ export default function AdminUsersScreen() {
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                           u.ativo ? 'bg-[var(--scolio-success-green)]' : 'bg-[var(--scolio-neutral-gray)]'
                         }`}
-                        title={u.ativo ? 'Clique para desativar' : 'Clique para ativar'}
+                        title={u.ativo ? t('admin.clickDeactivate') : t('admin.clickActivate')}
                       >
                         <span
                           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -235,7 +237,7 @@ export default function AdminUsersScreen() {
                     {/* Ações */}
                     <td className="px-4 py-3">
                       <button
-                        title={u.contaBloqueada ? 'Desbloquear conta' : 'Bloquear conta'}
+                        title={u.contaBloqueada ? t('admin.clickUnblock') : t('admin.clickBlock')}
                         onClick={() => setConfirm({ kind: 'toggle_bloqueio', user: u })}
                         className={`p-2 rounded transition-colors ${
                           u.contaBloqueada
@@ -261,18 +263,18 @@ export default function AdminUsersScreen() {
             <div className="p-6">
               <h2 className="text-[var(--scolio-text-primary)] mb-2">
                 {confirm.kind === 'toggle_ativo'
-                  ? (confirm.user.ativo ? 'Desativar conta?' : 'Ativar conta?')
-                  : (confirm.user.contaBloqueada ? 'Desbloquear conta?' : 'Bloquear conta?')}
+                  ? (confirm.user.ativo ? t('admin.deactivateTitle') : t('admin.activateTitle'))
+                  : (confirm.user.contaBloqueada ? t('admin.unblockTitle') : t('admin.blockTitle'))}
               </h2>
               <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                 {confirm.kind === 'toggle_ativo'
-                  ? `${confirm.user.nomeCompleto} ${confirm.user.ativo ? 'deixará de poder iniciar sessão' : 'volta a ter acesso ao sistema'}.`
-                  : `${confirm.user.nomeCompleto} ${confirm.user.contaBloqueada ? 'poderá voltar a iniciar sessão' : 'ficará impedido de iniciar sessão até ser desbloqueado'}.`}
+                  ? (confirm.user.ativo ? t('admin.deactivateMsg', { name: confirm.user.nomeCompleto }) : t('admin.activateMsg', { name: confirm.user.nomeCompleto }))
+                  : (confirm.user.contaBloqueada ? t('admin.unblockMsg', { name: confirm.user.nomeCompleto }) : t('admin.blockMsg', { name: confirm.user.nomeCompleto }))}
               </p>
             </div>
             <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
               <Button variant="secondary" onClick={() => setConfirm(null)} disabled={aConfirmar}>
-                Cancelar
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -285,7 +287,7 @@ export default function AdminUsersScreen() {
                 onClick={executarConfirmacao}
                 disabled={aConfirmar}
               >
-                {aConfirmar ? 'A atualizar...' : 'Confirmar'}
+                {aConfirmar ? t('common.confirming') : t('common.confirm')}
               </Button>
             </div>
           </div>

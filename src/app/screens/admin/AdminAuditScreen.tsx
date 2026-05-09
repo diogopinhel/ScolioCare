@@ -3,15 +3,7 @@ import { Search, Download, ChevronDown } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
 import { getAuditLog } from '../../../data/repository/admin';
 import type { AuditLogEntry } from '../../../data/types';
-
-const CATEGORIAS: { label: string; value: string }[] = [
-  { label: 'Todas', value: 'all' },
-  { label: 'Autenticação', value: 'AUTH' },
-  { label: 'Dados clínicos', value: 'ESTUDO' },
-  { label: 'Glass-Break', value: 'GLASSBREAK' },
-  { label: 'Configuração', value: 'CONFIG' },
-  { label: 'Exportação', value: 'EXPORT' },
-];
+import { useTranslation } from 'react-i18next';
 
 function formatarDataHora(iso: string): string {
   return new Date(iso).toLocaleString('pt-PT', {
@@ -29,23 +21,33 @@ function categoriaDaTipoAcao(tipoAcao: string): string {
   return 'ESTUDO';
 }
 
-function categoriaStyle(cat: string) {
+function categoriaStyle(cat: string, t: (key: string) => string) {
   const map: Record<string, { label: string; bg: string; fg: string }> = {
-    AUTH:       { label: 'Autenticação',  bg: 'var(--scolio-light-blue-surface)', fg: 'var(--scolio-primary-blue)' },
-    ESTUDO:     { label: 'Dados clínicos',bg: 'var(--scolio-success-surface)',    fg: 'var(--scolio-success-green)' },
-    GLASSBREAK: { label: 'Glass-Break',   bg: 'var(--scolio-danger-surface)',     fg: 'var(--scolio-danger-coral)' },
-    CONFIG:     { label: 'Configuração',  bg: 'var(--scolio-warning-surface)',    fg: 'var(--scolio-warning-amber)' },
-    EXPORT:     { label: 'Exportação',    bg: 'var(--scolio-neutral-surface)',    fg: 'var(--scolio-neutral-gray)' },
+    AUTH:       { label: t('admin.catAuth'),       bg: 'var(--scolio-light-blue-surface)', fg: 'var(--scolio-primary-blue)' },
+    ESTUDO:     { label: t('admin.catClinical'),   bg: 'var(--scolio-success-surface)',    fg: 'var(--scolio-success-green)' },
+    GLASSBREAK: { label: t('admin.catGlassBreak'), bg: 'var(--scolio-danger-surface)',     fg: 'var(--scolio-danger-coral)' },
+    CONFIG:     { label: t('admin.catConfig'),     bg: 'var(--scolio-warning-surface)',    fg: 'var(--scolio-warning-amber)' },
+    EXPORT:     { label: t('admin.catExport'),     bg: 'var(--scolio-neutral-surface)',    fg: 'var(--scolio-neutral-gray)' },
   };
   return map[cat] ?? map['ESTUDO'];
 }
 
 export default function AdminAuditScreen() {
+  const { t } = useTranslation();
   const [eventos, setEventos] = React.useState<AuditLogEntry[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
   const [pesquisa, setPesquisa] = React.useState('');
   const [categoriaFiltro, setCategoriaFiltro] = React.useState('all');
   const [toast, setToast] = React.useState<string | null>(null);
+
+  const CATEGORIAS = [
+    { label: t('admin.filterAll'), value: 'all' },
+    { label: t('admin.filterAuth'), value: 'AUTH' },
+    { label: t('admin.filterClinical'), value: 'ESTUDO' },
+    { label: t('admin.filterGlassBreak'), value: 'GLASSBREAK' },
+    { label: t('admin.filterConfig'), value: 'CONFIG' },
+    { label: t('admin.filterExport'), value: 'EXPORT' },
+  ];
 
   const mostrarToast = (msg: string) => {
     setToast(msg);
@@ -94,21 +96,21 @@ export default function AdminAuditScreen() {
     a.download = `auditoria-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    mostrarToast('CSV exportado com sucesso.');
+    mostrarToast(t('admin.exportSuccess'));
   };
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-[var(--scolio-text-primary)]">Auditoria global</h1>
+          <h1 className="text-[var(--scolio-text-primary)]">{t('admin.auditTitle')}</h1>
           <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
-            {aCarregar ? 'A carregar...' : `${filtrados.length} de ${eventos.length} eventos`}
+            {aCarregar ? t('common.loading') : t('admin.auditSubtitle', { filtered: filtrados.length, total: eventos.length })}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={exportarCSV}>
-            <Download className="w-4 h-4 mr-2 inline" /> Exportar CSV
+            <Download className="w-4 h-4 mr-2 inline" /> {t('common.export')}
           </Button>
         </div>
       </div>
@@ -122,7 +124,7 @@ export default function AdminAuditScreen() {
               value={pesquisa}
               onChange={(e) => setPesquisa(e.target.value)}
               type="search"
-              placeholder="Pesquisar por utilizador, ação, entidade ou IP..."
+              placeholder={t('admin.auditSearchPlaceholder')}
               className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
             />
           </div>
@@ -146,7 +148,7 @@ export default function AdminAuditScreen() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-              {['DATA/HORA', 'UTILIZADOR', 'TIPO DE AÇÃO', 'ENTIDADE', 'IP', 'CATEGORIA'].map((h) => (
+              {[t('admin.colDateTime'), t('admin.colUser'), t('admin.colActionType'), t('admin.colEntity'), t('admin.colIP'), t('admin.colCategory')].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>
                   {h}
                 </th>
@@ -167,13 +169,13 @@ export default function AdminAuditScreen() {
             ) : filtrados.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  {pesquisa || categoriaFiltro !== 'all' ? 'Nenhum evento corresponde aos filtros.' : 'Sem eventos de auditoria registados.'}
+                  {pesquisa || categoriaFiltro !== 'all' ? t('admin.noMatchEvents') : t('admin.noEvents')}
                 </td>
               </tr>
             ) : (
               filtrados.map((e) => {
                 const cat = categoriaDaTipoAcao(e.tipoAcao);
-                const style = categoriaStyle(cat);
+                const style = categoriaStyle(cat, t);
                 return (
                   <tr key={e.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
                     <td className="px-4 py-3 text-[var(--scolio-text-secondary)] font-mono" style={{ fontSize: 'var(--text-caption)' }}>

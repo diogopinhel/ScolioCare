@@ -3,20 +3,21 @@ import { Eye, Archive, ChevronDown } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { getFilaEstudos, arquivarEstudoTecnico } from '../../../data/repository/tecnico';
 import type { EstudoFilaItem, EstadoEstudo } from '../../../data/types';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function estadoBadge(estado: EstadoEstudo) {
+function estadoBadge(estado: EstadoEstudo, t: (key: string) => string) {
   const map: Record<string, { label: string; bg: string; fg: string }> = {
-    UPLOADED:           { label: 'Carregado',   bg: 'var(--scolio-neutral-surface)',    fg: 'var(--scolio-neutral-gray)' },
-    PROCESSING:         { label: 'A processar', bg: 'var(--scolio-light-blue-surface)', fg: 'var(--scolio-primary-blue)' },
-    PENDING_VALIDATION: { label: 'Pronto',      bg: 'var(--scolio-warning-surface)',    fg: 'var(--scolio-warning-amber)' },
-    VALIDATED:          { label: 'Validado',    bg: 'var(--scolio-success-surface)',    fg: 'var(--scolio-success-green)' },
-    DIAGNOSED:          { label: 'Diagnosticado', bg: 'var(--scolio-success-surface)', fg: 'var(--scolio-success-green)' },
-    SENT:               { label: 'Enviado',     bg: 'var(--scolio-success-surface)',    fg: 'var(--scolio-success-green)' },
-    ARCHIVED:           { label: 'Arquivado',   bg: 'var(--scolio-neutral-surface)',    fg: 'var(--scolio-neutral-gray)' },
+    UPLOADED:           { label: t('queue.statusUploaded'),   bg: 'var(--scolio-neutral-surface)',    fg: 'var(--scolio-neutral-gray)' },
+    PROCESSING:         { label: t('queue.statusProcessing'), bg: 'var(--scolio-light-blue-surface)', fg: 'var(--scolio-primary-blue)' },
+    PENDING_VALIDATION: { label: t('queue.statusReady'),      bg: 'var(--scolio-warning-surface)',    fg: 'var(--scolio-warning-amber)' },
+    VALIDATED:          { label: t('queue.statusValidated'),  bg: 'var(--scolio-success-surface)',    fg: 'var(--scolio-success-green)' },
+    DIAGNOSED:          { label: t('dashboard.statusDiagnosed'), bg: 'var(--scolio-success-surface)', fg: 'var(--scolio-success-green)' },
+    SENT:               { label: t('dashboard.statusSent'),   bg: 'var(--scolio-success-surface)',    fg: 'var(--scolio-success-green)' },
+    ARCHIVED:           { label: t('queue.statusArchived'),   bg: 'var(--scolio-neutral-surface)',    fg: 'var(--scolio-neutral-gray)' },
   };
   const c = map[estado] ?? map['UPLOADED'];
   return (
@@ -38,18 +39,21 @@ function formatarData(iso: string): string {
 
 // ─── Ecrã ────────────────────────────────────────────────────────────────────
 
-const ESTADOS_OPCOES: { label: string; value: string }[] = [
-  { label: 'Todos', value: 'all' },
-  { label: 'Carregado', value: 'UPLOADED' },
-  { label: 'A processar', value: 'PROCESSING' },
-  { label: 'Pronto para validação', value: 'PENDING_VALIDATION' },
-  { label: 'Validado', value: 'VALIDATED' },
-  { label: 'Arquivado', value: 'ARCHIVED' },
-];
+// State options are built inside the component using t()
 
 export default function ExamQueueScreen() {
   const navigate = useNavigate();
   const { utilizador } = useAuth();
+  const { t } = useTranslation();
+
+  const ESTADOS_OPCOES = [
+    { label: t('queue.statusAll'), value: 'all' },
+    { label: t('queue.statusUploaded'), value: 'UPLOADED' },
+    { label: t('queue.statusProcessing'), value: 'PROCESSING' },
+    { label: t('queue.statusReady'), value: 'PENDING_VALIDATION' },
+    { label: t('queue.statusValidated'), value: 'VALIDATED' },
+    { label: t('queue.statusArchived'), value: 'ARCHIVED' },
+  ];
 
   const [aCarregar, setACarregar] = React.useState(true);
   const [todosExames, setTodosExames] = React.useState<EstudoFilaItem[]>([]);
@@ -104,9 +108,9 @@ export default function ExamQueueScreen() {
       setTodosExames((prev) => prev.filter((e) => e.id !== archiveModal.id));
       setArchiveModal(null);
       setArchiveReason('');
-      mostrarToast('Exame arquivado com sucesso.');
+      mostrarToast(t('queue.archiveSuccess'));
     } catch {
-      mostrarToast('Erro ao arquivar exame.', 'error');
+      mostrarToast(t('queue.archiveError'), 'error');
     } finally {
       setAArquivar(false);
     }
@@ -116,9 +120,9 @@ export default function ExamQueueScreen() {
     <div className="p-8 space-y-6 overflow-auto h-full">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-[var(--scolio-text-primary)]">Fila de exames</h1>
+          <h1 className="text-[var(--scolio-text-primary)]">{t('queue.title')}</h1>
           <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
-            {aCarregar ? 'A carregar...' : `${filtrados.length} de ${todosExames.length} exames`}
+            {aCarregar ? t('common.loading') : t('queue.subtitle', { filtered: filtrados.length, total: todosExames.length })}
           </p>
         </div>
       </div>
@@ -132,7 +136,7 @@ export default function ExamQueueScreen() {
               type="search"
               value={pesquisa}
               onChange={(e) => setPesquisa(e.target.value)}
-              placeholder="Pesquisar por paciente ou ID do exame..."
+              placeholder={t('queue.searchPlaceholder')}
               className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
             />
           </div>
@@ -157,7 +161,7 @@ export default function ExamQueueScreen() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-              {['PACIENTE', 'DATA DO EXAME', 'SUBMETIDO', 'ESTADO', 'AÇÕES'].map((h) => (
+              {[t('queue.colPatient'), t('queue.colExamDate'), t('queue.colSubmitted'), t('queue.colStatus'), t('queue.colActions')].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>
                   {h}
                 </th>
@@ -178,7 +182,7 @@ export default function ExamQueueScreen() {
             ) : filtrados.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  {pesquisa || estadoFiltro !== 'all' ? 'Nenhum exame corresponde aos filtros.' : 'Sem exames na fila.'}
+                  {pesquisa || estadoFiltro !== 'all' ? t('queue.noMatchFilters') : t('queue.noExams')}
                 </td>
               </tr>
             ) : (
@@ -196,11 +200,11 @@ export default function ExamQueueScreen() {
                   <td className="px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
                     {formatarData(ex.dataSubmissao)}
                   </td>
-                  <td className="px-4 py-3">{estadoBadge(ex.estado)}</td>
+                  <td className="px-4 py-3">{estadoBadge(ex.estado, t)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button
-                        title="Ver exame"
+                        title={t('queue.viewExam')}
                         onClick={() => navigate(`/exam-viewer/${ex.id}`)}
                         className="p-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-success-green)] hover:bg-[var(--scolio-success-surface)] rounded transition-colors"
                       >
@@ -208,7 +212,7 @@ export default function ExamQueueScreen() {
                       </button>
                       {ex.estado !== 'ARCHIVED' && (
                         <button
-                          title="Arquivar exame"
+                          title={t('queue.archiveExam')}
                           onClick={() => setArchiveModal({ id: ex.id, estado: ex.estado })}
                           className="p-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)] rounded transition-colors"
                         >
@@ -229,21 +233,21 @@ export default function ExamQueueScreen() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-[var(--radius-modal)] w-[500px] overflow-hidden">
             <div className="p-6 border-b border-[var(--scolio-border-light)]">
-              <h2 className="text-[var(--scolio-text-primary)]">Arquivar exame</h2>
+              <h2 className="text-[var(--scolio-text-primary)]">{t('queue.archiveTitle')}</h2>
               <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
-                É obrigatório indicar o motivo. Esta ação fica registada na auditoria.
+                {t('queue.archiveSubtitle')}
               </p>
             </div>
             <div className="p-6">
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Motivo do arquivamento
+                {t('queue.archiveReasonLabel')}
               </label>
               <textarea
                 value={archiveReason}
                 onChange={(e) => setArchiveReason(e.target.value)}
                 rows={4}
                 className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
-                placeholder="Ex: Imagem com artefacto, paciente não compareceu para repetição..."
+                placeholder={t('queue.archiveReasonPlaceholder')}
               />
               <p
                 className="mt-1"
@@ -252,12 +256,12 @@ export default function ExamQueueScreen() {
                   color: archiveReason.trim().length >= 10 ? 'var(--scolio-success-green)' : 'var(--scolio-text-secondary)',
                 }}
               >
-                {archiveReason.trim().length} / 10 caracteres mínimos
+                {t('queue.archiveMinChars', { count: archiveReason.trim().length })}
               </p>
             </div>
             <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
               <Button variant="secondary" onClick={() => { setArchiveModal(null); setArchiveReason(''); }} disabled={aArquivar}>
-                Cancelar
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -265,7 +269,7 @@ export default function ExamQueueScreen() {
                 onClick={handleArquivar}
                 disabled={archiveReason.trim().length < 10 || aArquivar}
               >
-                {aArquivar ? 'A arquivar...' : 'Arquivar'}
+                {aArquivar ? t('common.archiving') : t('common.archive')}
               </Button>
             </div>
           </div>

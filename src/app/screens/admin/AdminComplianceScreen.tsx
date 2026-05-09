@@ -1,11 +1,13 @@
 import React from 'react';
 import { FileSearch, Trash2, FileText, ShieldCheck, AlertTriangle, Info } from 'lucide-react';
 import { Button } from '../../components/scolio';
+import { useTranslation } from 'react-i18next';
 
 // Nota: a tabela rgpd_pedidos ainda não existe na base de dados.
 // Quando for criada, substituir os 0s por queries reais.
 
 export default function AdminComplianceScreen() {
+  const { t } = useTranslation();
   const [period, setPeriod] = React.useState<'30' | '90' | '365'>('90');
 
   const accessReqs = 0;
@@ -15,36 +17,35 @@ export default function AdminComplianceScreen() {
     <div className="p-8 space-y-6 overflow-auto h-full">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-[var(--scolio-text-primary)]">Compliance &amp; RGPD</h1>
-          <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>Pedidos de titulares de dados, classificação e relatórios automáticos</p>
+          <h1 className="text-[var(--scolio-text-primary)]">{t('admin.complianceTitle')}</h1>
+          <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>{t('admin.complianceSubtitle')}</p>
         </div>
-        <Button variant="primary"><FileText className="w-4 h-4 mr-2 inline" /> Gerar relatório de compliance</Button>
+        <Button variant="primary"><FileText className="w-4 h-4 mr-2 inline" /> {t('admin.generateReport')}</Button>
       </div>
 
       {/* Resumo */}
       <div className="grid grid-cols-4 gap-6">
-        <KPI icon={FileSearch} color="var(--scolio-primary-blue)" bg="var(--scolio-light-blue-surface)" label="Pedidos Art. 15 (Acesso)" value={accessReqs.toString()} sub="0 em curso" />
-        <KPI icon={Trash2} color="var(--scolio-danger-coral)" bg="var(--scolio-danger-surface)" label="Pedidos Art. 17 (Apagamento)" value={erasureReqs.toString()} sub="0 a aguardar avaliação" />
-        <KPI icon={ShieldCheck} color="var(--scolio-success-green)" bg="var(--scolio-success-surface)" label="Conformidade" value="—" sub="sem dados suficientes" />
-        <KPI icon={AlertTriangle} color="var(--scolio-warning-amber)" bg="var(--scolio-warning-surface)" label="Prazos a expirar" value="0" sub="próximos 7 dias" />
+        <KPI icon={FileSearch} color="var(--scolio-primary-blue)" bg="var(--scolio-light-blue-surface)" label={t('admin.artAccess')} value={accessReqs.toString()} sub={t('admin.inProgress')} />
+        <KPI icon={Trash2} color="var(--scolio-danger-coral)" bg="var(--scolio-danger-surface)" label={t('admin.artErasure')} value={erasureReqs.toString()} sub={t('admin.awaitingEval')} />
+        <KPI icon={ShieldCheck} color="var(--scolio-success-green)" bg="var(--scolio-success-surface)" label={t('admin.conformity')} value="—" sub={t('admin.noSufficientData')} />
+        <KPI icon={AlertTriangle} color="var(--scolio-warning-amber)" bg="var(--scolio-warning-surface)" label={t('admin.expiringDeadlines')} value="0" sub={t('admin.next7days')} />
       </div>
 
       {/* Tabela de pedidos */}
       <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] overflow-hidden">
         <div className="p-6">
-          <h3 className="text-[var(--scolio-text-primary)]">Pedidos de titulares de dados</h3>
-          <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>RGPD Art. 15 (acesso) e Art. 17 (apagamento). Prazo legal: 30 dias.</p>
+          <h3 className="text-[var(--scolio-text-primary)]">{t('admin.dataRequests')}</h3>
+          <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>{t('admin.dataRequestsDesc')}</p>
         </div>
         <div className="flex items-start gap-3 mx-6 mb-6 p-4 bg-[var(--scolio-light-blue-surface)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)]">
           <Info className="w-5 h-5 text-[var(--scolio-primary-blue)] flex-shrink-0 mt-0.5" />
           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-            A gestão de pedidos RGPD requer uma tabela <code>rgpd_pedidos</code> ainda não criada na base de dados.
-            Quando disponível, esta secção listará automaticamente todos os pedidos Art. 15 e Art. 17 com os seus estados e prazos.
+            {t('admin.rgpdNote')}
           </p>
         </div>
         <div className="px-6 pb-12 text-center">
           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-            Sem pedidos registados.
+            {t('admin.noRequests')}
           </p>
         </div>
       </div>
@@ -52,27 +53,27 @@ export default function AdminComplianceScreen() {
       <div className="grid grid-cols-2 gap-6">
         {/* Classificação de dados */}
         <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-4">Classificação de dados</h3>
+          <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('admin.dataClassification')}</h3>
           <div className="flex items-start gap-3 p-4 bg-[var(--scolio-light-blue-surface)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)]">
             <Info className="w-5 h-5 text-[var(--scolio-primary-blue)] flex-shrink-0 mt-0.5" />
             <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-              As contagens por categoria de dados serão populadas automaticamente quando a tabela <code>rgpd_pedidos</code> estiver configurada.
+              {t('admin.dataClassNote')}
             </p>
           </div>
         </div>
 
         {/* Relatório de compliance */}
         <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-4">Relatório automático de compliance</h3>
+          <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('admin.autoReport')}</h3>
           <div className="flex items-center gap-2 mb-5">
             {(['30', '90', '365'] as const).map(p => (
               <button key={p} onClick={() => setPeriod(p)} className={`px-3 py-1.5 rounded-[var(--radius-component)] transition-colors ${period === p ? 'bg-[var(--scolio-primary-blue)] text-white' : 'bg-[var(--scolio-page-surface)] text-[var(--scolio-text-secondary)]'}`} style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                {p === '365' ? 'Último ano' : `Últimos ${p} dias`}
+                {p === '365' ? t('admin.lastYear') : p === '90' ? t('admin.last90days') : t('admin.last30days')}
               </button>
             ))}
           </div>
           <p className="text-[var(--scolio-text-secondary)] text-center py-6" style={{ fontSize: 'var(--text-body)' }}>
-            Sem dados suficientes para o período seleccionado.
+            {t('admin.noDataPeriod')}
           </p>
         </div>
       </div>

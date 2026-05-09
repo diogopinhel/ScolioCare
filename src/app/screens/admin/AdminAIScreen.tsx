@@ -3,6 +3,7 @@ import { Cpu, TrendingUp, Database, GitBranch, Info } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Button } from '../../components/scolio';
 import { supabase } from '../../../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 // Métricas estáticas do pipeline ML (não estão na DB — vêm do sistema de treino externo)
 const accuracyHistory = [
@@ -20,6 +21,7 @@ const ageGroups = [
 ];
 
 export default function AdminAIScreen() {
+  const { t } = useTranslation();
   const [autoAccept, setAutoAccept] = React.useState(95);
   const [minDisplay, setMinDisplay] = React.useState(70);
   const [totalPacientes, setTotalPacientes] = React.useState<number | null>(null);
@@ -36,22 +38,22 @@ export default function AdminAIScreen() {
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
       <div>
-        <h1 className="text-[var(--scolio-text-primary)]">IA &amp; Dados</h1>
-        <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>Gestão do modelo de detecção do ângulo de Cobb e dados de treino</p>
+        <h1 className="text-[var(--scolio-text-primary)]">{t('admin.aiTitle')}</h1>
+        <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>{t('admin.aiSubtitle')}</p>
       </div>
 
       {/* Model status */}
       <div className="grid grid-cols-4 gap-6">
-        <Stat icon={Cpu} label="Versão actual" value="v3.4" sub="desde 12/03/2026" />
-        <Stat icon={TrendingUp} label="Accuracy global" value="94.3%" sub="+1.5pp vs v3.3" />
-        <Stat icon={Database} label="Exames de treino" value="12 847" sub="último: 18/03/2026" />
-        <Stat icon={GitBranch} label="Em fila para re-treino" value="284" sub="aprovados pelo médico" />
+        <Stat icon={Cpu} label={t('admin.aiCurrentVersion')} value="v3.4" sub="desde 12/03/2026" />
+        <Stat icon={TrendingUp} label={t('admin.aiAccuracy')} value="94.3%" sub="+1.5pp vs v3.3" />
+        <Stat icon={Database} label={t('admin.aiTrainingExams')} value="12 847" sub="último: 18/03/2026" />
+        <Stat icon={GitBranch} label={t('admin.aiRetrainingQueue')} value="284" sub="aprovados pelo médico" />
       </div>
 
       <div className="grid grid-cols-3 gap-6">
         {/* Accuracy chart */}
         <div className="col-span-2 bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-4">Evolução da accuracy por versão</h3>
+          <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('admin.aiAccuracyChart')}</h3>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={accuracyHistory}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--scolio-border-light)" />
@@ -65,34 +67,34 @@ export default function AdminAIScreen() {
 
         {/* Thresholds */}
         <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-4">Thresholds de confiança</h3>
+          <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('admin.aiThresholds')}</h3>
           <div className="space-y-5">
             <div>
               <div className="flex justify-between mb-2">
-                <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>Auto-aceitar acima de</label>
+                <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>{t('admin.aiAutoAccept')}</label>
                 <span className="text-[var(--scolio-primary-blue)] font-semibold">{autoAccept}%</span>
               </div>
               <input type="range" min={80} max={99} value={autoAccept} onChange={e => setAutoAccept(+e.target.value)} className="w-full accent-[var(--scolio-primary-blue)]" />
             </div>
             <div>
               <div className="flex justify-between mb-2">
-                <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>Mínimo para exibir</label>
+                <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>{t('admin.aiMinDisplay')}</label>
                 <span className="text-[var(--scolio-warning-amber)] font-semibold">{minDisplay}%</span>
               </div>
               <input type="range" min={50} max={90} value={minDisplay} onChange={e => setMinDisplay(+e.target.value)} className="w-full accent-[var(--scolio-warning-amber)]" />
             </div>
-            <Button variant="primary" className="w-full">Aplicar thresholds</Button>
+            <Button variant="primary" className="w-full">{t('admin.aiApplyThresholds')}</Button>
           </div>
         </div>
       </div>
 
       {/* Performance by age */}
       <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] overflow-hidden">
-        <div className="p-6"><h3 className="text-[var(--scolio-text-primary)]">Métricas de performance por faixa etária</h3></div>
+        <div className="p-6"><h3 className="text-[var(--scolio-text-primary)]">{t('admin.aiPerformance')}</h3></div>
         <table className="w-full">
           <thead>
             <tr className="border-y border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-              <th className="text-left px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>FAIXA</th>
+              <th className="text-left px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>{t('admin.aiColRange')}</th>
               <th className="text-left px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>PRECISION</th>
               <th className="text-left px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>RECALL</th>
               <th className="text-left px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>F1</th>
@@ -115,18 +117,16 @@ export default function AdminAIScreen() {
       <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-[var(--scolio-text-primary)]">Consentimentos de treino IA</h3>
+            <h3 className="text-[var(--scolio-text-primary)]">{t('admin.aiConsents')}</h3>
             <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
-              {totalPacientes !== null ? `${totalPacientes} pacientes activos no sistema` : 'A carregar...'}
+              {totalPacientes !== null ? t('admin.totalActivePatients', { count: totalPacientes }) : t('admin.loadingCount')}
             </p>
           </div>
         </div>
         <div className="flex items-start gap-3 p-4 bg-[var(--scolio-light-blue-surface)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)]">
           <Info className="w-5 h-5 text-[var(--scolio-primary-blue)] flex-shrink-0 mt-0.5" />
           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-            O rastreio individual de consentimento de treino por paciente requer uma tabela dedicada
-            (<code>consentimentos_ia</code>) que ainda não está configurada na base de dados.
-            Quando disponível, esta secção listará cada paciente com o seu estado de consentimento e data.
+            {t('admin.aiConsentNote')}
           </p>
         </div>
       </div>

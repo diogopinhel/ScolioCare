@@ -5,6 +5,7 @@ import {
   Eye, EyeOff, FileText, Download, GitCompare,
   Archive, Check, Edit3, ArrowLeft,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Button, StatusBadge, Textarea, ProgressBar,
   Toast, Input, SkeletonBlock,
@@ -43,6 +44,7 @@ export default function ExamViewerScreen() {
   const { estudoId } = useParams<{ estudoId: string }>();
   const navigate = useNavigate();
   const { utilizador } = useAuth();
+  const { t } = useTranslation();
 
   // ── Dados ──────────────────────────────────────────────────────────────────
   const [estudo, setEstudo] = React.useState<EstudoCompleto | null>(null);
@@ -145,9 +147,9 @@ export default function ExamViewerScreen() {
         ? { ...prev, estado: 'VALIDATED', resultado: { ...prev.resultado!, decisao: 'ACEITE', dataValidacao: new Date().toISOString() } }
         : prev,
       );
-      mostrarToast('Métricas confirmadas com sucesso.');
+      mostrarToast(t('examViewer.confirmedMetrics'));
     } catch {
-      mostrarToast('Erro ao confirmar métricas. Tente novamente.', 'error');
+      mostrarToast(t('examViewer.errorConfirm'), 'error');
     } finally {
       setAConfirmar(false);
     }
@@ -157,7 +159,7 @@ export default function ExamViewerScreen() {
     if (!estudo?.resultado || !utilizador) return;
     const angulo = parseFloat(correctedAngle);
     if (isNaN(angulo) || angulo < 0 || angulo > 180) {
-      mostrarToast('Ângulo de Cobb inválido (0–180°).', 'error');
+      mostrarToast(t('examViewer.invalidCobb'), 'error');
       return;
     }
     setACorrigir(true);
@@ -188,9 +190,9 @@ export default function ExamViewerScreen() {
         : prev,
       );
       setShowCorrectModal(false);
-      mostrarToast('Métricas corrigidas com sucesso.');
+      mostrarToast(t('examViewer.correctedMetrics'));
     } catch {
-      mostrarToast('Erro ao guardar correção. Tente novamente.', 'error');
+      mostrarToast(t('examViewer.errorCorrect'), 'error');
     } finally {
       setACorrigir(false);
     }
@@ -201,9 +203,9 @@ export default function ExamViewerScreen() {
     setAGuardarNotas(true);
     try {
       await guardarNotasClinicas(estudo.id, clinicalNotes);
-      mostrarToast('Notas clínicas guardadas.');
+      mostrarToast(t('examViewer.notesSaved'));
     } catch {
-      mostrarToast('Erro ao guardar notas. Tente novamente.', 'error');
+      mostrarToast(t('examViewer.notesError'), 'error');
     } finally {
       setAGuardarNotas(false);
     }
@@ -222,7 +224,7 @@ export default function ExamViewerScreen() {
       );
       navigate(-1);
     } catch {
-      mostrarToast('Erro ao arquivar exame. Tente novamente.', 'error');
+      mostrarToast(t('examViewer.errorArchive'), 'error');
       setAArquivar(false);
     }
   };
@@ -252,14 +254,14 @@ export default function ExamViewerScreen() {
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <p className="text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--weight-semibold)' }}>
-            Exame não encontrado
+            {t('examViewer.notFoundTitle')}
           </p>
           <p className="text-[var(--scolio-text-secondary)] mb-4" style={{ fontSize: 'var(--text-body)' }}>
-            O exame solicitado não existe ou não tem permissão para o visualizar.
+            {t('examViewer.notFoundDesc')}
           </p>
           <Button variant="secondary" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
+            {t('common.back')}
           </Button>
         </div>
       </div>
@@ -318,7 +320,7 @@ export default function ExamViewerScreen() {
               <button
                 onClick={() => { setZoom(100); setBrightness(100); setContrast(100); }}
                 className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
-                title="Repor vista"
+                title={t('examViewer.resetView')}
               >
                 <RotateCcw className="w-5 h-5" />
               </button>
@@ -361,7 +363,7 @@ export default function ExamViewerScreen() {
             >
               {aiOverlay ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               <span style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                AI Overlay {aiOverlay ? 'ON' : 'OFF'}
+                {t('examViewer.aiOverlay')} {aiOverlay ? 'ON' : 'OFF'}
               </span>
             </button>
           </div>
@@ -415,12 +417,12 @@ export default function ExamViewerScreen() {
                   <div className="w-12 h-12 border-4 border-gray-600 border-t-[var(--scolio-primary-blue)] rounded-full animate-spin" />
                   <p style={{ fontSize: 'var(--text-body)' }}>
                     {estudo.estado === 'PROCESSING'
-                      ? 'Modelo IA a processar imagem...'
-                      : 'A aguardar upload de imagem'}
+                      ? t('examViewer.processing')
+                      : t('examViewer.awaitingUpload')}
                   </p>
                 </>
               ) : (
-                <p style={{ fontSize: 'var(--text-body)' }}>Sem imagem disponível</p>
+                <p style={{ fontSize: 'var(--text-body)' }}>{t('examViewer.noImage')}</p>
               )}
             </div>
           )}
@@ -460,7 +462,7 @@ export default function ExamViewerScreen() {
           <div className="pb-4 border-b border-[var(--scolio-border-light)]">
             <h2 className="text-[var(--scolio-text-primary)] mb-1">{estudo.pacienteNome}</h2>
             <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-              Data do exame:{' '}
+              {t('examViewer.examDate')}{' '}
               {new Date(estudo.dataEstudo).toLocaleDateString('pt-PT', {
                 day: 'numeric', month: 'long', year: 'numeric',
               })}
@@ -470,22 +472,22 @@ export default function ExamViewerScreen() {
                 className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--scolio-light-blue-surface)] text-[var(--scolio-primary-blue)] mt-1"
                 style={{ fontSize: 'var(--text-caption)' }}
               >
-                IA assistida
+                {t('examViewer.iaAssisted')}
               </span>
             )}
           </div>
 
           {/* Métricas IA */}
           <section>
-            <h3 className="text-[var(--scolio-text-primary)] mb-4">Métricas IA</h3>
+            <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('examViewer.aiMetrics')}</h3>
             {resultado ? (
               <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5 space-y-5">
 
                 {/* Ângulo de Cobb */}
                 <div>
                   <p className="text-[var(--scolio-text-secondary)] mb-3" style={{ fontSize: 'var(--text-body)' }}>
-                    Ângulo de Cobb
-                    {resultado.decisao === 'CORRIGIDO' ? ' (corrigido pelo médico)' : ''}
+                    {t('examViewer.cobbAngle')}
+                    {resultado.decisao === 'CORRIGIDO' ? t('examViewer.correctedByDoctor') : ''}
                   </p>
                   <div className="flex items-center justify-between">
                     <div>
@@ -503,7 +505,7 @@ export default function ExamViewerScreen() {
                   </div>
                   {resultado.decisao === 'CORRIGIDO' && (
                     <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
-                      Original IA: {resultado.anguloCobb.toFixed(1)}°
+                      {t('examViewer.originalAI', { angle: resultado.anguloCobb.toFixed(1) })}
                     </p>
                   )}
                 </div>
@@ -512,7 +514,7 @@ export default function ExamViewerScreen() {
                 {resultado.nivelVertebras && (
                   <div className="flex items-center justify-between py-3 border-t border-[var(--scolio-border-light)]">
                     <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      Vértebra apical
+                      {t('examViewer.apicalVertebra')}
                     </span>
                     <span
                       className="text-[var(--scolio-text-primary)] font-semibold"
@@ -527,7 +529,7 @@ export default function ExamViewerScreen() {
                 {resultado.localizacaoCurva && (
                   <div className="flex items-center justify-between py-2 border-t border-[var(--scolio-border-light)]">
                     <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      Localização
+                      {t('examViewer.location')}
                     </span>
                     <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
                       {resultado.localizacaoCurva}
@@ -539,7 +541,7 @@ export default function ExamViewerScreen() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      Confiança IA
+                      {t('examViewer.aiConfidence')}
                     </span>
                     <span
                       className="font-semibold"
@@ -581,10 +583,10 @@ export default function ExamViewerScreen() {
                     />
                     <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
                       {resultado.decisao === 'ACEITE'
-                        ? 'Métricas aceites pelo médico'
+                        ? t('examViewer.metricsAccepted')
                         : resultado.decisao === 'CORRIGIDO'
-                        ? 'Métricas corrigidas pelo médico'
-                        : 'Métricas rejeitadas'}
+                        ? t('examViewer.metricsCorrected')
+                        : t('examViewer.metricsRejected')}
                       {resultado.dataValidacao && (
                         <> · {new Date(resultado.dataValidacao).toLocaleDateString('pt-PT')}</>
                       )}
@@ -602,7 +604,7 @@ export default function ExamViewerScreen() {
                       disabled={aConfirmar}
                     >
                       <Check className="w-4 h-4 mr-2" />
-                      {aConfirmar ? 'A confirmar...' : 'Confirmar métricas IA'}
+                      {aConfirmar ? t('examViewer.confirming') : t('examViewer.confirmMetrics')}
                     </Button>
                     <Button
                       variant="ghost"
@@ -611,7 +613,7 @@ export default function ExamViewerScreen() {
                       disabled={aConfirmar}
                     >
                       <Edit3 className="w-4 h-4 mr-2" />
-                      Corrigir métricas
+                      {t('examViewer.correctMetrics')}
                     </Button>
                   </div>
                 )}
@@ -625,12 +627,12 @@ export default function ExamViewerScreen() {
                       className="w-8 h-8 rounded-full border-4 border-[var(--scolio-border-light)] border-t-[var(--scolio-primary-blue)] animate-spin"
                     />
                     <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      Modelo IA a processar…
+                      {t('examViewer.processingModel')}
                     </p>
                   </div>
                 ) : (
                   <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                    Sem resultados disponíveis
+                    {t('examViewer.noResults')}
                   </p>
                 )}
               </div>
@@ -639,13 +641,13 @@ export default function ExamViewerScreen() {
 
           {/* Notas clínicas */}
           <section>
-            <h3 className="text-[var(--scolio-text-primary)] mb-4">Notas clínicas</h3>
+            <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('examViewer.clinicalNotes')}</h3>
             <div className="space-y-3">
               <Textarea
                 value={clinicalNotes}
                 onChange={(e) => setClinicalNotes(e.target.value)}
                 rows={6}
-                placeholder="Introduza observações clínicas..."
+                placeholder={t('examViewer.clinicalNotesPlaceholder')}
               />
               <Button
                 variant="primary"
@@ -653,23 +655,23 @@ export default function ExamViewerScreen() {
                 onClick={handleGuardarNotas}
                 disabled={aGuardarNotas}
               >
-                {aGuardarNotas ? 'A guardar...' : 'Guardar notas'}
+                {aGuardarNotas ? t('examViewer.savingNotes') : t('examViewer.saveNotes')}
               </Button>
             </div>
           </section>
 
           {/* Estado do exame */}
           <section>
-            <h3 className="text-[var(--scolio-text-primary)] mb-4">Estado do exame</h3>
+            <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('examViewer.examStatus')}</h3>
             <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5">
               <div className="flex items-center justify-between">
                 <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Estado atual
+                  {t('examViewer.currentStatus')}
                 </span>
                 <StatusBadge status={estadoParaBadge(estudo.estado)} />
               </div>
               <p className="text-[var(--scolio-text-secondary)] mt-2" style={{ fontSize: 'var(--text-caption)' }}>
-                Versão do modelo: {resultado?.versaoModelo ?? '—'}
+                {t('examViewer.modelVersion')} {resultado?.versaoModelo ?? '—'}
               </p>
             </div>
           </section>
@@ -683,7 +685,7 @@ export default function ExamViewerScreen() {
               disabled={!resultado || emProcessamento}
             >
               <FileText className="w-4 h-4 mr-2" />
-              Gerar relatório PDF
+              {t('examViewer.generatePDF')}
             </Button>
             <Button
               variant="secondary"
@@ -691,7 +693,7 @@ export default function ExamViewerScreen() {
               onClick={() => navigate('/exam-comparison')}
             >
               <GitCompare className="w-4 h-4 mr-2" />
-              Comparar com outro exame
+              {t('examViewer.compareExam')}
             </Button>
             <Button
               variant="ghost"
@@ -700,7 +702,7 @@ export default function ExamViewerScreen() {
               disabled={estudo.arquivado || aArquivar}
             >
               <Archive className="w-4 h-4 mr-2" />
-              {estudo.arquivado ? 'Exame arquivado' : 'Arquivar exame'}
+              {estudo.arquivado ? t('examViewer.examArchived') : t('examViewer.archiveExam')}
             </Button>
           </div>
         </div>
@@ -711,7 +713,7 @@ export default function ExamViewerScreen() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-[var(--radius-modal)] shadow-lg w-[480px]">
             <div className="p-6 border-b border-[var(--scolio-border-light)]">
-              <h2 className="text-[var(--scolio-text-primary)]">Corrigir métricas</h2>
+              <h2 className="text-[var(--scolio-text-primary)]">{t('examViewer.correctMetricsTitle')}</h2>
             </div>
             <div className="p-6 space-y-4">
               <div>
@@ -719,13 +721,13 @@ export default function ExamViewerScreen() {
                   className="block text-[var(--scolio-text-primary)] mb-2"
                   style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
                 >
-                  Ângulo de Cobb (graus)
+                  {t('examViewer.cobbDegrees')}
                 </label>
                 <Input
                   type="number"
                   value={correctedAngle}
                   onChange={(e) => setCorrectedAngle(e.target.value)}
-                  placeholder="Ex: 15.7"
+                  placeholder={t('examViewer.cobbPlaceholder')}
                 />
               </div>
               <div>
@@ -733,13 +735,13 @@ export default function ExamViewerScreen() {
                   className="block text-[var(--scolio-text-primary)] mb-2"
                   style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
                 >
-                  Vértebra apical
+                  {t('examViewer.apicalVertebra')}
                 </label>
                 <Input
                   type="text"
                   value={correctedVertebra}
                   onChange={(e) => setCorrectedVertebra(e.target.value)}
-                  placeholder="Ex: T8"
+                  placeholder={t('examViewer.vertebraPlaceholder')}
                 />
               </div>
               <div>
@@ -747,22 +749,22 @@ export default function ExamViewerScreen() {
                   className="block text-[var(--scolio-text-primary)] mb-2"
                   style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
                 >
-                  Justificação <span className="text-[var(--scolio-text-secondary)] font-normal">(opcional)</span>
+                  {t('examViewer.justification')} <span className="text-[var(--scolio-text-secondary)] font-normal">{t('examViewer.justificationOptional')}</span>
                 </label>
                 <Textarea
                   value={correctionJustification}
                   onChange={(e) => setCorrectionJustification(e.target.value)}
                   rows={3}
-                  placeholder="Motivo da correção..."
+                  placeholder={t('examViewer.justificationPlaceholder')}
                 />
               </div>
             </div>
             <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
               <Button variant="secondary" onClick={() => setShowCorrectModal(false)} disabled={aCorrigir}>
-                Cancelar
+                {t('common.cancel')}
               </Button>
               <Button variant="primary" onClick={handleCorrigir} disabled={aCorrigir}>
-                {aCorrigir ? 'A guardar...' : 'Guardar correção'}
+                {aCorrigir ? t('examViewer.savingCorrection') : t('examViewer.saveCorrection')}
               </Button>
             </div>
           </div>
@@ -774,17 +776,16 @@ export default function ExamViewerScreen() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-[var(--radius-modal)] shadow-lg w-[480px]">
             <div className="p-6 border-b border-[var(--scolio-border-light)]">
-              <h2 className="text-[var(--scolio-text-primary)]">Arquivar exame</h2>
+              <h2 className="text-[var(--scolio-text-primary)]">{t('examViewer.archiveTitle')}</h2>
             </div>
             <div className="p-6">
               <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                Tem a certeza que pretende arquivar este exame? Esta ação fica registada
-                na auditoria e não pode ser desfeita.
+                {t('examViewer.archiveConfirm')}
               </p>
             </div>
             <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
               <Button variant="secondary" onClick={() => setShowArchiveModal(false)} disabled={aArquivar}>
-                Cancelar
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -792,7 +793,7 @@ export default function ExamViewerScreen() {
                 onClick={handleArquivar}
                 disabled={aArquivar}
               >
-                {aArquivar ? 'A arquivar...' : 'Arquivar'}
+                {aArquivar ? t('examViewer.archiving') : t('examViewer.archiveButton')}
               </Button>
             </div>
           </div>

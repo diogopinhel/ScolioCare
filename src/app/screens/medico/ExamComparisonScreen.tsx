@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Button, Textarea } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { getEstudosParaComparacao } from '../../../data/repository/estudos';
 import { getPaciente } from '../../../data/repository/pacientes';
 import type { EstudoComparacao, PacienteDetalhe } from '../../../data/types';
@@ -13,6 +14,7 @@ import type { EstudoComparacao, PacienteDetalhe } from '../../../data/types';
 export default function ExamComparisonScreen() {
   const navigate = useNavigate();
   const { pacienteId } = useParams<{ pacienteId: string }>();
+  const { t } = useTranslation();
 
   const [exames, setExames] = React.useState<EstudoComparacao[]>([]);
   const [paciente, setPaciente] = React.useState<PacienteDetalhe | null>(null);
@@ -70,16 +72,16 @@ export default function ExamComparisonScreen() {
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-[var(--scolio-text-primary)]">Comparação de exames</h1>
+          <h1 className="text-[var(--scolio-text-primary)]">{t('examComparison.title')}</h1>
         </div>
         <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-12 text-center">
           <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--weight-semibold)' }}>
-            Exames insuficientes
+            {t('examComparison.insufficientExams')}
           </p>
           <p className="text-[var(--scolio-text-secondary)] mt-2" style={{ fontSize: 'var(--text-body)' }}>
-            São necessários pelo menos 2 exames com ângulo de Cobb calculado para fazer a comparação.
+            {t('examComparison.insufficientDesc')}
           </p>
-          <Button variant="secondary" className="mt-6" onClick={() => navigate(-1)}>Voltar</Button>
+          <Button variant="secondary" className="mt-6" onClick={() => navigate(-1)}>{t('common.back')}</Button>
         </div>
       </div>
     );
@@ -103,7 +105,7 @@ export default function ExamComparisonScreen() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-[var(--scolio-text-primary)]">Comparação de exames</h1>
+            <h1 className="text-[var(--scolio-text-primary)]">{t('examComparison.title')}</h1>
             <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
               {nomePaciente}
             </p>
@@ -119,7 +121,7 @@ export default function ExamComparisonScreen() {
         >
           {syncViewers ? <LinkIcon className="w-4 h-4" /> : <Unlink className="w-4 h-4" />}
           <span style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-            {syncViewers ? 'Visualizadores sincronizados' : 'Sincronizar visualizadores'}
+            {syncViewers ? t('examComparison.syncedViewers') : t('examComparison.syncViewers')}
           </span>
         </button>
       </div>
@@ -129,7 +131,7 @@ export default function ExamComparisonScreen() {
         {/* Exame A */}
         <div className="col-span-4 bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] overflow-hidden">
           <ExamViewer
-            label="Exame A (anterior)"
+            label={t('examComparison.examA')}
             exam={examA}
             examsList={exames}
             onExamChange={setExamA}
@@ -144,7 +146,7 @@ export default function ExamComparisonScreen() {
         {/* Coluna central — evolução */}
         <div className="col-span-2 space-y-4">
           <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-            <h3 className="text-[var(--scolio-text-primary)] text-center mb-6">Evolução</h3>
+            <h3 className="text-[var(--scolio-text-primary)] text-center mb-6">{t('examComparison.evolution')}</h3>
             <div className="flex flex-col items-center gap-4">
               {isImprovement
                 ? <ArrowDown className="w-20 h-20 text-[var(--scolio-success-green)]" strokeWidth={2.5} />
@@ -157,7 +159,7 @@ export default function ExamComparisonScreen() {
                   {variation > 0 ? '+' : ''}{variation.toFixed(1)}°
                 </p>
                 <p className="text-[var(--scolio-text-secondary)] mt-2" style={{ fontSize: 'var(--text-caption)' }}>
-                  {isImprovement ? 'Melhoria' : 'Agravamento'}
+                  {isImprovement ? t('examComparison.improvement') : t('examComparison.worsening')}
                 </p>
               </div>
             </div>
@@ -170,17 +172,17 @@ export default function ExamComparisonScreen() {
                 <Bot className="w-5 h-5 text-white" />
               </div>
               <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                Variação de {variation > 0 ? '+' : ''}{variation.toFixed(1)}° no ângulo de Cobb entre os dois exames selecionados.
+                {t('examComparison.variationMsg', { variation: `${variation > 0 ? '+' : ''}${variation.toFixed(1)}` })}
               </p>
             </div>
 
             {!assessmentConfirmed && !showCustomAssessment && (
               <div className="space-y-2">
                 <Button variant="primary" className="w-full text-sm py-2" onClick={() => setAssessmentConfirmed(true)}>
-                  <Check className="w-4 h-4 mr-2" />Confirmar avaliação
+                  <Check className="w-4 h-4 mr-2" />{t('examComparison.confirmAssessment')}
                 </Button>
                 <Button variant="ghost" className="w-full text-sm py-2" onClick={() => setShowCustomAssessment(true)}>
-                  <X className="w-4 h-4 mr-2" />Escrever avaliação própria
+                  <X className="w-4 h-4 mr-2" />{t('examComparison.writeOwn')}
                 </Button>
               </div>
             )}
@@ -188,15 +190,15 @@ export default function ExamComparisonScreen() {
               <div className="flex items-center gap-2 p-3 bg-[var(--scolio-success-surface)] border border-[var(--scolio-success-green)] rounded-[var(--radius-component)]">
                 <Check className="w-5 h-5 text-[var(--scolio-success-green)]" />
                 <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                  Avaliação confirmada em {new Date().toLocaleString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  {t('examComparison.confirmedAt', { date: new Date().toLocaleString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' }) })}
                 </p>
               </div>
             )}
             {showCustomAssessment && (
               <div className="space-y-3">
-                <Textarea value={customAssessment} onChange={(e) => setCustomAssessment(e.target.value)} rows={4} placeholder="Escreva a sua avaliação clínica..." />
+                <Textarea value={customAssessment} onChange={(e) => setCustomAssessment(e.target.value)} rows={4} placeholder={t('examComparison.customAssessmentPlaceholder')} />
                 <Button variant="primary" className="w-full text-sm py-2" onClick={() => setShowCustomAssessment(false)}>
-                  Guardar avaliação
+                  {t('examComparison.saveAssessment')}
                 </Button>
               </div>
             )}
@@ -207,7 +209,7 @@ export default function ExamComparisonScreen() {
             <table className="w-full">
               <thead>
                 <tr className="bg-[var(--scolio-page-surface)] border-b border-[var(--scolio-border-light)]">
-                  <th className="text-left px-3 py-2 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>MÉTRICA</th>
+                  <th className="text-left px-3 py-2 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>{t('examComparison.tableMetric')}</th>
                   <th className="text-center px-2 py-2 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>A</th>
                   <th className="text-center px-2 py-2 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>B</th>
                   <th className="text-center px-2 py-2 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>Δ</th>
@@ -215,7 +217,7 @@ export default function ExamComparisonScreen() {
               </thead>
               <tbody>
                 <tr className="border-b border-[var(--scolio-border-light)]">
-                  <td className="px-3 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Ângulo de Cobb</td>
+                  <td className="px-3 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('examComparison.metricCobb')}</td>
                   <td className="px-2 py-3 text-center text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>{examA.anguloCobb.toFixed(1)}°</td>
                   <td className="px-2 py-3 text-center text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>{examB.anguloCobb.toFixed(1)}°</td>
                   <td className={`px-2 py-3 text-center font-semibold ${isImprovement ? 'text-[var(--scolio-success-green)]' : 'text-[var(--scolio-danger-coral)]'}`} style={{ fontSize: 'var(--text-caption)' }}>
@@ -223,7 +225,7 @@ export default function ExamComparisonScreen() {
                   </td>
                 </tr>
                 <tr className="border-b border-[var(--scolio-border-light)]">
-                  <td className="px-3 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Vértebra apical</td>
+                  <td className="px-3 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('examComparison.metricVertebra')}</td>
                   <td className="px-2 py-3 text-center text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>{examA.nivelVertebras ?? '—'}</td>
                   <td className="px-2 py-3 text-center text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>{examB.nivelVertebras ?? '—'}</td>
                   <td className="px-2 py-3 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
@@ -238,7 +240,7 @@ export default function ExamComparisonScreen() {
         {/* Exame B */}
         <div className="col-span-4 bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] overflow-hidden">
           <ExamViewer
-            label="Exame B (actual)"
+            label={t('examComparison.examB')}
             exam={examB}
             examsList={exames}
             onExamChange={setExamB}
@@ -269,6 +271,7 @@ interface ExamViewerProps {
 }
 
 function ExamViewer({ label, exam, examsList, onExamChange, aiOverlay, onAiOverlayToggle, zoom, onZoomChange, onReset }: ExamViewerProps) {
+  const { t } = useTranslation();
   const dataFormatada = new Date(exam.dataEstudo).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
@@ -297,7 +300,7 @@ function ExamViewer({ label, exam, examsList, onExamChange, aiOverlay, onAiOverl
         <div className="mt-3 w-full h-16 bg-black rounded overflow-hidden">
           {exam.urlImagem
             ? <img src={exam.urlImagem} alt={`Exame ${dataFormatada}`} className="w-full h-full object-cover opacity-70" />
-            : <div className="w-full h-full flex items-center justify-center text-[var(--scolio-neutral-gray)]" style={{ fontSize: 'var(--text-caption)' }}>Sem imagem</div>
+            : <div className="w-full h-full flex items-center justify-center text-[var(--scolio-neutral-gray)]" style={{ fontSize: 'var(--text-caption)' }}>{t('examComparison.noImage')}</div>
           }
         </div>
       </div>
@@ -346,22 +349,22 @@ function ExamViewer({ label, exam, examsList, onExamChange, aiOverlay, onAiOverl
             )}
           </div>
         ) : (
-          <p className="text-[var(--scolio-neutral-gray)]" style={{ fontSize: 'var(--text-body)' }}>Sem imagem disponível</p>
+          <p className="text-[var(--scolio-neutral-gray)]" style={{ fontSize: 'var(--text-body)' }}>{t('examComparison.noImage')}</p>
         )}
       </div>
 
       {/* Métricas */}
       <div className="p-4 bg-[var(--scolio-page-surface)] border-t border-[var(--scolio-border-light)] space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>Ângulo de Cobb</span>
+          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('examComparison.metricCobb')}</span>
           <span className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>{exam.anguloCobb.toFixed(1)}°</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>Vértebra apical</span>
+          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('examComparison.metricVertebra')}</span>
           <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>{exam.nivelVertebras ?? '—'}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>Data</span>
+          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('examComparison.metricDate')}</span>
           <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>{dataFormatada}</span>
         </div>
       </div>

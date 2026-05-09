@@ -5,14 +5,13 @@ import {
   Upload,
   ListChecks,
   Users,
-  Search,
   Bell,
-  Globe,
-  ChevronDown,
   Clock,
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../LanguageSwitcher';
 
 function obterIniciais(nomeCompleto: string): string {
   const partes = nomeCompleto.trim().split(/\s+/);
@@ -25,13 +24,14 @@ export default function TecnicoLayout() {
   const [notificationCount] = React.useState(2);
   const navigate = useNavigate();
   const { utilizador, logout } = useAuth();
+  const { t } = useTranslation();
 
   const nome = utilizador?.nomeCompleto ?? 'Técnico';
   const iniciais = obterIniciais(nome);
   const departamento =
     utilizador?.perfil === 'TECNICO' && 'departamento' in utilizador
       ? (utilizador as { departamento: string }).departamento
-      : 'Técnico de saúde';
+      : t('nav.healthTechnician');
 
   const handleLogout = async () => {
     await logout();
@@ -84,7 +84,7 @@ export default function TecnicoLayout() {
                 className="text-[var(--scolio-text-secondary)]"
                 style={{ fontSize: 'var(--text-caption)' }}
               >
-                Painel do Técnico
+                {t('nav.technicianPanel')}
               </p>
             </div>
           </div>
@@ -92,10 +92,10 @@ export default function TecnicoLayout() {
 
         <nav className="flex-1 p-4">
           <ul className="space-y-1">
-            {navItem('/tecnico', LayoutDashboard, 'Painel', true)}
-            {navItem('/tecnico/upload', Upload, 'Carregar exame')}
-            {navItem('/tecnico/queue', ListChecks, 'Fila de exames')}
-            {navItem('/tecnico/patients', Users, 'Pacientes')}
+            {navItem('/tecnico', LayoutDashboard, t('nav.dashboard'), true)}
+            {navItem('/tecnico/upload', Upload, t('nav.upload'))}
+            {navItem('/tecnico/queue', ListChecks, t('nav.queue'))}
+            {navItem('/tecnico/patients', Users, t('nav.patients'))}
           </ul>
         </nav>
 
@@ -126,7 +126,7 @@ export default function TecnicoLayout() {
             style={{ fontSize: 'var(--text-body)' }}
           >
             <LogOut className="w-4 h-4" />
-            <span>Sair</span>
+            <span>{t('common.logout')}</span>
           </button>
         </div>
       </aside>
@@ -136,10 +136,9 @@ export default function TecnicoLayout() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div className="relative w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)]" />
                 <input
                   type="search"
-                  placeholder="Pesquisar exames, pacientes..."
+                  placeholder={t('nav.searchPatientsExams')}
                   className="pl-10 pr-3 py-2 w-full border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)] focus:border-transparent"
                 />
               </div>
@@ -150,25 +149,18 @@ export default function TecnicoLayout() {
                   className="text-[var(--scolio-success-green)]"
                   style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}
                 >
-                  Turno activo · 08:00 – 16:00
+                  {t('nav.activeShift')}
                 </span>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              <button
-                type="button"
-                className="flex items-center gap-2 px-3 py-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors"
-              >
-                <Globe className="w-5 h-5" />
-                <span style={{ fontSize: 'var(--text-body)' }}>PT</span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
+              <LanguageSwitcher />
 
               <button
                 type="button"
                 className="relative p-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors"
-                aria-label="Notificações"
+                aria-label={t('common.notifications')}
               >
                 <Bell className="w-5 h-5" />
                 {notificationCount > 0 && (
@@ -190,7 +182,7 @@ export default function TecnicoLayout() {
                     className="text-[var(--scolio-text-secondary)]"
                     style={{ fontSize: 'var(--text-caption)' }}
                   >
-                    Técnico
+                    {t('nav.technician')}
                   </p>
                 </div>
                 <div className="w-9 h-9 rounded-full bg-[var(--scolio-success-green)] flex items-center justify-center text-white font-medium">

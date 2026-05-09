@@ -4,6 +4,7 @@ import { Search, UserPlus } from 'lucide-react';
 import { Button } from '../../components/scolio';
 import { getPacientesTecnico } from '../../../data/repository/tecnico';
 import type { PacienteTecnico } from '../../../data/types';
+import { useTranslation } from 'react-i18next';
 
 function formatarData(iso: string | null): string {
   if (!iso) return '—';
@@ -30,6 +31,7 @@ function calcularIdade(dataNascimento: string | null): string {
 
 export default function TecnicoPatientsScreen() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [pacientes, setPacientes] = React.useState<PacienteTecnico[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
   const [search, setSearch] = React.useState('');
@@ -50,14 +52,14 @@ export default function TecnicoPatientsScreen() {
     <div className="p-8 space-y-6 overflow-auto h-full">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-[var(--scolio-text-primary)]">Pacientes</h1>
+          <h1 className="text-[var(--scolio-text-primary)]">{t('patients.title')}</h1>
           <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
-            Vista operacional. Notas clínicas e relatórios estão restritos ao médico.
+            {t('patients.operationalView')}
           </p>
         </div>
         <Button variant="primary" onClick={() => navigate('/tecnico/patients/new')}>
           <UserPlus className="w-4 h-4 mr-2" />
-          Novo paciente
+          {t('patients.newPatient')}
         </Button>
       </div>
 
@@ -69,7 +71,7 @@ export default function TecnicoPatientsScreen() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             type="search"
-            placeholder="Pesquisar por nome ou nº utente..."
+            placeholder={t('patients.searchPlaceholder')}
             className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
           />
         </div>
@@ -80,7 +82,7 @@ export default function TecnicoPatientsScreen() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-              {['NOME', 'Nº UTENTE', 'IDADE', 'GÉNERO', 'ÚLTIMO EXAME', 'Nº EXAMES', 'AÇÕES'].map((h) => (
+              {[t('patients.colName'), t('patients.colUtenteShort'), t('patients.colAge'), t('patients.colGender'), t('patients.colLastExamShort'), t('patients.colExamCount'), t('patients.colActions')].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>
                   {h}
                 </th>
@@ -101,7 +103,7 @@ export default function TecnicoPatientsScreen() {
             ) : filtrados.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  {search ? 'Nenhum paciente corresponde à pesquisa.' : 'Sem pacientes registados.'}
+                  {search ? t('patients.noMatchSearch') : t('patients.noRegistered')}
                 </td>
               </tr>
             ) : (
@@ -139,7 +141,7 @@ export default function TecnicoPatientsScreen() {
                       className="px-3 py-1 text-[var(--scolio-success-green)] border border-[var(--scolio-success-green)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-success-surface)] transition-colors"
                       style={{ fontSize: 'var(--text-caption)' }}
                     >
-                      Novo exame
+                      {t('patients.newExamButton')}
                     </button>
                   </td>
                 </tr>

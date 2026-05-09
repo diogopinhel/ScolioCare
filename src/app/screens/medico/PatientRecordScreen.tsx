@@ -4,6 +4,7 @@ import { Button, StatusBadge, type BadgeStatus, Textarea, Toast, ExamCard, Skele
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Dot } from 'recharts';
 import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { getPaciente, getNotasDoPaciente, criarNotaPaciente, apagarNotaPaciente } from '../../../data/repository/pacientes';
 import { getEstudosDoPaciente, getHistoricoEstadoDoPaciente } from '../../../data/repository/estudos';
 import { supabase } from '../../../lib/supabase';
@@ -62,15 +63,15 @@ function formatarDataHoraPT(isoDateTime: string): string {
   });
 }
 
-function estadoParaTexto(estado: string): string {
+function estadoParaTexto(estado: string, t: (key: string) => string): string {
   const mapa: Record<string, string> = {
-    UPLOADED: 'Carregado',
-    PROCESSING: 'Em processamento',
-    PENDING_VALIDATION: 'Pendente de validação',
-    VALIDATED: 'Validado',
-    DIAGNOSED: 'Diagnosticado',
-    SENT: 'Enviado',
-    ARCHIVED: 'Arquivado',
+    UPLOADED: t('patientRecord.stateUploaded'),
+    PROCESSING: t('patientRecord.stateProcessing'),
+    PENDING_VALIDATION: t('patientRecord.statePending'),
+    VALIDATED: t('patientRecord.stateValidated'),
+    DIAGNOSED: t('patientRecord.stateDiagnosed'),
+    SENT: t('patientRecord.stateSent'),
+    ARCHIVED: t('patientRecord.stateArchived'),
   };
   return mapa[estado] ?? estado;
 }
@@ -88,6 +89,7 @@ export default function PatientRecordScreen() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { utilizador } = useAuth();
+  const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = React.useState<TabKey>('overview');
   const [showToast, setShowToast] = React.useState(false);
@@ -299,7 +301,7 @@ export default function PatientRecordScreen() {
       janela.document.write(html);
       janela.document.close();
     } else {
-      mostrarToast('O browser bloqueou a janela de exportação. Permite pop-ups para este site.');
+      mostrarToast(t('patientRecord.exportBlocked'));
     }
   };
 
@@ -310,9 +312,9 @@ export default function PatientRecordScreen() {
       const nota = await criarNotaPaciente(id, newNote, utilizador.id, utilizador.nomeCompleto);
       setNotas((prev) => [nota, ...prev]);
       setNewNote('');
-      mostrarToast('Nota guardada com sucesso.');
+      mostrarToast(t('patientRecord.noteSaved'));
     } catch {
-      mostrarToast('Erro ao guardar nota. Tente novamente.');
+      mostrarToast(t('patientRecord.noteError'));
     } finally {
       setAGuardarNota(false);
     }
@@ -324,20 +326,20 @@ export default function PatientRecordScreen() {
       await apagarNotaPaciente(notaId);
       setNotas((prev) => prev.filter((n) => n.id !== notaId));
     } catch {
-      mostrarToast('Erro ao apagar nota.');
+      mostrarToast(t('patientRecord.noteDeleteError'));
     } finally {
       setAApagarNota(null);
     }
   };
 
   const tabs = [
-    { key: 'overview' as TabKey, label: 'Visão geral' },
-    { key: 'exams' as TabKey, label: 'Exames' },
-    { key: 'reports' as TabKey, label: 'Relatórios' },
-    { key: 'evolution' as TabKey, label: 'Histórico de evolução' },
-    { key: 'notes' as TabKey, label: 'Notas clínicas' },
-    { key: 'feedback' as TabKey, label: 'Feedback do paciente' },
-    { key: 'audit' as TabKey, label: 'Auditoria' },
+    { key: 'overview' as TabKey, label: t('patientRecord.tabOverview') },
+    { key: 'exams' as TabKey, label: t('patientRecord.tabExams') },
+    { key: 'reports' as TabKey, label: t('patientRecord.tabReports') },
+    { key: 'evolution' as TabKey, label: t('patientRecord.tabEvolution') },
+    { key: 'notes' as TabKey, label: t('patientRecord.tabNotes') },
+    { key: 'feedback' as TabKey, label: t('patientRecord.tabFeedback') },
+    { key: 'audit' as TabKey, label: t('patientRecord.tabAudit') },
   ];
 
   // Derived data
@@ -397,12 +399,12 @@ export default function PatientRecordScreen() {
             className="text-[var(--scolio-text-primary)] mb-2"
             style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--weight-semibold)' }}
           >
-            Paciente não encontrado
+            {t('patients.notFoundTitle')}
           </p>
           <p className="text-[var(--scolio-text-secondary)] mb-4" style={{ fontSize: 'var(--text-body)' }}>
-            O paciente solicitado não existe ou não tem acesso a este registo.
+            {t('patients.notFoundDesc')}
           </p>
-          <Button variant="secondary" onClick={() => navigate(-1)}>Voltar</Button>
+          <Button variant="secondary" onClick={() => navigate(-1)}>{t('common.back')}</Button>
         </div>
       </div>
     );
@@ -420,10 +422,10 @@ export default function PatientRecordScreen() {
             <ShieldAlert className="w-5 h-5 text-[var(--scolio-danger-coral)] flex-shrink-0" />
             <div>
               <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-semibold)' }}>
-                Acesso de emergência ativo
+                {t('patientRecord.emergencyBannerTitle')}
               </p>
               <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                Este paciente não está associado à sua lista. O acesso foi permitido via protocolo Glass-Break e está a ser auditado.
+                {t('patientRecord.emergencyBannerDesc')}
               </p>
             </div>
           </div>
@@ -445,7 +447,7 @@ export default function PatientRecordScreen() {
               <h1 className="text-[var(--scolio-text-primary)]">{paciente.nomeCompleto}</h1>
               <div className="flex items-center gap-6 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                 {paciente.numeroUtente && (
-                  <span className="font-medium">Nº Utente: {paciente.numeroUtente}</span>
+                  <span className="font-medium">{t('patientRecord.utente')} {paciente.numeroUtente}</span>
                 )}
                 {paciente.genero && <span>{paciente.genero}</span>}
                 <span>{calcularIdade(paciente.dataNascimento)}</span>
@@ -456,15 +458,15 @@ export default function PatientRecordScreen() {
           <div className="flex items-center gap-3">
             <Button variant="secondary" onClick={() => navigate(`/patients/${id}/edit`)}>
               <Edit className="w-4 h-4 mr-2" />
-              Editar dados
+              {t('patientRecord.editData')}
             </Button>
             <Button variant="primary" onClick={() => navigate('/tecnico/upload')}>
               <FileText className="w-4 h-4 mr-2" />
-              Novo exame
+              {t('patientRecord.newExam')}
             </Button>
             <Button variant="ghost" onClick={handleExport}>
               <Download className="w-4 h-4 mr-2" />
-              Exportar ficha
+              {t('patientRecord.exportRecord')}
             </Button>
           </div>
         </div>
@@ -500,27 +502,27 @@ export default function PatientRecordScreen() {
             <div className="grid grid-cols-5 gap-6">
               <div className="col-span-3 space-y-6">
                 <section>
-                  <h3 className="text-[var(--scolio-text-primary)] mb-4">Dados demográficos</h3>
+                  <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('patientRecord.demoData')}</h3>
                   <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-5 space-y-4">
-                    <DataRow icon={MapPin} label="Morada" value={paciente.morada || '—'} />
-                    <DataRow icon={Phone} label="Contacto" value={paciente.contacto || '—'} />
-                    <DataRow icon={Calendar} label="Data de nascimento" value={formatarDataPT(paciente.dataNascimento)} />
+                    <DataRow icon={MapPin} label={t('patientRecord.address')} value={paciente.morada || '—'} />
+                    <DataRow icon={Phone} label={t('patientRecord.contact')} value={paciente.contacto || '—'} />
+                    <DataRow icon={Calendar} label={t('patientRecord.dob')} value={formatarDataPT(paciente.dataNascimento)} />
                   </div>
                 </section>
 
                 <section>
-                  <h3 className="text-[var(--scolio-text-primary)] mb-4">Dados clínicos</h3>
+                  <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('patientRecord.clinicalData')}</h3>
                   <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-5 space-y-4">
-                    <DataRow icon={Stethoscope} label="Diagnóstico" value={diagnostico || '—'} />
-                    <DataRow icon={User} label="Médico responsável" value={nomeMedico} />
+                    <DataRow icon={Stethoscope} label={t('patientRecord.diagnosis')} value={diagnostico || '—'} />
+                    <DataRow icon={User} label={t('patientRecord.responsibleDoctor')} value={nomeMedico} />
                     {dataInicioTratamento && (
-                      <DataRow icon={Calendar} label="Primeiro exame" value={dataInicioTratamento} />
+                      <DataRow icon={Calendar} label={t('patientRecord.firstExam')} value={dataInicioTratamento} />
                     )}
                   </div>
                 </section>
 
                 <section>
-                  <h3 className="text-[var(--scolio-text-primary)] mb-4">Evolução do ângulo de Cobb ao longo do tempo</h3>
+                  <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('patientRecord.cobbEvolution')}</h3>
                   {cobbData.length > 0 ? (
                     <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] p-5">
                       <ResponsiveContainer width="100%" height={320}>
@@ -529,20 +531,20 @@ export default function PatientRecordScreen() {
                           <XAxis
                             dataKey="date"
                             tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
-                            label={{ value: 'Datas dos exames', position: 'insideBottom', offset: -5, fill: 'var(--scolio-text-secondary)' }}
+                            label={{ value: t('patientRecord.examDates'), position: 'insideBottom', offset: -5, fill: 'var(--scolio-text-secondary)' }}
                           />
                           <YAxis
                             tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
-                            label={{ value: 'Graus', angle: -90, position: 'insideLeft', fill: 'var(--scolio-text-secondary)' }}
+                            label={{ value: t('patientRecord.degrees'), angle: -90, position: 'insideLeft', fill: 'var(--scolio-text-secondary)' }}
                             domain={[0, 'auto']}
                           />
                           <Tooltip
                             contentStyle={{ backgroundColor: 'white', border: '1px solid var(--scolio-border-light)', borderRadius: 'var(--radius-component)', fontSize: '13px' }}
-                            formatter={(value: any) => [`${value}°`, 'Ângulo de Cobb']}
+                            formatter={(value: any) => [`${value}°`, t('patientRecord.cobbAngle')]}
                           />
                           <ReferenceLine y={10} stroke="var(--scolio-warning-amber)" strokeDasharray="5 5" strokeWidth={2}>
                             <text x="50%" y={10} dy={-10} textAnchor="middle" fill="var(--scolio-warning-amber)" fontSize={13} fontWeight={500}>
-                              Limiar de escoliose
+                                {t('patientRecord.scoliosisThreshold')}
                             </text>
                           </ReferenceLine>
                           <Line
@@ -559,7 +561,7 @@ export default function PatientRecordScreen() {
                   ) : (
                     <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-8 text-center">
                       <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        Sem exames com ângulo de Cobb registado.
+                        {t('patientRecord.noCobb')}
                       </p>
                     </div>
                   )}
@@ -568,13 +570,13 @@ export default function PatientRecordScreen() {
 
               <div className="col-span-2 space-y-6">
                 <section>
-                  <h3 className="text-[var(--scolio-text-primary)] mb-4">Último exame</h3>
+                  <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('patientRecord.lastExam')}</h3>
                   {ultimoExame ? (
                     <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-card)] p-5 space-y-4">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                            Data do exame
+                            {t('patientRecord.examDate')}
                           </span>
                           <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
                             {new Date(ultimoExame.dataEstudo).toLocaleDateString('pt-PT')}
@@ -584,7 +586,7 @@ export default function PatientRecordScreen() {
                           <>
                             <div className="flex items-center justify-between">
                               <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                                Ângulo de Cobb
+                                {t('patientRecord.cobbAngle')}
                               </span>
                               <span className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>
                                 {(ultimoExame.resultado.anguloCobbCorrigido ?? ultimoExame.resultado.anguloCobb).toFixed(1)}°
@@ -593,7 +595,7 @@ export default function PatientRecordScreen() {
                             {ultimoExame.resultado.nivelVertebras && (
                               <div className="flex items-center justify-between">
                                 <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                                  Nível vertebral
+                                  {t('patientRecord.apicalVertebra')}
                                 </span>
                                 <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
                                   {ultimoExame.resultado.nivelVertebras}
@@ -603,7 +605,7 @@ export default function PatientRecordScreen() {
                           </>
                         )}
                         <div className="flex items-center justify-between">
-                          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>Estado</span>
+                          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('patientRecord.status')}</span>
                           <StatusBadge status={estadoParaBadge(ultimoExame.estado)} />
                         </div>
                       </div>
@@ -612,30 +614,30 @@ export default function PatientRecordScreen() {
                         className="w-full text-[var(--scolio-primary-blue)] hover:underline text-center"
                         style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
                       >
-                        Ver exame →
+                        {t('patientRecord.viewExam')}
                       </button>
                     </div>
                   ) : (
                     <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5 text-center">
                       <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        Sem exames registados.
+                        {t('patientRecord.noExams')}
                       </p>
                     </div>
                   )}
                 </section>
 
                 <section>
-                  <h3 className="text-[var(--scolio-text-primary)] mb-4">Resumo de bem-estar</h3>
+                  <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('patientRecord.wellnessSummary')}</h3>
                   {ultimoWellness ? (
                     <div className="bg-[var(--scolio-success-surface)] border border-[var(--scolio-success-green)] rounded-[var(--radius-card)] p-5 space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>Último registo</span>
+                        <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('patientRecord.lastRecord')}</span>
                         <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
                           {new Date(ultimoWellness.dataRegisto).toLocaleDateString('pt-PT')}
                         </span>
                       </div>
                       <div className="space-y-2">
-                        <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Nível de dor</p>
+                        <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('patientRecord.painLevel')}</p>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-3 bg-white rounded-full overflow-hidden">
                             <div
@@ -657,7 +659,7 @@ export default function PatientRecordScreen() {
                   ) : (
                     <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5 text-center">
                       <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        Sem registos de bem-estar.
+                        {t('patientRecord.noWellness')}
                       </p>
                     </div>
                   )}
@@ -692,7 +694,7 @@ export default function PatientRecordScreen() {
             ) : (
               <div className="py-12 text-center">
                 <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Sem exames registados para este paciente.
+                  {t('patientRecord.noExamsForPatient')}
                 </p>
               </div>
             )}
@@ -707,7 +709,7 @@ export default function PatientRecordScreen() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-                      {['DATA DO EXAME', 'TIPO', 'ESTADO', 'MÉDICO', 'AÇÕES'].map((h) => (
+                      {[t('patientRecord.colReportDate'), t('patientRecord.colReportType'), t('patientRecord.colReportStatus'), t('patientRecord.colReportDoctor'), t('patientRecord.colReportActions')].map((h) => (
                         <th key={h} className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
                           {h}
                         </th>
@@ -721,16 +723,16 @@ export default function PatientRecordScreen() {
                           {new Date(exame.dataEstudo).toLocaleDateString('pt-PT')}
                         </td>
                         <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          Relatório clínico
+                          {t('patientRecord.reportType')}
                         </td>
                         <td className="p-4">
                           {exame.ficheiroPdf ? (
                             <span className="inline-flex items-center px-3 py-1 rounded-full bg-[var(--scolio-success-surface)] text-[var(--scolio-success-green)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                              PDF gerado
+                              {t('patientRecord.pdfGenerated')}
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-3 py-1 rounded-full bg-[var(--scolio-page-surface)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                              Por gerar
+                              {t('patientRecord.toGenerate')}
                             </span>
                           )}
                         </td>
@@ -744,7 +746,7 @@ export default function PatientRecordScreen() {
                             style={{ fontSize: 'var(--text-body)' }}
                           >
                             <FileText className="w-4 h-4" />
-                            Gerar relatório
+                            {t('patientRecord.generateReport')}
                           </button>
                           {exame.ficheiroPdf && (
                             <button
@@ -753,7 +755,7 @@ export default function PatientRecordScreen() {
                               style={{ fontSize: 'var(--text-body)' }}
                             >
                               <FileDown className="w-4 h-4" />
-                              Descarregar
+                              {t('patientRecord.downloadReport')}
                             </button>
                           )}
                         </td>
@@ -765,7 +767,7 @@ export default function PatientRecordScreen() {
             ) : (
               <div className="py-12 text-center">
                 <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Sem exames registados. Os relatórios são gerados por exame.
+                  {t('patientRecord.noExamsForReports')}
                 </p>
               </div>
             )}
@@ -779,7 +781,7 @@ export default function PatientRecordScreen() {
               {estudos.filter((e) => e.resultado !== null).length >= 2 && (
                 <Button variant="secondary" onClick={() => navigate(`/exam-comparison/${id}`)}>
                   <GitCompare className="w-4 h-4 mr-2" />
-                  Comparar exames
+                  {t('patientRecord.compareExams')}
                 </Button>
               )}
               <div className="flex gap-2 ml-auto">
@@ -794,13 +796,13 @@ export default function PatientRecordScreen() {
                   }`}
                   style={{ fontSize: 'var(--text-body)' }}
                 >
-                  {p === '3m' ? '3 meses' : p === '6m' ? '6 meses' : p === '1y' ? '1 ano' : 'Tudo'}
+                  {p === '3m' ? t('patientRecord.period3m') : p === '6m' ? t('patientRecord.period6m') : p === '1y' ? t('patientRecord.period1y') : t('patientRecord.periodAll')}
                 </button>
               ))}
               </div>
             </div>
             <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-card)] p-6">
-              <h3 className="text-[var(--scolio-text-primary)] mb-6">Evolução do ângulo de Cobb ao longo do tempo</h3>
+              <h3 className="text-[var(--scolio-text-primary)] mb-6">{t('patientRecord.cobbEvolution')}</h3>
               {cobbDataFiltrado.length > 0 ? (
                 <ResponsiveContainer width="100%" height={480}>
                   <LineChart data={cobbDataFiltrado}>
@@ -808,16 +810,16 @@ export default function PatientRecordScreen() {
                     <XAxis
                       dataKey="date"
                       tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
-                      label={{ value: 'Datas dos exames', position: 'insideBottom', offset: -5, fill: 'var(--scolio-text-secondary)' }}
+                      label={{ value: t('patientRecord.examDates'), position: 'insideBottom', offset: -5, fill: 'var(--scolio-text-secondary)' }}
                     />
                     <YAxis
                       tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }}
-                      label={{ value: 'Graus', angle: -90, position: 'insideLeft', fill: 'var(--scolio-text-secondary)' }}
+                      label={{ value: t('patientRecord.degrees'), angle: -90, position: 'insideLeft', fill: 'var(--scolio-text-secondary)' }}
                       domain={[0, 'auto']}
                     />
                     <Tooltip
                       contentStyle={{ backgroundColor: 'white', border: '1px solid var(--scolio-border-light)', borderRadius: 'var(--radius-component)', fontSize: '13px' }}
-                      formatter={(value: any) => [`${value}°`, 'Ângulo de Cobb']}
+                      formatter={(value: any) => [`${value}°`, t('patientRecord.cobbAngle')]}
                     />
                     <ReferenceLine y={10} stroke="var(--scolio-warning-amber)" strokeDasharray="5 5" strokeWidth={2}>
                       <text x="50%" y={10} dy={-10} textAnchor="middle" fill="var(--scolio-warning-amber)" fontSize={13} fontWeight={500}>
@@ -837,7 +839,7 @@ export default function PatientRecordScreen() {
               ) : (
                 <div className="py-12 text-center">
                   <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                    Sem dados de ângulo de Cobb no período selecionado.
+                    {t('patientRecord.noCobData')}
                   </p>
                 </div>
               )}
@@ -850,12 +852,12 @@ export default function PatientRecordScreen() {
           <div className="p-6 space-y-6">
             {/* Adicionar nova nota */}
             <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-6">
-              <h3 className="text-[var(--scolio-text-primary)] mb-4">Adicionar nova nota</h3>
+              <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('patientRecord.addNote')}</h3>
               <Textarea
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 rows={4}
-                placeholder="Escreva a sua nota clínica sobre este paciente..."
+                placeholder={t('patientRecord.notePlaceholder')}
                 disabled={aGuardarNota}
               />
               <div className="mt-3">
@@ -867,16 +869,16 @@ export default function PatientRecordScreen() {
                   {aGuardarNota ? (
                     <span className="flex items-center gap-2">
                       <Plus className="w-4 h-4 animate-spin" />
-                      A guardar...
+                      {t('patientRecord.savingNote')}
                     </span>
-                  ) : 'Guardar nota'}
+                  ) : t('common.saveNote')}
                 </Button>
               </div>
             </div>
 
             {/* Notas gerais do paciente */}
             <div className="space-y-3">
-              <h3 className="text-[var(--scolio-text-primary)]">Notas gerais do paciente</h3>
+              <h3 className="text-[var(--scolio-text-primary)]">{t('patientRecord.patientNotes')}</h3>
               {notas.length > 0 ? (
                 notas.map((nota) => (
                   <div key={nota.id} className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
@@ -911,7 +913,7 @@ export default function PatientRecordScreen() {
               ) : (
                 <div className="py-8 text-center bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)]">
                   <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                    Sem notas gerais registadas. Use o formulário acima para adicionar a primeira.
+                    {t('patientRecord.noNotes')}
                   </p>
                 </div>
               )}
@@ -923,22 +925,22 @@ export default function PatientRecordScreen() {
               if (notasExames.length === 0) return null;
               return (
                 <div className="space-y-3">
-                  <h3 className="text-[var(--scolio-text-primary)]">Notas associadas a exames</h3>
+                  <h3 className="text-[var(--scolio-text-primary)]">{t('patientRecord.examNotes')}</h3>
                   <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                    Notas escritas no contexto de um exame específico. Para editar, abre o exame correspondente.
+                    {t('patientRecord.examNotesDesc')}
                   </p>
                   {notasExames.map((exame) => (
                     <div key={exame.id} className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                          Exame de {new Date(exame.dataEstudo).toLocaleDateString('pt-PT')}
+                          {t('patientRecord.examOf', { date: new Date(exame.dataEstudo).toLocaleDateString('pt-PT') })}
                         </p>
                         <button
                           onClick={() => navigate(`/exam-viewer/${exame.id}`)}
                           className="text-[var(--scolio-primary-blue)] hover:underline"
                           style={{ fontSize: 'var(--text-caption)' }}
                         >
-                          Ver exame →
+                          {t('patientRecord.viewExam')}
                         </button>
                       </div>
                       <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
@@ -955,7 +957,7 @@ export default function PatientRecordScreen() {
         {/* ── Tab: Feedback do Paciente ── */}
         {activeTab === 'feedback' && (
           <div className="p-6 space-y-4">
-            <h3 className="text-[var(--scolio-text-primary)]">Registos de bem-estar do paciente</h3>
+            <h3 className="text-[var(--scolio-text-primary)]">{t('patientRecord.wellnessRecords')}</h3>
             {wellnessLog.length > 0 ? (
               wellnessLog.map((fb) => (
                 <div key={fb.id} className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
@@ -966,7 +968,7 @@ export default function PatientRecordScreen() {
                   </div>
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <p className="text-[var(--scolio-text-secondary)] mb-2" style={{ fontSize: 'var(--text-caption)' }}>Nível de dor</p>
+                      <p className="text-[var(--scolio-text-secondary)] mb-2" style={{ fontSize: 'var(--text-caption)' }}>{t('patientRecord.painLevel')}</p>
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-2 bg-[var(--scolio-page-surface)] rounded-full overflow-hidden">
                           <div
@@ -981,9 +983,9 @@ export default function PatientRecordScreen() {
                     </div>
                     {fb.desconforto && (
                       <div>
-                        <p className="text-[var(--scolio-text-secondary)] mb-2" style={{ fontSize: 'var(--text-caption)' }}>Desconforto</p>
+                        <p className="text-[var(--scolio-text-secondary)] mb-2" style={{ fontSize: 'var(--text-caption)' }}>{t('patientRecord.discomfort')}</p>
                         <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-                          {fb.desconforto === 'none' ? 'Nenhum' : fb.desconforto === 'mild' ? 'Ligeiro' : fb.desconforto === 'moderate' ? 'Moderado' : 'Intenso'}
+                          {fb.desconforto === 'none' ? t('patientRecord.discomfortNone') : fb.desconforto === 'mild' ? t('patientRecord.discomfortMild') : fb.desconforto === 'moderate' ? t('patientRecord.discomfortModerate') : t('patientRecord.discomfortIntense')}
                         </p>
                       </div>
                     )}
@@ -998,7 +1000,7 @@ export default function PatientRecordScreen() {
             ) : (
               <div className="py-12 text-center">
                 <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Sem registos de bem-estar do paciente.
+                  {t('patientRecord.noWellnessRecords')}
                 </p>
               </div>
             )}
@@ -1013,7 +1015,7 @@ export default function PatientRecordScreen() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-                      {['DATA/HORA', 'UTILIZADOR', 'ESTADO ANTERIOR', 'ESTADO NOVO', 'OBSERVAÇÃO'].map((h) => (
+                      {[t('patientRecord.auditColDateTime'), t('patientRecord.auditColUser'), t('patientRecord.auditColPrevState'), t('patientRecord.auditColNewState'), t('patientRecord.auditColObservation')].map((h) => (
                         <th key={h} className="text-left p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
                           {h}
                         </th>
@@ -1030,10 +1032,10 @@ export default function PatientRecordScreen() {
                           {entrada.utilizadorNome}
                         </td>
                         <td className="p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          {entrada.estadoAnterior ? estadoParaTexto(entrada.estadoAnterior) : '—'}
+                          {entrada.estadoAnterior ? estadoParaTexto(entrada.estadoAnterior, t) : '—'}
                         </td>
                         <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          {estadoParaTexto(entrada.estadoNovo)}
+                          {estadoParaTexto(entrada.estadoNovo, t)}
                         </td>
                         <td className="p-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                           {entrada.observacao || '—'}
@@ -1046,7 +1048,7 @@ export default function PatientRecordScreen() {
             ) : (
               <div className="py-12 text-center">
                 <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Sem registos de auditoria para este paciente.
+                  {t('patientRecord.noAuditRecords')}
                 </p>
               </div>
             )}

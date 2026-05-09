@@ -5,6 +5,7 @@ import { Button, Input } from '../../components/scolio';
 import { useAuth, rotaInicialPara } from '../../auth/AuthContext';
 import { AuthenticationError } from '../../../data/repository/auth';
 import type { Perfil } from '../../../data/types';
+import { useTranslation } from 'react-i18next';
 
 const prefixosPorPerfil: Record<Perfil, (p: string) => boolean> = {
   MEDICO:   (p) => p !== '/login' && p !== '/403' && !p.startsWith('/tecnico') && !p.startsWith('/admin-panel'),
@@ -22,6 +23,7 @@ export default function LoginScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, utilizador, estaAutenticado, aCarregar } = useAuth();
+  const { t } = useTranslation();
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -50,7 +52,7 @@ export default function LoginScreen() {
       if (err instanceof AuthenticationError) {
         setErro(err.message);
       } else {
-        setErro('Ocorreu um erro inesperado. Tente novamente.');
+        setErro(t('auth.unexpectedError'));
       }
     } finally {
       setASubmeter(false);
@@ -69,15 +71,15 @@ export default function LoginScreen() {
             </div>
             <h1 className="text-[var(--scolio-text-primary)] mb-2">ScolioCare</h1>
             <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-              Plataforma clínica para gestão de escoliose
+              {t('auth.subtitle')}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
-              label="Email"
+              label={t('auth.emailLabel')}
               type="email"
-              placeholder="seu.email@scolio.pt"
+              placeholder={t('auth.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -89,12 +91,12 @@ export default function LoginScreen() {
                 className="text-[var(--scolio-text-primary)]"
                 style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
               >
-                Password
+                {t('auth.passwordLabel')}
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Insira a sua password"
+                  placeholder={t('auth.passwordPlaceholder')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="px-3 py-2 pr-10 w-full border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)] focus:border-transparent"
@@ -105,7 +107,7 @@ export default function LoginScreen() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--scolio-neutral-gray)] hover:text-[var(--scolio-text-primary)]"
-                  aria-label={showPassword ? 'Ocultar password' : 'Mostrar password'}
+                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -131,7 +133,7 @@ export default function LoginScreen() {
                   className="w-4 h-4 rounded border-[var(--scolio-border-light)] text-[var(--scolio-primary-blue)] focus:ring-[var(--scolio-primary-blue)]"
                 />
                 <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Lembrar-me
+                  {t('auth.rememberMe')}
                 </span>
               </label>
               <a
@@ -139,12 +141,12 @@ export default function LoginScreen() {
                 className="text-[var(--scolio-primary-blue)] hover:underline"
                 style={{ fontSize: 'var(--text-body)' }}
               >
-                Esqueci a password
+                {t('auth.forgotPassword')}
               </a>
             </div>
 
             <Button type="submit" variant="primary" className="w-full" disabled={aSubmeter}>
-              {aSubmeter ? 'A entrar...' : 'Entrar'}
+              {aSubmeter ? t('auth.loggingIn') : t('auth.loginButton')}
             </Button>
           </form>
         </div>
@@ -152,7 +154,7 @@ export default function LoginScreen() {
         {/* Cards de demonstração */}
         <div className="mt-6">
           <p className="text-center text-[var(--scolio-text-secondary)] mb-3" style={{ fontSize: 'var(--text-caption)' }}>
-            Credenciais de demonstração — clique para preencher
+            {t('auth.demoCredentials')}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {credenciaisDemo.map((cred) => (
@@ -166,7 +168,7 @@ export default function LoginScreen() {
                   className="block font-medium mb-1"
                   style={{ fontSize: 'var(--text-caption)', color: cred.cor }}
                 >
-                  {cred.label}
+                  {t(cred.labelKey)}
                 </span>
                 <span className="block text-[var(--scolio-text-secondary)] truncate" style={{ fontSize: 'var(--text-caption)' }}>
                   {cred.email}
@@ -181,7 +183,7 @@ export default function LoginScreen() {
 
         <div className="mt-4 text-center">
           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-            © 2026 ScolioScan. Todos os direitos reservados.
+            {t('common.copyright')}
           </p>
         </div>
       </div>
@@ -190,7 +192,7 @@ export default function LoginScreen() {
 }
 
 const credenciaisDemo = [
-  { perfil: 'MEDICO',  label: 'Médico',   email: 'ana.martins@scolio.pt',    password: 'medico123',  cor: 'var(--scolio-primary-blue)' },
-  { perfil: 'TECNICO', label: 'Técnico',  email: 'ricardo.sousa@scolio.pt',  password: 'tecnico123', cor: 'var(--scolio-success-green)' },
-  { perfil: 'ADMIN',   label: 'Admin',    email: 'paulo.oliveira@scolio.pt', password: 'admin123',   cor: 'var(--scolio-warning-amber)' },
+  { perfil: 'MEDICO',  labelKey: 'auth.demoDoctor',      email: 'ana.martins@scolio.pt',    password: 'medico123',  cor: 'var(--scolio-primary-blue)' },
+  { perfil: 'TECNICO', labelKey: 'auth.demoTechnician',  email: 'ricardo.sousa@scolio.pt',  password: 'tecnico123', cor: 'var(--scolio-success-green)' },
+  { perfil: 'ADMIN',   labelKey: 'auth.demoAdmin',       email: 'paulo.oliveira@scolio.pt', password: 'admin123',   cor: 'var(--scolio-warning-amber)' },
 ];

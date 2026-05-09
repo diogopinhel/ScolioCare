@@ -4,17 +4,18 @@ import { Button, SearchBar, StatusBadge, TableSkeleton } from '../../components/
 import type { BadgeStatus } from '../../components/scolio';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { getPacientesListagem, pesquisarPacientesGlobal } from '../../../data/repository/pacientes';
 import type { PacienteListagem, EstadoEstudo } from '../../../data/types';
 import type { PacienteResultadoGlobal } from '../../../data/repository/pacientes';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function exibirGenero(genero: string | null): string {
+function exibirGenero(genero: string | null, t: (key: string) => string): string {
   if (!genero) return '—';
   const g = genero.toLowerCase();
-  if (g.startsWith('f')) return 'Feminino';
-  if (g.startsWith('m')) return 'Masculino';
+  if (g.startsWith('f')) return t('patients.female');
+  if (g.startsWith('m')) return t('patients.male');
   return genero;
 }
 
@@ -58,6 +59,7 @@ function calcularPaginasVisiveis(pagAtual: number, totalPags: number): (number |
 export default function PatientListScreen() {
   const { utilizador } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [aCarregar, setACarregar] = useState(true);
   const [todosPacientes, setTodosPacientes] = useState<PacienteListagem[]>([]);
@@ -199,7 +201,7 @@ export default function PatientListScreen() {
     <div className="p-8 space-y-6 overflow-auto h-full">
       {/* Cabeçalho */}
       <div className="flex items-center justify-between">
-        <h1 className="text-[var(--scolio-text-primary)]">Pacientes</h1>
+        <h1 className="text-[var(--scolio-text-primary)]">{t('patients.title')}</h1>
       </div>
 
       {/* Pesquisa e filtros */}
@@ -207,7 +209,7 @@ export default function PatientListScreen() {
         <div className="flex gap-4">
           <div className="flex-1">
             <SearchBar
-              placeholder="Pesquisar por nome ou número de utente..."
+              placeholder={t('patients.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -220,9 +222,9 @@ export default function PatientListScreen() {
               onChange={(e) => setSelectedGender(e.target.value)}
               className="w-full px-3 py-2 pr-10 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)] focus:border-transparent appearance-none"
             >
-              <option value="all">Todos os géneros</option>
-              <option value="f">Feminino</option>
-              <option value="m">Masculino</option>
+              <option value="all">{t('patients.allGenders')}</option>
+              <option value="f">{t('patients.female')}</option>
+              <option value="m">{t('patients.male')}</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)] pointer-events-none" />
           </div>
@@ -234,11 +236,11 @@ export default function PatientListScreen() {
               onChange={(e) => setSelectedAgeRange(e.target.value)}
               className="w-full px-3 py-2 pr-10 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)] focus:border-transparent appearance-none"
             >
-              <option value="all">Todas as idades</option>
-              <option value="0-18">0–18 anos</option>
-              <option value="19-40">19–40 anos</option>
-              <option value="41-60">41–60 anos</option>
-              <option value="60+">60+ anos</option>
+              <option value="all">{t('patients.allAges')}</option>
+              <option value="0-18">0–18</option>
+              <option value="19-40">19–40</option>
+              <option value="41-60">41–60</option>
+              <option value="60+">60+</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)] pointer-events-none" />
           </div>
@@ -250,9 +252,9 @@ export default function PatientListScreen() {
               onChange={(e) => setSortBy(e.target.value)}
               className="w-full px-3 py-2 pr-10 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)] focus:border-transparent appearance-none"
             >
-              <option value="name">Ordenar por nome</option>
-              <option value="date">Ordenar por último exame</option>
-              <option value="exams">Ordenar por nº de exames</option>
+              <option value="name">{t('patients.sortByName')}</option>
+              <option value="date">{t('patients.sortByLastExam')}</option>
+              <option value="exams">{t('patients.sortByExamCount')}</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)] pointer-events-none" />
           </div>
@@ -265,7 +267,7 @@ export default function PatientListScreen() {
           <table className="w-full">
             <thead>
               <tr className="bg-[var(--scolio-page-surface)] border-b border-[var(--scolio-border-light)]">
-                {['PACIENTE', 'NÚMERO DE UTENTE', 'DATA DE NASCIMENTO', 'GÉNERO', 'MÉDICO', 'EXAMES', 'ÚLTIMO EXAME', 'ESTADO', 'AÇÕES'].map((col) => (
+                {[t('patients.colPatient'), t('patients.colUtente'), t('patients.colDob'), t('patients.colGender'), t('patients.colDoctor'), t('patients.colExams'), t('patients.colLastExam'), t('patients.colStatus'), t('patients.colActions')].map((col) => (
                   <th
                     key={col}
                     className="text-left px-6 py-3 text-[var(--scolio-text-secondary)]"
@@ -291,8 +293,8 @@ export default function PatientListScreen() {
                     style={{ fontSize: 'var(--text-body)' }}
                   >
                     {searchQuery || selectedGender !== 'all'
-                      ? 'Nenhum paciente corresponde aos filtros aplicados.'
-                      : 'Sem pacientes associados.'}
+                      ? t('patients.noMatchFilters')
+                      : t('patients.noPatients')}
                   </td>
                 </tr>
               ) : (
@@ -322,7 +324,7 @@ export default function PatientListScreen() {
                       {formatarData(patient.dataNascimento)}
                     </td>
                     <td className="px-6 py-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      {exibirGenero(patient.genero)}
+                      {exibirGenero(patient.genero, t)}
                     </td>
                     <td className="px-6 py-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                       {nomeMedico}
@@ -340,21 +342,21 @@ export default function PatientListScreen() {
                       <div className="flex items-center gap-2">
                         <button
                           className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-primary-blue)] hover:bg-[var(--scolio-light-blue-surface)] rounded transition-colors"
-                          title="Ver paciente"
+                          title={t('patients.viewPatient')}
                           onClick={() => navigate(`/patients/${patient.id}`)}
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-primary-blue)] hover:bg-[var(--scolio-light-blue-surface)] rounded transition-colors"
-                          title="Editar paciente"
+                          title={t('patients.editPatient')}
                           onClick={() => navigate(`/patients/${patient.id}/edit`)}
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)] rounded transition-colors"
-                          title="Arquivar paciente"
+                          title={t('patients.archivePatient')}
                           onClick={() => handleArchiveClick(patient.id, patient.nomeCompleto)}
                         >
                           <Archive className="w-4 h-4" />
@@ -373,13 +375,15 @@ export default function PatientListScreen() {
           <div className="flex items-center gap-4">
             <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
               {aCarregar
-                ? 'A carregar...'
+                ? t('common.loading')
                 : totalFiltrado === 0
-                ? 'Sem resultados'
-                : `Mostrando ${from + 1}–${Math.min(from + perPage, totalFiltrado)} de ${totalFiltrado} paciente${totalFiltrado !== 1 ? 's' : ''}`}
+                ? t('common.noResults')
+                : totalFiltrado === 1
+                  ? t('patients.showing', { from: from + 1, to: Math.min(from + perPage, totalFiltrado), total: totalFiltrado })
+                  : t('patients.showingPlural', { from: from + 1, to: Math.min(from + perPage, totalFiltrado), total: totalFiltrado })}
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>Por página:</span>
+              <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('common.perPage')}</span>
               <select
                 value={perPage}
                 onChange={(e) => setPerPage(Number(e.target.value))}
@@ -447,10 +451,10 @@ export default function PatientListScreen() {
             </div>
             <div className="text-left">
               <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-semibold)' }}>
-                Acesso de emergência (Glass-Break)
+                {t('patients.emergencyAccess')}
               </p>
               <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                Aceder ao registo de um paciente não associado à sua lista. Todos os acessos são auditados.
+                {t('patients.emergencyDesc')}
               </p>
             </div>
           </div>
@@ -464,10 +468,10 @@ export default function PatientListScreen() {
               <ShieldAlert className="w-5 h-5 text-[var(--scolio-warning-amber)] flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                  Protocolo de emergência — utilize apenas em situações clínicas urgentes
+                  {t('patients.emergencyProtocol')}
                 </p>
                 <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
-                  O acesso a dados de pacientes não associados ativa o protocolo Glass-Break. O evento fica registado de forma imutável no log de auditoria e o médico responsável pelo paciente é notificado automaticamente.
+                  {t('patients.emergencyWarning')}
                 </p>
               </div>
             </div>
@@ -475,7 +479,7 @@ export default function PatientListScreen() {
             {/* Pesquisa */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Pesquisar paciente
+                {t('patients.searchPatient')}
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)]" />
@@ -483,7 +487,7 @@ export default function PatientListScreen() {
                   type="search"
                   value={pesquisaEmergencia}
                   onChange={(e) => setPesquisaEmergencia(e.target.value)}
-                  placeholder="Nome ou número de utente (mínimo 2 caracteres)..."
+                  placeholder={t('patients.searchMinChars')}
                   className="w-full pl-10 pr-4 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-danger-coral)]"
                 />
                 {aCarregarEmergencia && (
@@ -497,7 +501,7 @@ export default function PatientListScreen() {
               <div className="space-y-2">
                 {resultadosEmergencia.length === 0 ? (
                   <p className="text-center text-[var(--scolio-text-secondary)] py-4" style={{ fontSize: 'var(--text-body)' }}>
-                    Nenhum paciente encontrado.
+                    {t('patients.noPatientFound')}
                   </p>
                 ) : (
                   resultadosEmergencia.map((p) => {
@@ -543,7 +547,7 @@ export default function PatientListScreen() {
                             <>
                               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--scolio-success-surface)] text-[var(--scolio-success-green)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
                                 <UserCheck className="w-3.5 h-3.5" />
-                                Associado
+                                {t('patients.associated')}
                               </span>
                               <button
                                 onClick={() => navigate(`/patients/${p.id}`)}
@@ -551,14 +555,14 @@ export default function PatientListScreen() {
                                 style={{ fontSize: 'var(--text-caption)' }}
                               >
                                 <Eye className="w-3.5 h-3.5" />
-                                Ver ficha
+                                {t('patients.viewRecord')}
                               </button>
                             </>
                           ) : (
                             <>
                               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--scolio-danger-surface)] text-[var(--scolio-danger-coral)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
                                 <Lock className="w-3.5 h-3.5" />
-                                Não associado
+                                {t('patients.notAssociated')}
                               </span>
                               <button
                                 onClick={() => navigate(`/glass-break/${p.id}`)}
@@ -566,7 +570,7 @@ export default function PatientListScreen() {
                                 style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}
                               >
                                 <ShieldAlert className="w-3.5 h-3.5" />
-                                Acesso de emergência
+                                {t('patients.emergencyAccessButton')}
                               </button>
                             </>
                           )}
@@ -586,17 +590,16 @@ export default function PatientListScreen() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-[var(--radius-modal)] shadow-lg w-[480px] max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-[var(--scolio-border-light)]">
-              <h2 className="text-[var(--scolio-text-primary)]">Arquivar paciente</h2>
+              <h2 className="text-[var(--scolio-text-primary)]">{t('patients.archiveTitle')}</h2>
             </div>
             <div className="p-6 space-y-3">
               <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
                 {patientToArchive.nome}
               </p>
               <div className="p-4 bg-[var(--scolio-warning-surface)] border border-[var(--scolio-warning-amber)] rounded-[var(--radius-component)]">
-                <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  A remoção de associações médico-paciente requer permissão de <strong>administrador</strong>.
-                  Contacte o administrador do sistema para encerrar esta associação ou desativar a conta.
-                </p>
+                <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}
+                  dangerouslySetInnerHTML={{ __html: t('patients.archivePermission') }}
+                />
               </div>
             </div>
             <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
@@ -604,7 +607,7 @@ export default function PatientListScreen() {
                 variant="secondary"
                 onClick={() => { setShowArchiveModal(false); setPatientToArchive(null); }}
               >
-                Fechar
+                {t('common.close')}
               </Button>
             </div>
           </div>

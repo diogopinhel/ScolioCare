@@ -7,14 +7,9 @@ import { Button, Input, Textarea } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { supabase } from '../../../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
-const EMERGENCY_REASONS = [
-  { id: 'r1', label: 'Emergência clínica urgente — paciente em risco imediato' },
-  { id: 'r2', label: 'Cobertura de turno — médico titular indisponível' },
-  { id: 'r3', label: 'Solicitação do paciente com consentimento verbal' },
-  { id: 'r4', label: 'Continuidade de cuidados — transferência hospitalar' },
-  { id: 'r5', label: 'Outro motivo clínico justificado' },
-];
+const EMERGENCY_REASON_IDS = ['r1', 'r2', 'r3', 'r4', 'r5'] as const;
 
 type Step = 'warning' | 'justify' | 'confirm' | 'access';
 
@@ -29,6 +24,12 @@ export default function GlassBreakScreen() {
   const navigate = useNavigate();
   const { pacienteId } = useParams<{ pacienteId: string }>();
   const { utilizador } = useAuth();
+  const { t } = useTranslation();
+
+  const EMERGENCY_REASONS = EMERGENCY_REASON_IDS.map((id) => ({
+    id,
+    label: t(`glassBreak.reasons.${id}`),
+  }));
 
   const [step, setStep] = React.useState<Step>('warning');
   const [selectedReason, setSelectedReason] = React.useState('');
@@ -115,7 +116,7 @@ export default function GlassBreakScreen() {
       setStep('access');
     } catch (err) {
       console.error('Erro ao registar glass-break:', err);
-      setErroConfirmacao('Não foi possível registar o acesso de emergência. Tente novamente.');
+      setErroConfirmacao(t('glassBreak.registrationError'));
     } finally {
       setAConfirmar(false);
     }
@@ -128,7 +129,7 @@ export default function GlassBreakScreen() {
       <div className="bg-[var(--scolio-danger-coral)] px-6 py-3 flex items-center gap-3">
         <ShieldAlert className="w-5 h-5 text-white flex-shrink-0" />
         <p className="text-white flex-1" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-          PROTOCOLO GLASS-BREAK ATIVO — Todos os acessos são registados e auditados em tempo real
+          {t('glassBreak.bannerText')}
         </p>
         {step === 'access' && (
           <div className="flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded">
@@ -151,9 +152,9 @@ export default function GlassBreakScreen() {
                   <AlertTriangle className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-[var(--scolio-text-primary)] mb-1">Acesso de emergência a dados clínicos</h2>
+                  <h2 className="text-[var(--scolio-text-primary)] mb-1">{t('glassBreak.step1Title')}</h2>
                   <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                    Está a tentar aceder ao registo clínico de um paciente que não está atribuído à sua lista de utentes.
+                    {t('glassBreak.step1Desc')}
                   </p>
                 </div>
               </div>
@@ -161,42 +162,37 @@ export default function GlassBreakScreen() {
                 <div className="flex items-center gap-3 p-4 bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)]">
                   <User className="w-5 h-5 text-[var(--scolio-neutral-gray)]" />
                   <div>
-                    <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Paciente solicitado</p>
+                    <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('glassBreak.requestedPatient')}</p>
                     <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
                       ●●●●● ●●●●●● · {pacienteId ? `ID: ${pacienteId.slice(0, 8)}…` : 'ID desconhecido'}
                     </p>
                   </div>
                 </div>
                 <div className="space-y-3">
-                  {[
-                    'O seu acesso ficará registado com data, hora, IP e justificação.',
-                    'O responsável clínico do paciente será notificado automaticamente.',
-                    'O acesso expira ao fim de 15 minutos, podendo ser renovado.',
-                    'Este evento ficará visível no log de auditoria do paciente e no painel de administração.',
-                  ].map((t) => (
-                    <div key={t} className="flex items-start gap-2">
+                  {(t('glassBreak.warningPoints', { returnObjects: true }) as string[]).map((point: string) => (
+                    <div key={point} className="flex items-start gap-2">
                       <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-2" style={{ background: 'var(--scolio-text-secondary)' }} />
-                      <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t}</p>
+                      <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{point}</p>
                     </div>
                   ))}
                   <div className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-2" style={{ background: 'var(--scolio-danger-coral)' }} />
                     <p className="text-[var(--scolio-danger-coral)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-                      Uso indevido deste protocolo está sujeito a processo disciplinar e legal.
+                      {t('glassBreak.legalWarning')}
                     </p>
                   </div>
                 </div>
               </div>
               <div className="px-6 pb-6 flex gap-3">
                 <Button variant="secondary" className="flex-1" onClick={() => navigate(-1)}>
-                  Cancelar — voltar atrás
+                  {t('glassBreak.cancelBack')}
                 </Button>
                 <Button
                   variant="primary"
                   className="flex-1 bg-[var(--scolio-danger-coral)] hover:bg-[#C24D25]"
                   onClick={() => setStep('justify')}
                 >
-                  Compreendo — continuar
+                  {t('glassBreak.understandContinue')}
                   <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
@@ -207,15 +203,15 @@ export default function GlassBreakScreen() {
           {step === 'justify' && (
             <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] overflow-hidden">
               <div className="p-6 border-b border-[var(--scolio-border-light)]">
-                <h2 className="text-[var(--scolio-text-primary)] mb-1">Justificação clínica obrigatória</h2>
+                <h2 className="text-[var(--scolio-text-primary)] mb-1">{t('glassBreak.step2Title')}</h2>
                 <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Selecione o motivo e descreva a situação clínica que justifica este acesso de emergência.
+                  {t('glassBreak.step2Desc')}
                 </p>
               </div>
               <div className="p-6 space-y-6">
                 {/* Motivo */}
                 <div>
-                  <label className="block text-[var(--scolio-text-primary)] mb-3">Motivo do acesso de emergência *</label>
+                  <label className="block text-[var(--scolio-text-primary)] mb-3">{t('glassBreak.reasonLabel')}</label>
                   <div className="space-y-2">
                     {EMERGENCY_REASONS.map((reason) => (
                       <button
@@ -241,15 +237,15 @@ export default function GlassBreakScreen() {
                 </div>
                 {/* Justificação livre */}
                 <div>
-                  <label className="block text-[var(--scolio-text-primary)] mb-2">Descrição detalhada *</label>
+                  <label className="block text-[var(--scolio-text-primary)] mb-2">{t('glassBreak.descLabel')}</label>
                   <Textarea
                     value={justification}
                     onChange={(e) => setJustification(e.target.value)}
                     rows={4}
-                    placeholder="Descreva a situação clínica (mínimo 20 caracteres)..."
+                    placeholder={t('glassBreak.descPlaceholder')}
                   />
                   <p className={`mt-1 ${justification.length >= 20 ? 'text-[var(--scolio-success-green)]' : 'text-[var(--scolio-text-secondary)]'}`} style={{ fontSize: 'var(--text-caption)' }}>
-                    {justification.length} / 20 caracteres mínimos
+                    {t('glassBreak.minChars', { count: justification.length })}
                   </p>
                 </div>
                 {/* Declaração */}
@@ -263,18 +259,18 @@ export default function GlassBreakScreen() {
                     {acknowledged && <Check className="w-3 h-3 text-white" />}
                   </div>
                   <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                    Declaro que este acesso de emergência é clinicamente justificado, que compreendo as implicações legais e éticas, e que aceito a responsabilidade pela minha ação.
+                    {t('glassBreak.declaration')}
                   </p>
                 </button>
               </div>
               <div className="px-6 pb-6 flex gap-3">
-                <Button variant="secondary" className="flex-1" onClick={() => setStep('warning')}>Voltar</Button>
+                <Button variant="secondary" className="flex-1" onClick={() => setStep('warning')}>{t('common.back')}</Button>
                 <Button
                   variant="primary"
                   className={`flex-1 ${canProceed ? 'bg-[var(--scolio-danger-coral)] hover:bg-[#C24D25]' : 'opacity-50 cursor-not-allowed'}`}
                   onClick={() => canProceed && setStep('confirm')}
                 >
-                  Confirmar justificação
+                  {t('glassBreak.confirmJustification')}
                   <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
               </div>
@@ -285,22 +281,22 @@ export default function GlassBreakScreen() {
           {step === 'confirm' && (
             <div className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] overflow-hidden">
               <div className="p-6 border-b border-[var(--scolio-border-light)]">
-                <h2 className="text-[var(--scolio-text-primary)] mb-1">Confirmação final de acesso</h2>
+                <h2 className="text-[var(--scolio-text-primary)] mb-1">{t('glassBreak.step3Title')}</h2>
                 <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Reveja o registo de auditoria que será criado ao confirmar.
+                  {t('glassBreak.step3Desc')}
                 </p>
               </div>
               <div className="p-6 space-y-4">
                 <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-4 space-y-3 border border-[var(--scolio-border-light)]">
                   <p className="text-[var(--scolio-text-secondary)] font-medium uppercase" style={{ fontSize: 'var(--text-caption)', letterSpacing: '0.05em' }}>
-                    Registo de auditoria
+                    {t('glassBreak.auditRecord')}
                   </p>
                   {[
-                    { label: 'Médico', value: utilizador?.nomeCompleto ?? '—' },
-                    { label: 'Data e hora', value: new Date().toLocaleString('pt-PT') },
-                    { label: 'Motivo', value: EMERGENCY_REASONS.find((r) => r.id === selectedReason)?.label ?? '' },
-                    { label: 'Justificação', value: justification },
-                    { label: 'Duração máxima', value: '15 minutos' },
+                    { label: t('glassBreak.auditDoctor'), value: utilizador?.nomeCompleto ?? '—' },
+                    { label: t('glassBreak.auditDateTime'), value: new Date().toLocaleString('pt-PT') },
+                    { label: t('glassBreak.auditReason'), value: EMERGENCY_REASONS.find((r) => r.id === selectedReason)?.label ?? '' },
+                    { label: t('glassBreak.auditJustification'), value: justification },
+                    { label: t('glassBreak.auditMaxDuration'), value: t('glassBreak.duration15min') },
                   ].map((row) => (
                     <div key={row.label} className="flex items-start gap-4">
                       <span className="text-[var(--scolio-text-secondary)] flex-shrink-0 w-28" style={{ fontSize: 'var(--text-caption)' }}>{row.label}</span>
@@ -311,7 +307,7 @@ export default function GlassBreakScreen() {
                 <div className="flex items-start gap-3 p-4 bg-[var(--scolio-warning-surface)] border border-[var(--scolio-warning-amber)] rounded-[var(--radius-component)]">
                   <AlertTriangle className="w-5 h-5 text-[var(--scolio-warning-amber)] flex-shrink-0 mt-0.5" />
                   <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                    Este registo não pode ser apagado. O médico responsável pelo paciente será notificado automaticamente.
+                    {t('glassBreak.auditWarning')}
                   </p>
                 </div>
                 {erroConfirmacao && (
@@ -322,7 +318,7 @@ export default function GlassBreakScreen() {
               </div>
               <div className="px-6 pb-6 flex gap-3">
                 <Button variant="secondary" className="flex-1" onClick={() => setStep('justify')} disabled={aConfirmar}>
-                  Voltar
+                  {t('common.back')}
                 </Button>
                 <Button
                   variant="primary"
@@ -331,7 +327,7 @@ export default function GlassBreakScreen() {
                   disabled={aConfirmar}
                 >
                   <Eye className="w-4 h-4 mr-2" />
-                  {aConfirmar ? 'A registar acesso...' : 'Confirmar acesso de emergência'}
+                  {aConfirmar ? t('glassBreak.confirmingAccess') : t('glassBreak.confirmAccess')}
                 </Button>
               </div>
             </div>
@@ -346,10 +342,10 @@ export default function GlassBreakScreen() {
                 </div>
                 <div className="flex-1">
                   <p className="text-[var(--scolio-text-primary)] font-semibold mb-0.5" style={{ fontSize: 'var(--text-body)' }}>
-                    Acesso de emergência ativo
+                    {t('glassBreak.accessGrantedTitle')}
                   </p>
                   <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                    Iniciado às {accessGrantedAt.toLocaleTimeString('pt-PT')} · Expira em{' '}
+                    {t('glassBreak.accessGrantedDesc', { time: accessGrantedAt.toLocaleTimeString('pt-PT') })}{' '}
                     <span className="font-semibold text-[var(--scolio-danger-coral)]">{formatTime(timeRemaining)}</span>
                   </p>
                 </div>
@@ -359,7 +355,7 @@ export default function GlassBreakScreen() {
                   onClick={() => navigate('/patients')}
                 >
                   <LogOut className="w-4 h-4 mr-2" />
-                  Terminar acesso
+                  {t('glassBreak.endAccess')}
                 </Button>
               </div>
 
@@ -368,7 +364,7 @@ export default function GlassBreakScreen() {
                 <div className="p-5 border-b border-[var(--scolio-border-light)] flex items-center justify-between">
                   <div>
                     <h2 className="text-[var(--scolio-text-primary)]">
-                      {paciente ? paciente.nomeCompleto : 'A carregar dados do paciente…'}
+                      {paciente ? paciente.nomeCompleto : t('glassBreak.loadingPatient')}
                     </h2>
                     {paciente && (
                       <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
@@ -379,7 +375,7 @@ export default function GlassBreakScreen() {
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--scolio-danger-surface)] border border-[var(--scolio-danger-coral)] rounded-[var(--radius-component)]">
                     <Lock className="w-4 h-4 text-[var(--scolio-danger-coral)]" />
                     <span className="text-[var(--scolio-danger-coral)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>
-                      Acesso de emergência
+                      {t('glassBreak.emergencyAccess')}
                     </span>
                   </div>
                 </div>
@@ -391,7 +387,7 @@ export default function GlassBreakScreen() {
                       onClick={() => navigate(`/patients/${pacienteId}`)}
                     >
                       <FileText className="w-4 h-4 mr-2" />
-                      Abrir ficha do paciente
+                      {t('glassBreak.openRecord')}
                     </Button>
                   </div>
                 )}
@@ -402,13 +398,13 @@ export default function GlassBreakScreen() {
                 <div className="flex items-center gap-2 mb-4">
                   <Shield className="w-4 h-4 text-[var(--scolio-primary-blue)]" />
                   <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-                    Registo de auditoria desta sessão
+                    {t('glassBreak.auditSession')}
                   </p>
                 </div>
                 <div className="space-y-2">
                   {[
-                    { time: accessGrantedAt, action: 'Acesso de emergência registado em glassbreak_log' },
-                    { time: new Date(accessGrantedAt.getTime() + 2000), action: 'Perfil do paciente visualizado' },
+                    { time: accessGrantedAt, action: t('glassBreak.logEntry1') },
+                    { time: new Date(accessGrantedAt.getTime() + 2000), action: t('glassBreak.logEntry2') },
                   ].map((entry, i) => (
                     <div key={i} className="flex items-center gap-3 py-2 border-b border-[var(--scolio-border-light)] last:border-0">
                       <div className="w-2 h-2 rounded-full bg-[var(--scolio-danger-coral)] flex-shrink-0" />
