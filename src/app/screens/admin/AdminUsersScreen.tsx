@@ -1,7 +1,13 @@
 import React from 'react';
-import { Power, CheckCircle, XCircle, Filter } from 'lucide-react';
+import { Power, CheckCircle, XCircle, Filter, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
-import { getUtilizadoresAdmin, toggleAtivoUtilizador, toggleBloqueioUtilizador } from '../../../data/repository/admin';
+import {
+  getUtilizadoresAdmin,
+  toggleAtivoUtilizador,
+  toggleBloqueioUtilizador,
+  criarUtilizador,
+} from '../../../data/repository/admin';
+import type { DadosCriarUtilizador } from '../../../data/repository/admin';
 import type { UtilizadorAdmin } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
 
@@ -39,9 +45,56 @@ export default function AdminUsersScreen() {
   const [estadoFiltro, setEstadoFiltro] = React.useState('all');
   const [pesquisa, setPesquisa] = React.useState('');
 
-  // Modal de confirmação
+  // Modal de confirmação (toggle ativo/bloqueio)
   const [confirm, setConfirm] = React.useState<ConfirmAction | null>(null);
   const [aConfirmar, setAConfirmar] = React.useState(false);
+
+  // Modal de criação de utilizador
+  const [modalAberto, setModalAberto] = React.useState(false);
+  const [aCriar, setACriar] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
+  const formularioVazio: DadosCriarUtilizador = {
+    perfil: 'MEDICO',
+    nomeCompleto: '',
+    email: '',
+    password: '',
+    cedulaProfissional: '',
+    especialidade: '',
+    codigoFuncionario: '',
+    departamento: '',
+  };
+  const [form, setForm] = React.useState<DadosCriarUtilizador>(formularioVazio);
+
+  const fecharModal = () => {
+    setModalAberto(false);
+    setForm(formularioVazio);
+    setShowPassword(false);
+  };
+
+  const submeterNovoUtilizador = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setACriar(true);
+    try {
+      const { id } = await criarUtilizador(form);
+      const novoUtilizador: UtilizadorAdmin = {
+        id,
+        nomeCompleto: form.nomeCompleto,
+        perfil: form.perfil,
+        ativo: true,
+        contaBloqueada: false,
+        twoFactorAtivo: false,
+        ultimoLogin: null,
+        dataCriacao: new Date().toISOString(),
+      };
+      setUtilizadores((prev) => [novoUtilizador, ...prev]);
+      mostrarToast(t('admin.createSuccess'));
+      fecharModal();
+    } catch (err) {
+      mostrarToast(err instanceof Error ? err.message : t('admin.createError'), 'error');
+    } finally {
+      setACriar(false);
+    }
+  };
 
   // Toast
   const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -102,6 +155,10 @@ export default function AdminUsersScreen() {
             {aCarregar ? t('common.loading') : t('admin.usersSubtitle', { filtered: filtrados.length, total: utilizadores.length })}
           </p>
         </div>
+        <Button variant="primary" onClick={() => setModalAberto(true)}>
+          <UserPlus className="w-4 h-4 mr-2 inline" />
+          {t('admin.newUser')}
+        </Button>
       </div>
 
       {/* Filtros */}
@@ -290,6 +347,160 @@ export default function AdminUsersScreen() {
                 {aConfirmar ? t('common.confirming') : t('common.confirm')}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal criar utilizador */}
+      {modalAberto && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[var(--radius-modal)] w-full max-w-lg overflow-hidden">
+            <div className="p-6 border-b border-[var(--scolio-border-light)]">
+              <h2 className="text-[var(--scolio-text-primary)]">{t('admin.newUserTitle')}</h2>
+              <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
+                {t('admin.newUserSubtitle')}
+              </p>
+            </div>
+
+            <form onSubmit={submeterNovoUtilizador}>
+              <div className="p-6 space-y-4">
+
+                {/* Perfil */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                    {t('admin.fieldProfile')}
+                  </label>
+                  <select
+                    required
+                    value={form.perfil}
+                    onChange={(e) => setForm((f) => ({ ...f, perfil: e.target.value as DadosCriarUtilizador['perfil'] }))}
+                    className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                  >
+                    <option value="MEDICO">{t('admin.profileDoctor')}</option>
+                    <option value="TECNICO">{t('admin.profileTechnician')}</option>
+                    <option value="ADMIN">{t('admin.profileAdmin')}</option>
+                  </select>
+                </div>
+
+                {/* Nome completo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                    {t('admin.fieldName')}
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={form.nomeCompleto}
+                    onChange={(e) => setForm((f) => ({ ...f, nomeCompleto: e.target.value }))}
+                    className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                    {t('admin.fieldEmail')}
+                  </label>
+                  <input
+                    required
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                    className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                  />
+                </div>
+
+                {/* Password */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                    {t('admin.fieldPassword')}
+                  </label>
+                  <div className="relative">
+                    <input
+                      required
+                      minLength={8}
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                      className="px-3 py-2 pr-10 w-full border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--scolio-neutral-gray)] hover:text-[var(--scolio-text-primary)]"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Campos específicos — MEDICO */}
+                {form.perfil === 'MEDICO' && (
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--scolio-border-light)]">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('admin.fieldCedula')}
+                      </label>
+                      <input
+                        type="text"
+                        value={form.cedulaProfissional}
+                        onChange={(e) => setForm((f) => ({ ...f, cedulaProfissional: e.target.value }))}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('admin.fieldEspecialidade')}
+                      </label>
+                      <input
+                        type="text"
+                        value={form.especialidade}
+                        onChange={(e) => setForm((f) => ({ ...f, especialidade: e.target.value }))}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Campos específicos — TECNICO */}
+                {form.perfil === 'TECNICO' && (
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--scolio-border-light)]">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('admin.fieldCodigoFuncionario')}
+                      </label>
+                      <input
+                        type="text"
+                        value={form.codigoFuncionario}
+                        onChange={(e) => setForm((f) => ({ ...f, codigoFuncionario: e.target.value }))}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('admin.fieldDepartamento')}
+                      </label>
+                      <input
+                        type="text"
+                        value={form.departamento}
+                        onChange={(e) => setForm((f) => ({ ...f, departamento: e.target.value }))}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
+                <Button type="button" variant="secondary" onClick={fecharModal} disabled={aCriar}>
+                  {t('common.cancel')}
+                </Button>
+                <Button type="submit" variant="primary" disabled={aCriar}>
+                  {aCriar ? t('admin.creating') : t('admin.newUser')}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

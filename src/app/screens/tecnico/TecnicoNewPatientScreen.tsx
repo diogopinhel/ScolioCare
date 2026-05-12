@@ -21,6 +21,9 @@ export default function TecnicoNewPatientScreen() {
     genero: '',
     numeroUtente: '',
     medicoId: '',
+    contacto: '',
+    morada: '',
+    cartaoCidadao: '',
   });
 
   const [aSubmeter, setASubmeter] = React.useState(false);
@@ -148,6 +151,45 @@ export default function TecnicoNewPatientScreen() {
                 value={formData.numeroUtente}
                 onChange={(e) => handleChange('numeroUtente', e.target.value)}
                 placeholder={t('newPatient.clinicalIdPlaceholder')}
+              />
+            </div>
+
+            {/* Cartão de cidadão */}
+            <div>
+              <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                {t('newPatient.citizenCard')}
+              </label>
+              <Input
+                type="text"
+                value={formData.cartaoCidadao}
+                onChange={(e) => handleChange('cartaoCidadao', e.target.value)}
+                placeholder={t('newPatient.citizenCardPlaceholder')}
+              />
+            </div>
+
+            {/* Contacto */}
+            <div>
+              <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                {t('newPatient.phone')}
+              </label>
+              <Input
+                type="tel"
+                value={formData.contacto}
+                onChange={(e) => handleChange('contacto', e.target.value)}
+                placeholder={t('newPatient.phonePlaceholder')}
+              />
+            </div>
+
+            {/* Morada */}
+            <div>
+              <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                {t('newPatient.address')}
+              </label>
+              <Input
+                type="text"
+                value={formData.morada}
+                onChange={(e) => handleChange('morada', e.target.value)}
+                placeholder={t('newPatient.addressPlaceholder')}
               />
             </div>
 

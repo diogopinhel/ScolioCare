@@ -118,3 +118,24 @@ export async function toggleBloqueioUtilizador(id: string, contaBloqueada: boole
     .eq('id', id);
   if (error) throw error;
 }
+
+export interface DadosCriarUtilizador {
+  perfil: 'MEDICO' | 'TECNICO' | 'ADMIN';
+  nomeCompleto: string;
+  email: string;
+  password: string;
+  // MEDICO
+  cedulaProfissional?: string;
+  especialidade?: string;
+  // TECNICO
+  codigoFuncionario?: string;
+  departamento?: string;
+}
+
+export async function criarUtilizador(dados: DadosCriarUtilizador): Promise<{ id: string }> {
+  const { data, error } = await supabase.functions.invoke('criar-utilizador', { body: dados });
+
+  if (error) throw new Error(error.message);
+  if (data?.erro) throw new Error(data.erro);
+  return data as { id: string };
+}

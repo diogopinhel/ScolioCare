@@ -3,10 +3,14 @@ import { ShieldOff, ArrowLeft, Mail, Home } from 'lucide-react';
 import { Button } from '../../components/scolio';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { useAuth, rotaInicialPara } from '../../auth/AuthContext';
 
 export default function Error403Screen() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { utilizador } = useAuth();
+
+  const destino = utilizador ? rotaInicialPara(utilizador.perfil) : '/login';
 
   return (
     <div className="h-full flex flex-col items-center justify-center bg-[var(--scolio-page-surface)] p-8">
@@ -71,7 +75,7 @@ export default function Error403Screen() {
           <Button
             variant="primary"
             className="w-full"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(destino, { replace: true })}
           >
             <Home className="w-4 h-4 mr-2" />
             {t('common.homeDash')}

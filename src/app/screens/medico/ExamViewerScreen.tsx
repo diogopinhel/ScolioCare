@@ -681,7 +681,7 @@ export default function ExamViewerScreen() {
             <Button
               variant="primary"
               className="w-full"
-              onClick={() => navigate('/report-generation')}
+              onClick={() => navigate(`/report-generation/${estudoId}`)}
               disabled={!resultado || emProcessamento}
             >
               <FileText className="w-4 h-4 mr-2" />

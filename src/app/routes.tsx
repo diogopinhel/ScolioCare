@@ -19,6 +19,7 @@ import ExamViewerScreen from "./screens/medico/ExamViewerScreen";
 import ExamComparisonScreen from "./screens/medico/ExamComparisonScreen";
 import ReportGenerationScreen from "./screens/medico/ReportGenerationScreen";
 import GlassBreakScreen from "./screens/medico/GlassBreakScreen";
+import ExamUploadMedicoScreen from "./screens/medico/ExamUploadMedicoScreen";
 
 // Técnico
 import TecnicoDashboardScreen from "./screens/tecnico/TecnicoDashboardScreen";
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: "exam-comparison/:pacienteId", Component: ExamComparisonScreen },
       { path: "report-generation/:estudoId", Component: ReportGenerationScreen },
       { path: "glass-break/:pacienteId", Component: GlassBreakScreen },
+      { path: "exam-upload/:pacienteId", Component: ExamUploadMedicoScreen },
       { path: "*", Component: Error404Screen },
     ],
   },

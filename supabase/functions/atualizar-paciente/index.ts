@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
 
     // ── 3. Validar corpo do pedido ──────────────────────────────────────────
     const body = await req.json()
-    const { pacienteId, nomeCompleto, dataNascimento, genero, numeroUtente, contacto, morada } = body
+    const { pacienteId, nomeCompleto, dataNascimento, genero, numeroUtente, contacto, morada, cartaoCidadao } = body
 
     if (!pacienteId) return json({ erro: 'pacienteId é obrigatório' }, 400)
     if (!nomeCompleto?.trim()) return json({ erro: 'Nome completo é obrigatório' }, 400)
@@ -91,6 +91,7 @@ Deno.serve(async (req: Request) => {
         numero_utente: numeroUtente?.trim() || null,
         contacto: contacto?.trim() || null,
         morada: morada?.trim() || null,
+        cartao_cidadao: cartaoCidadao?.trim() || null,
       })
       .eq('id', pacienteId)
 

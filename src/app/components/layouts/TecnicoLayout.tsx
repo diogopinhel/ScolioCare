@@ -6,7 +6,6 @@ import {
   ListChecks,
   Users,
   Bell,
-  Clock,
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
@@ -143,15 +142,6 @@ export default function TecnicoLayout() {
                 />
               </div>
 
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--scolio-success-surface)] rounded-[var(--radius-component)]">
-                <Clock className="w-4 h-4 text-[var(--scolio-success-green)]" />
-                <span
-                  className="text-[var(--scolio-success-green)]"
-                  style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}
-                >
-                  {t('nav.activeShift')}
-                </span>
-              </div>
             </div>
 
             <div className="flex items-center gap-4">

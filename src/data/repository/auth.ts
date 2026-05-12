@@ -124,7 +124,10 @@ export async function login(
     throw new AuthenticationError('ERRO_SERVIDOR', 'Erro ao autenticar. Tente novamente.');
   }
 
-  return fetchPerfil(data.user.id, data.user.email!);
+  const utilizador = await fetchPerfil(data.user.id, data.user.email!);
+  // Atualizar ultimo_login sem bloquear o login em caso de falha
+  supabase.rpc('registar_ultimo_login').then(() => undefined, () => undefined);
+  return utilizador;
 }
 
 /**

@@ -82,7 +82,7 @@ export async function getPacientesListagem(): Promise<PacienteListagem[]> {
 export async function getPaciente(id: string): Promise<PacienteDetalhe | null> {
   const { data, error } = await supabase
     .from('utilizadores')
-    .select('id, nome_completo, data_nascimento, genero, numero_utente, contacto, morada')
+    .select('id, nome_completo, data_nascimento, genero, numero_utente, contacto, morada, cartao_cidadao')
     .eq('id', id)
     .single();
 
@@ -98,6 +98,7 @@ export async function getPaciente(id: string): Promise<PacienteDetalhe | null> {
     numeroUtente: row.numero_utente as string | null,
     contacto: row.contacto as string | null,
     morada: row.morada as string | null,
+    cartaoCidadao: row.cartao_cidadao as string | null,
   };
 }
 
@@ -215,12 +216,7 @@ export async function pesquisarPacientesGlobal(query: string): Promise<PacienteR
 // ═══════════════════════════════════════════════════════════════════
 
 export async function getMedicos(): Promise<MedicoResumo[]> {
-  const { data, error } = await supabase
-    .from('utilizadores')
-    .select('id, nome_completo, especialidade')
-    .eq('perfil', 'MEDICO')
-    .eq('ativo', true)
-    .order('nome_completo');
+  const { data, error } = await supabase.rpc('get_medicos_ativos');
 
   if (error || !data) return [];
 

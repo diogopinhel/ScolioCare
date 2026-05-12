@@ -460,7 +460,7 @@ export default function PatientRecordScreen() {
               <Edit className="w-4 h-4 mr-2" />
               {t('patientRecord.editData')}
             </Button>
-            <Button variant="primary" onClick={() => navigate('/tecnico/upload')}>
+            <Button variant="primary" onClick={() => navigate(`/exam-upload/${id}`)}>
               <FileText className="w-4 h-4 mr-2" />
               {t('patientRecord.newExam')}
             </Button>
@@ -673,7 +673,7 @@ export default function PatientRecordScreen() {
         {activeTab === 'exams' && (
           <div className="p-6 space-y-6">
             <div className="flex justify-end">
-              <Button variant="primary" onClick={() => navigate('/tecnico/upload')}>
+              <Button variant="primary" onClick={() => navigate(`/exam-upload/${id}`)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Novo exame
               </Button>

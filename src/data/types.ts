@@ -58,6 +58,7 @@ export interface Paciente extends Utilizador {
   numeroUtente: string;
   contacto?: string;
   morada?: string;
+  cartaoCidadao?: string;
   contaAtivada: boolean;
 }
 
@@ -139,6 +140,7 @@ export interface PacienteDetalhe {
   numeroUtente: string | null;
   contacto: string | null;
   morada: string | null;
+  cartaoCidadao: string | null;
 }
 
 export interface ResultadoEstudo {
@@ -293,6 +295,7 @@ export interface DadosAtualizacaoPaciente {
   numeroUtente: string;
   contacto: string;
   morada: string;
+  cartaoCidadao?: string;
 }
 
 // ─── Comparação de exames ─────────────────────────────────────────────────
@@ -314,6 +317,9 @@ export interface DadosCriacaoPaciente {
   genero: string;
   numeroUtente: string;
   medicoId: string;
+  contacto?: string;
+  morada?: string;
+  cartaoCidadao?: string;
 }
 
 export interface MedicoResumo {

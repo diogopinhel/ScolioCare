@@ -31,10 +31,23 @@ export default function LoginScreen() {
   const [erro, setErro] = React.useState<string | null>(null);
   const [aSubmeter, setASubmeter] = React.useState(false);
 
-  // Já autenticado? Mandar para a área respectiva. (Usar Navigate em
-  // vez de useEffect+navigate evita um flicker quando a sessão é
-  // restaurada do localStorage.)
-  if (!aCarregar && estaAutenticado && utilizador) {
+  // Enquanto a sessão carrega, mostrar spinner (evita o flash do formulário
+  // seguido de redirect abrupto quando a sessão é restaurada do localStorage).
+  if (aCarregar) {
+    return (
+      <div className="min-h-screen bg-[var(--scolio-light-blue-surface)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[var(--scolio-primary-blue)] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+            {t('common.loading')}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Já autenticado? Redirecionar para a área correcta.
+  if (estaAutenticado && utilizador) {
     const from = (location.state as { from?: string } | null)?.from;
     return <Navigate to={destinoSeguro(from, utilizador.perfil)} replace />;
   }

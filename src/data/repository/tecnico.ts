@@ -218,16 +218,8 @@ export async function getPacientesTecnico(): Promise<PacienteTecnico[]> {
  * (TECNICO não tem acesso a paciente_medico via RLS)
  */
 export async function getMedicoResponsavelDoPaciente(pacienteId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('estudos')
-    .select('medico_responsavel_id')
-    .eq('paciente_id', pacienteId)
-    .eq('arquivado', false)
-    .order('data_submissao', { ascending: false })
-    .limit(1)
-    .single();
-
-  return (data?.medico_responsavel_id as string | null) ?? null;
+  const { data } = await supabase.rpc('get_medico_responsavel', { p_paciente_id: pacienteId });
+  return (data as string | null) ?? null;
 }
 
 /**

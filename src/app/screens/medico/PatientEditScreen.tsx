@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Loader2, User, Phone, MapPin, Calendar } from 'lucide-react';
+import { ArrowLeft, Loader2, User, Phone, MapPin, Calendar, CreditCard } from 'lucide-react';
 import { Button, Input, Toast } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { getPaciente, atualizarPaciente } from '../../../data/repository/pacientes';
@@ -23,6 +23,7 @@ export default function PatientEditScreen() {
     numeroUtente: '',
     contacto: '',
     morada: '',
+    cartaoCidadao: '',
   });
 
   const mostrarToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -44,6 +45,7 @@ export default function PatientEditScreen() {
           numeroUtente: p.numeroUtente ?? '',
           contacto: p.contacto ?? '',
           morada: p.morada ?? '',
+          cartaoCidadao: p.cartaoCidadao ?? '',
         });
       }
     }).finally(() => setACarregar(false));
@@ -67,6 +69,7 @@ export default function PatientEditScreen() {
         numeroUtente: formData.numeroUtente,
         contacto: formData.contacto,
         morada: formData.morada,
+        cartaoCidadao: formData.cartaoCidadao,
       });
       mostrarToast(t('patientEdit.successMessage'));
       setTimeout(() => navigate(`/patients/${id}`), 1500);
@@ -234,6 +237,23 @@ export default function PatientEditScreen() {
                   className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Cartão de cidadão */}
+          <div>
+            <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+              {t('patientEdit.citizenCard')}
+            </label>
+            <div className="relative">
+              <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)] pointer-events-none" />
+              <input
+                type="text"
+                value={formData.cartaoCidadao}
+                onChange={(e) => handleChange('cartaoCidadao', e.target.value)}
+                placeholder={t('patientEdit.citizenCardPlaceholder')}
+                className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+              />
             </div>
           </div>
         </div>
