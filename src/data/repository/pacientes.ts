@@ -1,5 +1,14 @@
 import { supabase } from '../../lib/supabase';
-import type { PacienteResumo, PacienteListagem, PacienteDetalhe, EstadoEstudo } from '../types';
+import type {
+  PacienteResumo,
+  PacienteListagem,
+  PacienteDetalhe,
+  EstadoEstudo,
+  DadosCriacaoPaciente,
+  DadosAtualizacaoPaciente,
+  MedicoResumo,
+  NotaPaciente,
+} from '../types';
 
 /**
  * Devolve todos os pacientes associados ao médico autenticado (paciente_medico.data_fim IS NULL),
@@ -73,7 +82,7 @@ export async function getPacientesListagem(): Promise<PacienteListagem[]> {
 export async function getPaciente(id: string): Promise<PacienteDetalhe | null> {
   const { data, error } = await supabase
     .from('utilizadores')
-    .select('id, nome_completo, data_nascimento, genero, numero_utente, contacto, morada')
+    .select('id, nome_completo, data_nascimento, genero, numero_utente, contacto, morada, cartao_cidadao')
     .eq('id', id)
     .single();
 
@@ -89,7 +98,162 @@ export async function getPaciente(id: string): Promise<PacienteDetalhe | null> {
     numeroUtente: row.numero_utente as string | null,
     contacto: row.contacto as string | null,
     morada: row.morada as string | null,
+    cartaoCidadao: row.cartao_cidadao as string | null,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Notas clínicas gerais por paciente
+// ═══════════════════════════════════════════════════════════════════
+
+/** Carrega todas as notas do paciente, da mais recente para a mais antiga. */
+export async function getNotasDoPaciente(pacienteId: string): Promise<NotaPaciente[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from('notas_paciente')
+    .select('id, medico_id, medico_nome, conteudo, data_criacao')
+    .eq('paciente_id', pacienteId)
+    .order('data_criacao', { ascending: false });
+
+  if (error || !data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((row) => ({
+    id: row.id as string,
+    medicoNome: row.medico_nome as string,
+    conteudo: row.conteudo as string,
+    dataCriacao: row.data_criacao as string,
+    eMinhaAutoria: row.medico_id === user?.id,
+  }));
+}
+
+/** Cria uma nova nota para o paciente e devolve o registo criado. */
+export async function criarNotaPaciente(
+  pacienteId: string,
+  conteudo: string,
+  medicoId: string,
+  medicoNome: string,
+): Promise<NotaPaciente> {
+  const { data, error } = await supabase
+    .from('notas_paciente')
+    .insert({
+      paciente_id: pacienteId,
+      medico_id: medicoId,
+      medico_nome: medicoNome,
+      conteudo: conteudo.trim(),
+    })
+    .select('id, medico_id, medico_nome, conteudo, data_criacao')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Falha ao guardar nota.');
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const row = data as any;
+  return {
+    id: row.id as string,
+    medicoNome: row.medico_nome as string,
+    conteudo: row.conteudo as string,
+    dataCriacao: row.data_criacao as string,
+    eMinhaAutoria: true,
+  };
+}
+
+/** Apaga uma nota. Só funciona se o autor for o médico autenticado (RLS). */
+export async function apagarNotaPaciente(notaId: string): Promise<void> {
+  const { error } = await supabase
+    .from('notas_paciente')
+    .delete()
+    .eq('id', notaId);
+
+  if (error) throw error;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Pesquisa global de pacientes (acesso de emergência / glass-break)
+// ═══════════════════════════════════════════════════════════════════
+
+export interface PacienteResultadoGlobal {
+  id: string;
+  nomeCompleto: string;
+  numeroUtente: string | null;
+  dataNascimento: string | null;
+  genero: string | null;
+}
+
+/**
+ * Pesquisa todos os pacientes activos pelo nome ou número de utente.
+ * Usado exclusivamente no fluxo de acesso de emergência (glass-break).
+ * Requer que a RLS de `utilizadores` permita MEDICO ler rows de PACIENTE.
+ */
+export async function pesquisarPacientesGlobal(query: string): Promise<PacienteResultadoGlobal[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const { data, error } = await supabase
+    .from('utilizadores')
+    .select('id, nome_completo, numero_utente, data_nascimento, genero')
+    .eq('perfil', 'PACIENTE')
+    .eq('ativo', true)
+    .or(`nome_completo.ilike.%${q}%,numero_utente.ilike.%${q}%`)
+    .order('nome_completo')
+    .limit(15);
+
+  if (error || !data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((row) => ({
+    id: row.id as string,
+    nomeCompleto: row.nome_completo as string,
+    numeroUtente: (row.numero_utente ?? null) as string | null,
+    dataNascimento: (row.data_nascimento ?? null) as string | null,
+    genero: (row.genero ?? null) as string | null,
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Lista de médicos (para dropdown no formulário de novo paciente)
+// ═══════════════════════════════════════════════════════════════════
+
+export async function getMedicos(): Promise<MedicoResumo[]> {
+  const { data, error } = await supabase.rpc('get_medicos_ativos');
+
+  if (error || !data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((row) => ({
+    id: row.id as string,
+    nomeCompleto: row.nome_completo as string,
+    especialidade: (row.especialidade ?? '') as string,
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Criação de paciente via Edge Function (service_role)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Atualiza os dados editáveis de um paciente via Edge Function (service_role).
+ * A Edge Function verifica que o MEDICO está associado ao paciente antes de
+ * permitir a atualização.
+ */
+export async function atualizarPaciente(dados: DadosAtualizacaoPaciente): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('atualizar-paciente', {
+    body: dados,
+  });
+
+  if (error) throw new Error(error.message ?? 'Erro ao invocar a Edge Function');
+  if (data?.erro) throw new Error(data.erro as string);
+}
+
+export async function criarPaciente(dados: DadosCriacaoPaciente): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('criar-paciente', {
+    body: dados,
+  });
+
+  if (error) throw new Error(error.message ?? 'Erro ao invocar a Edge Function');
+  if (data?.erro) throw new Error(data.erro as string);
+  return data.id as string;
 }
 
 export async function getPacientesAssociados(): Promise<PacienteResumo[]> {

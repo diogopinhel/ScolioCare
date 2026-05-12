@@ -2,9 +2,11 @@ import React from 'react';
 import { SearchX, ArrowLeft, Home, Users, FileText } from 'lucide-react';
 import { Button } from '../../components/scolio';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 
 export default function Error404Screen() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="h-full flex flex-col items-center justify-center bg-[var(--scolio-page-surface)] p-8">
@@ -25,21 +27,21 @@ export default function Error404Screen() {
           >
             404
           </p>
-          <h1 className="text-[var(--scolio-text-primary)] mb-3">Página não encontrada</h1>
+          <h1 className="text-[var(--scolio-text-primary)] mb-3">{t('errors.error404Title')}</h1>
           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-            O endereço que tentou aceder não existe ou foi movido. Verifique se o URL está correto ou navegue para uma das páginas abaixo.
+            {t('errors.error404Desc')}
           </p>
         </div>
 
         {/* Quick Links */}
         <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-card)] p-4 space-y-2 text-left">
           <p className="text-[var(--scolio-text-secondary)] mb-3" style={{ fontSize: 'var(--text-caption)' }}>
-            PÁGINAS SUGERIDAS
+            {t('errors.suggestedPages')}
           </p>
           {[
-            { icon: Home, label: 'Dashboard', path: '/' },
-            { icon: Users, label: 'Lista de pacientes', path: '/patients' },
-            { icon: FileText, label: 'Gerar relatório', path: '/report-generation' },
+            { icon: Home, label: t('errors.dashboard'), path: '/' },
+            { icon: Users, label: t('errors.patientList'), path: '/patients' },
+            { icon: FileText, label: t('errors.generateReport'), path: '/report-generation' },
           ].map(({ icon: Icon, label, path }) => (
             <button
               key={path}
@@ -62,7 +64,7 @@ export default function Error404Screen() {
             onClick={() => navigate(-1)}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar atrás
+            {t('common.backPrev')}
           </Button>
           <Button
             variant="primary"
@@ -70,12 +72,12 @@ export default function Error404Screen() {
             onClick={() => navigate('/')}
           >
             <Home className="w-4 h-4 mr-2" />
-            Ir para o início
+            {t('common.home')}
           </Button>
         </div>
 
         <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-          Código de erro: 404-NOT-FOUND · ScolioScan v2.1
+          {t('common.errorCode')}
         </p>
       </div>
     </div>

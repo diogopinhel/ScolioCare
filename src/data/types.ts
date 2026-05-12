@@ -58,6 +58,7 @@ export interface Paciente extends Utilizador {
   numeroUtente: string;
   contacto?: string;
   morada?: string;
+  cartaoCidadao?: string;
   contaAtivada: boolean;
 }
 
@@ -139,6 +140,7 @@ export interface PacienteDetalhe {
   numeroUtente: string | null;
   contacto: string | null;
   morada: string | null;
+  cartaoCidadao: string | null;
 }
 
 export interface ResultadoEstudo {
@@ -175,4 +177,180 @@ export interface HistoricoEstadoEntry {
   estadoAnterior: string | null;
   estadoNovo: string;
   observacao: string | null;
+}
+
+// ─── ExamViewer — dados completos de um estudo ─────────────────────────────
+
+export type DecisaoResultado = 'ACEITE' | 'CORRIGIDO' | 'REJEITADO';
+
+export interface ImagemEstudoInfo {
+  id: string;
+  /** Path dentro do bucket Supabase Storage (usar getUrlImagemEstudo para obter URL assinada) */
+  caminhoArmazenamento: string;
+  projecao: string | null;
+  formato: string;
+}
+
+/** Resultado produzido pelo modelo ML e opcionalmente corrigido pelo médico */
+export interface ResultadoCompleto {
+  id: string;
+  // ── Métricas ML ──────────────────────────────────────────────────────
+  anguloCobb: number;
+  grauCurvatura: string;
+  localizacaoCurva: string | null;
+  nivelVertebras: string | null;
+  confiancaModelo: number;       // 0.0 – 1.0
+  versaoModelo: string;
+  overlayJson: unknown | null;   // coordenadas/anotações do modelo para o overlay SVG
+  // ── Validação médica ─────────────────────────────────────────────────
+  decisao: DecisaoResultado | null;
+  anguloCobbCorrigido: number | null;
+  justificacaoValidacao: string | null;
+  dataValidacao: string | null;  // ISO datetime
+  concluido: boolean;
+}
+
+// ─── Dashboard Técnico ─────────────────────────────────────────────────────
+
+export interface MetricasDashboardTecnico {
+  carregadosHoje: number;
+  emProcessamento: number;
+  prontoValidacao: number;
+  arquivados: number;
+}
+
+export interface EstudoFilaItem {
+  id: string;
+  pacienteNome: string;
+  pacienteId: string;
+  dataSubmissao: string;   // ISO datetime
+  dataEstudo: string;      // ISO date
+  estado: EstadoEstudo;
+  confiancaModelo: number | null;
+  medicoNome: string | null;
+}
+
+// ─── Auditoria (Admin) ────────────────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: string;
+  utilizadorSnapshot: { nome?: string; perfil?: string; email?: string } | null;
+  tipoAcao: string;
+  entidadeAfetada: string;
+  entidadeId: string | null;
+  ipOrigem: string | null;
+  dataHora: string;
+}
+
+// ─── Utilizadores (Admin) ─────────────────────────────────────────────────
+
+export interface UtilizadorAdmin {
+  id: string;
+  nomeCompleto: string;
+  perfil: string;
+  ativo: boolean;
+  contaBloqueada: boolean;
+  twoFactorAtivo: boolean;
+  ultimoLogin: string | null;
+  dataCriacao: string;
+}
+
+export interface MetricasDashboardAdmin {
+  totalUtilizadoresAtivos: number;
+  examesUltimas24h: number;
+  glassbreakAtivos: number;
+  alertasSeguranca: number;
+}
+
+// ─── Avaliação de comparação de exames ───────────────────────────────────
+
+export type TipoAvaliacao = 'CONFIRMADO_IA' | 'AVALIACAO_PROPRIA';
+
+export interface AvaliacaoComparacao {
+  id: string;
+  medicoNome: string;
+  tipo: TipoAvaliacao;
+  texto: string | null;
+  variacaoAngulo: number | null;
+  dataCriacao: string;  // ISO datetime
+}
+
+// ─── Notas por paciente ───────────────────────────────────────────────────
+
+export interface NotaPaciente {
+  id: string;
+  medicoNome: string;
+  conteudo: string;
+  dataCriacao: string;    // ISO datetime
+  eMinhaAutoria: boolean; // true se o médico autenticado é o autor
+}
+
+// ─── Edição de paciente ───────────────────────────────────────────────────
+
+export interface DadosAtualizacaoPaciente {
+  pacienteId: string;
+  nomeCompleto: string;
+  dataNascimento: string;
+  genero: string;
+  numeroUtente: string;
+  contacto: string;
+  morada: string;
+  cartaoCidadao?: string;
+}
+
+// ─── Comparação de exames ─────────────────────────────────────────────────
+
+export interface EstudoComparacao {
+  id: string;
+  dataEstudo: string;          // ISO date
+  anguloCobb: number;          // valor corrigido se existir, senão o da IA
+  nivelVertebras: string | null;
+  urlImagem: string | null;    // URL assinada da primeira imagem (ou null)
+}
+
+// ─── Criação de paciente ──────────────────────────────────────────────────
+
+export interface DadosCriacaoPaciente {
+  nomeCompleto: string;
+  email: string;
+  dataNascimento: string;
+  genero: string;
+  numeroUtente: string;
+  medicoId: string;
+  contacto?: string;
+  morada?: string;
+  cartaoCidadao?: string;
+}
+
+export interface MedicoResumo {
+  id: string;
+  nomeCompleto: string;
+  especialidade: string;
+}
+
+// ─── Pacientes (Técnico — vista operacional) ─────────────────────────────
+
+export interface PacienteTecnico {
+  id: string;
+  nomeCompleto: string;
+  numeroUtente: string | null;
+  dataNascimento: string | null;
+  genero: string | null;
+  totalExames: number;
+  ultimoExame: string | null;
+}
+
+/** Estudo com todas as relações necessárias para o ExamViewerScreen */
+export interface EstudoCompleto {
+  id: string;
+  pacienteId: string;
+  pacienteNome: string;
+  dataEstudo: string;            // ISO date
+  tipoEstudo: string;
+  estado: EstadoEstudo;
+  notasClinicas: string | null;
+  arquivado: boolean;
+  geradoPorIA: boolean;
+  resultado: ResultadoCompleto | null;
+  imagens: ImagemEstudoInfo[];
 }

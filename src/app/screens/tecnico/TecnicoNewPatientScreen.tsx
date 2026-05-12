@@ -1,14 +1,15 @@
 import React from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { Button, Input, Toast } from '../../components/scolio';
+import { Button, Input } from '../../components/scolio';
 import { useNavigate } from 'react-router';
-import { useAuth } from '../../auth/AuthContext';
+import { Toast } from '../../components/scolio';
 import { getMedicos, criarPaciente } from '../../../data/repository/pacientes';
 import type { MedicoResumo } from '../../../data/types';
+import { useTranslation } from 'react-i18next';
 
-export default function NewPatientScreen() {
+export default function TecnicoNewPatientScreen() {
   const navigate = useNavigate();
-  const { utilizador } = useAuth();
+  const { t } = useTranslation();
 
   const [medicos, setMedicos] = React.useState<MedicoResumo[]>([]);
   const [aCarregarMedicos, setACarregarMedicos] = React.useState(true);
@@ -20,6 +21,9 @@ export default function NewPatientScreen() {
     genero: '',
     numeroUtente: '',
     medicoId: '',
+    contacto: '',
+    morada: '',
+    cartaoCidadao: '',
   });
 
   const [aSubmeter, setASubmeter] = React.useState(false);
@@ -30,17 +34,11 @@ export default function NewPatientScreen() {
     setTimeout(() => setToast(null), 5000);
   };
 
-  // Carregar lista de médicos e pré-seleccionar o médico autenticado (se aplicável)
   React.useEffect(() => {
     getMedicos()
-      .then((lista) => {
-        setMedicos(lista);
-        if (utilizador?.perfil === 'MEDICO') {
-          setFormData((prev) => ({ ...prev, medicoId: utilizador.id }));
-        }
-      })
+      .then(setMedicos)
       .finally(() => setACarregarMedicos(false));
-  }, [utilizador]);
+  }, []);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -52,20 +50,12 @@ export default function NewPatientScreen() {
     setASubmeter(true);
 
     try {
-      await criarPaciente({
-        nomeCompleto: formData.nomeCompleto,
-        email: formData.email,
-        dataNascimento: formData.dataNascimento,
-        genero: formData.genero,
-        numeroUtente: formData.numeroUtente,
-        medicoId: formData.medicoId,
-      });
-
-      mostrarToast('Paciente criado com sucesso.');
-      setTimeout(() => navigate('/patients'), 1500);
+      await criarPaciente(formData);
+      mostrarToast(t('newPatient.successToast'));
+      setTimeout(() => navigate('/tecnico/patients'), 1500);
     } catch (err) {
       mostrarToast(
-        err instanceof Error ? err.message : 'Erro ao criar paciente. Tente novamente.',
+        err instanceof Error ? err.message : t('newPatient.errorToast'),
         'error',
       );
       setASubmeter(false);
@@ -77,12 +67,12 @@ export default function NewPatientScreen() {
       {/* Cabeçalho */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/patients')}
+          onClick={() => navigate('/tecnico/patients')}
           className="p-2 -ml-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-[var(--scolio-text-primary)]">Novo paciente</h1>
+        <h1 className="text-[var(--scolio-text-primary)]">{t('newPatient.title')}</h1>
       </div>
 
       {/* Formulário */}
@@ -92,13 +82,13 @@ export default function NewPatientScreen() {
             {/* Nome completo */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Nome completo *
+                {t('newPatient.fullName')}
               </label>
               <Input
                 type="text"
                 value={formData.nomeCompleto}
                 onChange={(e) => handleChange('nomeCompleto', e.target.value)}
-                placeholder="Ex: Maria Silva"
+                placeholder={t('newPatient.fullNamePlaceholder')}
                 required
               />
             </div>
@@ -106,24 +96,24 @@ export default function NewPatientScreen() {
             {/* Email */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Email *
+                {t('newPatient.email')}
               </label>
               <Input
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
-                placeholder="Ex: maria.silva@email.com"
+                placeholder={t('newPatient.emailPlaceholder')}
                 required
               />
               <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
-                Usado para o paciente aceder à aplicação móvel. Pode ser alterado depois.
+                {t('newPatient.emailNote')}
               </p>
             </div>
 
             {/* Data de nascimento */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Data de nascimento *
+                {t('newPatient.dob')}
               </label>
               <Input
                 type="date"
@@ -136,52 +126,91 @@ export default function NewPatientScreen() {
             {/* Género */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Género *
+                {t('newPatient.gender')}
               </label>
               <select
                 value={formData.genero}
                 onChange={(e) => handleChange('genero', e.target.value)}
-                className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
                 required
               >
-                <option value="">Selecionar género...</option>
-                <option value="female">Feminino</option>
-                <option value="male">Masculino</option>
-                <option value="other">Outro</option>
+                <option value="">{t('newPatient.genderSelect')}</option>
+                <option value="female">{t('newPatient.genderFemale')}</option>
+                <option value="male">{t('newPatient.genderMale')}</option>
+                <option value="other">{t('newPatient.genderOther')}</option>
               </select>
             </div>
 
             {/* Número de utente */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Número de identificação clínica
+                {t('newPatient.clinicalId')}
               </label>
               <Input
                 type="text"
                 value={formData.numeroUtente}
                 onChange={(e) => handleChange('numeroUtente', e.target.value)}
-                placeholder="Ex: PT-2024-0848"
+                placeholder={t('newPatient.clinicalIdPlaceholder')}
+              />
+            </div>
+
+            {/* Cartão de cidadão */}
+            <div>
+              <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                {t('newPatient.citizenCard')}
+              </label>
+              <Input
+                type="text"
+                value={formData.cartaoCidadao}
+                onChange={(e) => handleChange('cartaoCidadao', e.target.value)}
+                placeholder={t('newPatient.citizenCardPlaceholder')}
+              />
+            </div>
+
+            {/* Contacto */}
+            <div>
+              <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                {t('newPatient.phone')}
+              </label>
+              <Input
+                type="tel"
+                value={formData.contacto}
+                onChange={(e) => handleChange('contacto', e.target.value)}
+                placeholder={t('newPatient.phonePlaceholder')}
+              />
+            </div>
+
+            {/* Morada */}
+            <div>
+              <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                {t('newPatient.address')}
+              </label>
+              <Input
+                type="text"
+                value={formData.morada}
+                onChange={(e) => handleChange('morada', e.target.value)}
+                placeholder={t('newPatient.addressPlaceholder')}
               />
             </div>
 
             {/* Médico responsável */}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Médico responsável *
+                {t('newPatient.responsibleDoctor')}
               </label>
               {aCarregarMedicos ? (
                 <div className="flex items-center gap-2 px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  A carregar médicos...
+                  {t('newPatient.loadingDoctors')}
                 </div>
               ) : (
                 <select
                   value={formData.medicoId}
                   onChange={(e) => handleChange('medicoId', e.target.value)}
-                  className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                  className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
                   required
                 >
-                  <option value="">Selecionar médico...</option>
+                  <option value="">{t('newPatient.selectDoctor')}</option>
                   {medicos.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.nomeCompleto}{m.especialidade ? ` — ${m.especialidade}` : ''}
@@ -198,19 +227,19 @@ export default function NewPatientScreen() {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => navigate('/patients')}
+            onClick={() => navigate('/tecnico/patients')}
             disabled={aSubmeter}
           >
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button type="submit" variant="primary" disabled={aSubmeter || aCarregarMedicos}>
             {aSubmeter ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                A criar...
+                {t('newPatient.creating')}
               </span>
             ) : (
-              'Criar paciente'
+              t('newPatient.create')
             )}
           </Button>
         </div>

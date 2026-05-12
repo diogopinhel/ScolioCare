@@ -22,10 +22,12 @@ export function ProtectedRoute({ perfis, children }: ProtectedRouteProps) {
   const { utilizador, estaAutenticado, aCarregar } = useAuth();
   const location = useLocation();
 
-  // Enquanto restauramos a sessão do localStorage, evitar redireccionamentos
-  // prematuros que provocariam um flicker no /login.
   if (aCarregar) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--scolio-page-surface)]">
+        <div className="w-10 h-10 border-4 border-[var(--scolio-primary-blue)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   if (!estaAutenticado || !utilizador) {

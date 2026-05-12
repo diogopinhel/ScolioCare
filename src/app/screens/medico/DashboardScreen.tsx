@@ -5,6 +5,7 @@ import type { BadgeStatus } from '../../components/scolio';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
+import { useTranslation } from 'react-i18next';
 import {
   getMetricasDashboard,
   getEstudosPendentesValidacao,
@@ -27,16 +28,16 @@ function semanasFallback(): DadosSemanais[] {
   return Array.from({ length: 8 }, (_, i) => ({ semana: `S${i + 1}`, exames: 0 }));
 }
 
-function tempoRelativo(dataISO: string): string {
+function tempoRelativo(dataISO: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const diff = Date.now() - new Date(dataISO).getTime();
   const minutos = Math.floor(diff / 60000);
-  if (minutos < 1) return 'agora mesmo';
-  if (minutos < 60) return `há ${minutos} min`;
+  if (minutos < 1) return t('dashboard.timeNow');
+  if (minutos < 60) return t('dashboard.timeMinutes', { count: minutos });
   const horas = Math.floor(minutos / 60);
-  if (horas < 24) return `há ${horas} hora${horas !== 1 ? 's' : ''}`;
+  if (horas < 24) return horas === 1 ? t('dashboard.timeHour', { count: horas }) : t('dashboard.timeHours', { count: horas });
   const dias = Math.floor(horas / 24);
-  if (dias === 1) return 'Ontem';
-  return `há ${dias} dias`;
+  if (dias === 1) return t('dashboard.timeYesterday');
+  return t('dashboard.timeDays', { count: dias });
 }
 
 function formatarDataHora(iso: string): { data: string; hora: string } {
@@ -73,16 +74,16 @@ function iconePorEstado(estado: EstadoEstudo): React.ElementType {
   }
 }
 
-function mensagemPorEstado(estado: EstadoEstudo, pacienteNome: string): string {
+function mensagemPorEstado(estado: EstadoEstudo, pacienteNome: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
   switch (estado) {
-    case 'UPLOADED':          return `Novo exame carregado para ${pacienteNome}`;
-    case 'PROCESSING':        return `Exame em processamento para ${pacienteNome}`;
-    case 'PENDING_VALIDATION':return `Análise IA concluída para ${pacienteNome}`;
-    case 'VALIDATED':         return `Exame validado para ${pacienteNome}`;
-    case 'DIAGNOSED':         return `Diagnóstico emitido para ${pacienteNome}`;
-    case 'SENT':              return `Relatório enviado para ${pacienteNome}`;
-    case 'ARCHIVED':          return `Exame arquivado para ${pacienteNome}`;
-    default:                  return `Atualização de estado para ${pacienteNome}`;
+    case 'UPLOADED':          return t('dashboard.activityUploaded', { name: pacienteNome });
+    case 'PROCESSING':        return t('dashboard.activityProcessing', { name: pacienteNome });
+    case 'PENDING_VALIDATION':return t('dashboard.activityPendingValidation', { name: pacienteNome });
+    case 'VALIDATED':         return t('dashboard.activityValidated', { name: pacienteNome });
+    case 'DIAGNOSED':         return t('dashboard.activityDiagnosed', { name: pacienteNome });
+    case 'SENT':              return t('dashboard.activitySent', { name: pacienteNome });
+    case 'ARCHIVED':          return t('dashboard.activityArchived', { name: pacienteNome });
+    default:                  return t('dashboard.activityUpdate', { name: pacienteNome });
   }
 }
 
@@ -91,6 +92,7 @@ function mensagemPorEstado(estado: EstadoEstudo, pacienteNome: string): string {
 export default function DashboardScreen() {
   const { utilizador } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [aCarregar, setACarregar] = useState(true);
   const [metricas, setMetricas] = useState<MetricasDashboardMedico | null>(null);
@@ -143,7 +145,7 @@ export default function DashboardScreen() {
     <div className="p-8 space-y-6 overflow-auto h-full">
       {/* Cabeçalho de boas-vindas */}
       <div>
-        <h1 className="text-[var(--scolio-text-primary)]">Bom dia, {nomeMedico}</h1>
+        <h1 className="text-[var(--scolio-text-primary)]">{t('dashboard.goodMorning', { name: nomeMedico })}</h1>
         <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
           {currentDate}
         </p>
@@ -155,28 +157,28 @@ export default function DashboardScreen() {
           icon={Users}
           iconColor="var(--scolio-primary-blue)"
           iconBg="var(--scolio-light-blue-surface)"
-          label="Total de pacientes ativos"
+          label={t('dashboard.totalActivePatients')}
           value={aCarregar ? '—' : String(metricas?.totalPacientes ?? 0)}
         />
         <MetricCard
           icon={CheckCircle2}
           iconColor="var(--scolio-warning-amber)"
           iconBg="var(--scolio-warning-surface)"
-          label="Exames pendentes de validação"
+          label={t('dashboard.examsPendingValidation')}
           value={aCarregar ? '—' : String(metricas?.examesPendentesValidacao ?? 0)}
         />
         <MetricCard
           icon={FileText}
           iconColor="var(--scolio-success-green)"
           iconBg="var(--scolio-success-surface)"
-          label="Exames analisados esta semana"
+          label={t('dashboard.examsAnalyzedThisWeek')}
           value={aCarregar ? '—' : String(metricas?.examesAnalisadosEstaSemana ?? 0)}
         />
         <MetricCard
           icon={FileBarChart}
           iconColor="var(--scolio-primary-blue)"
           iconBg="var(--scolio-light-blue-surface)"
-          label="Relatórios gerados este mês"
+          label={t('dashboard.reportsGeneratedThisMonth')}
           value={aCarregar ? '—' : String(metricas?.relatoriosGeradosEsteMes ?? 0)}
         />
       </div>
@@ -185,7 +187,7 @@ export default function DashboardScreen() {
       <div className="grid grid-cols-5 gap-6">
         {/* Gráfico — 60% */}
         <div className="col-span-3 bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-6">Exames por semana (últimas 8 semanas)</h3>
+          <h3 className="text-[var(--scolio-text-primary)] mb-6">{t('dashboard.examsPerWeek')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={semanal}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--scolio-border-light)" />
@@ -216,7 +218,7 @@ export default function DashboardScreen() {
 
         {/* À espera de validação — 40% */}
         <div className="col-span-2 bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-6">À espera de validação</h3>
+          <h3 className="text-[var(--scolio-text-primary)] mb-6">{t('dashboard.awaitingValidation')}</h3>
           {aCarregar ? (
             <ExamListSkeleton count={4} />
           ) : pendentes.length === 0 ? (
@@ -224,7 +226,7 @@ export default function DashboardScreen() {
               className="text-[var(--scolio-text-secondary)] text-center py-8"
               style={{ fontSize: 'var(--text-body)' }}
             >
-              Sem exames pendentes de validação
+              {t('dashboard.noExamsPending')}
             </p>
           ) : (
             <div className="space-y-3 max-h-[300px] overflow-y-auto">
@@ -246,7 +248,7 @@ export default function DashboardScreen() {
                         className="text-[var(--scolio-text-secondary)] mt-0.5"
                         style={{ fontSize: 'var(--text-caption)' }}
                       >
-                        {data} às {hora}
+                        {data} {t('dashboard.at')} {hora}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 ml-3">
@@ -254,9 +256,9 @@ export default function DashboardScreen() {
                       <Button
                         variant="primary"
                         className="text-xs px-3 py-1"
-                        onClick={() => navigate('/exam-viewer')}
+                        onClick={() => navigate(`/exam-viewer/${exam.id}`)}
                       >
-                        Validar
+                        {t('dashboard.validate')}
                       </Button>
                     </div>
                   </div>
@@ -271,7 +273,7 @@ export default function DashboardScreen() {
       <div className="grid grid-cols-2 gap-6">
         {/* Pacientes associados */}
         <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-6">Pacientes associados</h3>
+          <h3 className="text-[var(--scolio-text-primary)] mb-6">{t('dashboard.associatedPatients')}</h3>
           {aCarregar ? (
             <PatientCardSkeleton count={4} />
           ) : pacientes.length === 0 ? (
@@ -279,7 +281,7 @@ export default function DashboardScreen() {
               className="text-[var(--scolio-text-secondary)] text-center py-8"
               style={{ fontSize: 'var(--text-body)' }}
             >
-              Sem pacientes associados
+              {t('dashboard.noAssociatedPatients')}
             </p>
           ) : (
             <div className="space-y-3">
@@ -304,7 +306,7 @@ export default function DashboardScreen() {
                     </p>
                   </div>
                   <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                    {tempoRelativo(patient.dataAssociacao)}
+                    {tempoRelativo(patient.dataAssociacao, t)}
                   </p>
                 </div>
               ))}
@@ -314,7 +316,7 @@ export default function DashboardScreen() {
 
         {/* Atividade recente */}
         <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-          <h3 className="text-[var(--scolio-text-primary)] mb-6">Atividade recente</h3>
+          <h3 className="text-[var(--scolio-text-primary)] mb-6">{t('dashboard.recentActivity')}</h3>
           {aCarregar ? (
             <div className="space-y-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -332,7 +334,7 @@ export default function DashboardScreen() {
               className="text-[var(--scolio-text-secondary)] text-center py-8"
               style={{ fontSize: 'var(--text-body)' }}
             >
-              Sem atividade recente
+              {t('dashboard.noRecentActivity')}
             </p>
           ) : (
             <div className="space-y-4">
@@ -345,13 +347,13 @@ export default function DashboardScreen() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                        {mensagemPorEstado(item.estadoNovo, item.pacienteNome)}
+                        {mensagemPorEstado(item.estadoNovo, item.pacienteNome, t)}
                       </p>
                       <p
                         className="text-[var(--scolio-text-secondary)] mt-0.5"
                         style={{ fontSize: 'var(--text-caption)' }}
                       >
-                        {tempoRelativo(item.dataTransicao)}
+                        {tempoRelativo(item.dataTransicao, t)}
                       </p>
                     </div>
                   </div>

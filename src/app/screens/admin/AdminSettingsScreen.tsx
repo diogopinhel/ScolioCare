@@ -1,45 +1,53 @@
 import React from 'react';
 import { Save, Building2, Lock, Plug, Wrench } from 'lucide-react';
-import { Button } from '../../components/scolio';
+import { Button, Toast } from '../../components/scolio';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminSettingsScreen() {
+  const { t } = useTranslation();
   const [maintenance, setMaintenance] = React.useState(false);
   const [force2FA, setForce2FA] = React.useState({ medico: true, tecnico: true, admin: true });
+  const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  const handleGuardar = () => {
+    setToast({ msg: t('admin.settingsSaveError'), type: 'error' });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-[var(--scolio-text-primary)]">Definições do sistema</h1>
-          <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>Configurações hospitalares, segurança e integrações</p>
+          <h1 className="text-[var(--scolio-text-primary)]">{t('admin.settingsTitle')}</h1>
+          <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>{t('admin.settingsSubtitle')}</p>
         </div>
-        <Button variant="primary"><Save className="w-4 h-4 mr-2 inline" /> Guardar alterações</Button>
+        <Button variant="primary" onClick={handleGuardar}><Save className="w-4 h-4 mr-2 inline" /> {t('admin.saveSettings')}</Button>
       </div>
 
       {/* Hospital */}
-      <Section icon={Building2} title="Configurações hospitalares">
+      <Section icon={Building2} title={t('admin.hospitalConfig')}>
         <Grid2>
-          <Field label="Nome da instituição" defaultValue="Centro Hospitalar Universitário de Lisboa Norte, EPE" />
-          <Field label="NIF" defaultValue="503007088" />
-          <Field label="Contacto RGPD (DPO)" defaultValue="dpo@chuln.pt" />
-          <Field label="Logo institucional" type="file" />
+          <Field label={t('admin.institutionName')} defaultValue="Centro Hospitalar Universitário de Lisboa Norte, EPE" />
+          <Field label={t('admin.nif')} defaultValue="503007088" />
+          <Field label={t('admin.rgpdContact')} defaultValue="dpo@chuln.pt" />
+          <Field label={t('admin.institutionalLogo')} type="file" />
         </Grid2>
       </Section>
 
       {/* Security */}
-      <Section icon={Lock} title="Políticas de segurança">
+      <Section icon={Lock} title={t('admin.securityPolicies')}>
         <Grid2>
-          <Field label="Tempo de sessão (minutos)" defaultValue="30" type="number" />
-          <Field label="Tentativas de login antes de bloqueio" defaultValue="5" type="number" />
-          <Field label="Comprimento mínimo de palavra-passe" defaultValue="12" type="number" />
-          <Field label="Validade da palavra-passe (dias)" defaultValue="90" type="number" />
+          <Field label={t('admin.sessionTimeout')} defaultValue="30" type="number" />
+          <Field label={t('admin.loginAttempts')} defaultValue="5" type="number" />
+          <Field label={t('admin.minPasswordLength')} defaultValue="12" type="number" />
+          <Field label={t('admin.passwordValidity')} defaultValue="90" type="number" />
         </Grid2>
         <div className="mt-5 pt-5 border-t border-[var(--scolio-border-light)]">
-          <p className="text-[var(--scolio-text-primary)] mb-3" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>2FA obrigatório por função</p>
+          <p className="text-[var(--scolio-text-primary)] mb-3" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>{t('admin.force2FA')}</p>
           <div className="space-y-2">
             {(['medico', 'tecnico', 'admin'] as const).map(role => (
               <div key={role} className="flex items-center justify-between p-3 bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)]">
-                <span className="text-[var(--scolio-text-primary)] capitalize" style={{ fontSize: 'var(--text-body)' }}>{role === 'medico' ? 'Médico' : role === 'tecnico' ? 'Técnico' : 'Administrador'}</span>
+                <span className="text-[var(--scolio-text-primary)] capitalize" style={{ fontSize: 'var(--text-body)' }}>{role === 'medico' ? t('admin.profileDoctor') : role === 'tecnico' ? t('admin.profileTechnician') : t('nav.administrator')}</span>
                 <button onClick={() => setForce2FA({ ...force2FA, [role]: !force2FA[role] })} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${force2FA[role] ? 'bg-[var(--scolio-success-green)]' : 'bg-[var(--scolio-neutral-gray)]'}`}>
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${force2FA[role] ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
@@ -50,7 +58,7 @@ export default function AdminSettingsScreen() {
       </Section>
 
       {/* Integrations */}
-      <Section icon={Plug} title="Integrações">
+      <Section icon={Plug} title={t('admin.integrations')}>
         <Grid2>
           <Field label="DICOM server URL" defaultValue="dicom://pacs.chuln.pt:11112" />
           <Field label="HIS endpoint" defaultValue="https://his.chuln.pt/api/v3" />
@@ -60,21 +68,27 @@ export default function AdminSettingsScreen() {
       </Section>
 
       {/* Maintenance */}
-      <Section icon={Wrench} title="Manutenção">
+      <Section icon={Wrench} title={t('admin.maintenance')}>
         <div className="flex items-center justify-between p-4 bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)]">
           <div>
-            <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>Modo de manutenção</p>
-            <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Bloqueia o acesso a todos os utilizadores excepto administradores.</p>
+            <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>{t('admin.maintenanceMode')}</p>
+            <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('admin.maintenanceModeDesc')}</p>
           </div>
           <button onClick={() => setMaintenance(!maintenance)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${maintenance ? 'bg-[var(--scolio-warning-amber)]' : 'bg-[var(--scolio-neutral-gray)]'}`}>
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${maintenance ? 'translate-x-6' : 'translate-x-1'}`} />
           </button>
         </div>
         <Grid2 className="mt-4">
-          <Field label="Schedule de backup (cron)" defaultValue="0 3 * * *" />
-          <Field label="Retenção de backups (dias)" defaultValue="30" type="number" />
+          <Field label={t('admin.backupSchedule')} defaultValue="0 3 * * *" />
+          <Field label={t('admin.backupRetention')} defaultValue="30" type="number" />
         </Grid2>
       </Section>
+
+      {toast && (
+        <div className="fixed top-8 right-8 z-50">
+          <Toast title={toast.msg} type={toast.type} onClose={() => setToast(null)} />
+        </div>
+      )}
     </div>
   );
 }

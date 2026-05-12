@@ -1,65 +1,297 @@
 import React from 'react';
+import { useParams, useNavigate } from 'react-router';
 import {
-  ZoomIn,
-  ZoomOut,
-  Move,
-  RotateCcw,
-  Sun,
-  Eye,
-  EyeOff,
-  FileText,
-  Download,
-  GitCompare,
-  Archive,
-  Check,
-  Edit3
+  ZoomIn, ZoomOut, Move, RotateCcw, Sun,
+  Eye, EyeOff, FileText, Download, GitCompare,
+  Archive, Check, Edit3, ArrowLeft,
 } from 'lucide-react';
-import { Button, StatusBadge, Textarea, ProgressBar, Toast, Input } from '../../components/scolio';
+import { useTranslation } from 'react-i18next';
+import {
+  Button, StatusBadge, Textarea, ProgressBar,
+  Toast, Input, SkeletonBlock,
+} from '../../components/scolio';
+import type { BadgeStatus } from '../../components/scolio';
 import { CobbAngleGauge } from '../../components/scolio';
-import { useNavigate } from 'react-router';
+import { useAuth } from '../../auth/AuthContext';
+import type { EstudoCompleto, EstadoEstudo } from '../../../data/types';
+import {
+  getEstudoCompleto,
+  getUrlImagemEstudo,
+  confirmarMetricasIA,
+  corrigirMetricasIA,
+  guardarNotasClinicas,
+  arquivarEstudoMedico,
+} from '../../../data/repository/estudos';
 
-// Mock exam images
-const examImages = [
-  'https://images.unsplash.com/photo-1728347053156-cf9066af4d9f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWRpY2FsJTIwc3BpbmUlMjB4cmF5fGVufDF8fHx8MTc3NTY2NTYzMHww&ixlib=rb-4.1.0&q=80&w=400',
-  'https://images.unsplash.com/photo-1728347053156-cf9066af4d9f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWRpY2FsJTIwc3BpbmUlMjB4cmF5fGVufDF8fHx8MTc3NTY2NTYzMHww&ixlib=rb-4.1.0&q=80&w=400',
-  'https://images.unsplash.com/photo-1728347053156-cf9066af4d9f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWRpY2FsJTIwc3BpbmUlMjB4cmF5fGVufDF8fHx8MTc3NTY2NTYzMHww&ixlib=rb-4.1.0&q=80&w=400',
-];
+// ─── Helper ─────────────────────────────────────────────────────────────────
+
+function estadoParaBadge(estado: EstadoEstudo): BadgeStatus {
+  switch (estado) {
+    case 'UPLOADED':
+    case 'PROCESSING':      return 'in-analysis';
+    case 'PENDING_VALIDATION': return 'pending';
+    case 'VALIDATED':
+    case 'DIAGNOSED':
+    case 'SENT':            return 'analyzed';
+    case 'ARCHIVED':        return 'archived';
+    default:                return 'pending';
+  }
+}
+
+// ─── Ecrã principal ──────────────────────────────────────────────────────────
 
 export default function ExamViewerScreen() {
+  const { estudoId } = useParams<{ estudoId: string }>();
+  const navigate = useNavigate();
+  const { utilizador } = useAuth();
+  const { t } = useTranslation();
+
+  // ── Dados ──────────────────────────────────────────────────────────────────
+  const [estudo, setEstudo] = React.useState<EstudoCompleto | null>(null);
+  const [imageUrls, setImageUrls] = React.useState<string[]>([]);
+  const [aCarregar, setACarregar] = React.useState(true);
+  const [erroDados, setErroDados] = React.useState(false);
+
+  // ── Visualizador ───────────────────────────────────────────────────────────
   const [selectedImage, setSelectedImage] = React.useState(0);
   const [aiOverlay, setAiOverlay] = React.useState(true);
   const [zoom, setZoom] = React.useState(100);
   const [brightness, setBrightness] = React.useState(100);
   const [contrast, setContrast] = React.useState(100);
-  const [clinicalNotes, setClinicalNotes] = React.useState(
-    'O paciente apresenta melhoria relativamente ao exame anterior. O ângulo de Cobb diminuiu 0,4 graus. Recomenda-se continuar com o plano de tratamento atual.'
-  );
-  const [metricsConfirmed, setMetricsConfirmed] = React.useState(false);
-  const [showMetricsToast, setShowMetricsToast] = React.useState(false);
-  const [showNotesToast, setShowNotesToast] = React.useState(false);
-  const [showCorrectModal, setShowCorrectModal] = React.useState(false);
-  const [showArchiveModal, setShowArchiveModal] = React.useState(false);
-  const [correctedAngle, setCorrectedAngle] = React.useState('15.7');
-  const [correctedVertebra, setCorrectedVertebra] = React.useState('T8');
 
-  const handleReset = () => {
-    setZoom(100);
-    setBrightness(100);
-    setContrast(100);
+  // ── Notas clínicas ─────────────────────────────────────────────────────────
+  const [clinicalNotes, setClinicalNotes] = React.useState('');
+  const [aGuardarNotas, setAGuardarNotas] = React.useState(false);
+
+  // ── Modal de correção ──────────────────────────────────────────────────────
+  const [showCorrectModal, setShowCorrectModal] = React.useState(false);
+  const [correctedAngle, setCorrectedAngle] = React.useState('');
+  const [correctedVertebra, setCorrectedVertebra] = React.useState('');
+  const [correctionJustification, setCorrectionJustification] = React.useState('');
+  const [aCorrigir, setACorrigir] = React.useState(false);
+
+  // ── Modal de arquivo ───────────────────────────────────────────────────────
+  const [showArchiveModal, setShowArchiveModal] = React.useState(false);
+  const [aArquivar, setAArquivar] = React.useState(false);
+
+  // ── Confirmação IA ─────────────────────────────────────────────────────────
+  const [aConfirmar, setAConfirmar] = React.useState(false);
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+  const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  const mostrarToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
   };
 
-  const navigate = useNavigate();
+  // ── Carregar dados ─────────────────────────────────────────────────────────
+  React.useEffect(() => {
+    if (!estudoId) {
+      setErroDados(true);
+      setACarregar(false);
+      return;
+    }
+
+    let cancelado = false;
+    setACarregar(true);
+
+    async function carregar() {
+      try {
+        const dados = await getEstudoCompleto(estudoId!);
+        if (cancelado) return;
+        if (!dados) { setErroDados(true); return; }
+
+        setEstudo(dados);
+        setClinicalNotes(dados.notasClinicas ?? '');
+
+        if (dados.resultado) {
+          const r = dados.resultado;
+          setCorrectedAngle(String(r.anguloCobbCorrigido ?? r.anguloCobb));
+          setCorrectedVertebra(r.nivelVertebras ?? '');
+        }
+
+        // Gerar URLs assinadas para as imagens
+        if (dados.imagens.length > 0) {
+          const urls = await Promise.all(
+            dados.imagens.map((img) => getUrlImagemEstudo(img.caminhoArmazenamento)),
+          );
+          if (!cancelado) setImageUrls(urls.filter(Boolean) as string[]);
+        }
+      } catch {
+        if (!cancelado) setErroDados(true);
+      } finally {
+        if (!cancelado) setACarregar(false);
+      }
+    }
+
+    carregar();
+    return () => { cancelado = true; };
+  }, [estudoId]);
+
+  // ── Acções ─────────────────────────────────────────────────────────────────
+
+  const handleConfirmar = async () => {
+    if (!estudo?.resultado || !utilizador) return;
+    setAConfirmar(true);
+    try {
+      await confirmarMetricasIA(
+        estudo.resultado.id,
+        estudo.id,
+        utilizador.id,
+        utilizador.nomeCompleto,
+        utilizador.perfil,
+        estudo.estado,
+      );
+      setEstudo((prev) => prev
+        ? { ...prev, estado: 'VALIDATED', resultado: { ...prev.resultado!, decisao: 'ACEITE', dataValidacao: new Date().toISOString() } }
+        : prev,
+      );
+      mostrarToast(t('examViewer.confirmedMetrics'));
+    } catch {
+      mostrarToast(t('examViewer.errorConfirm'), 'error');
+    } finally {
+      setAConfirmar(false);
+    }
+  };
+
+  const handleCorrigir = async () => {
+    if (!estudo?.resultado || !utilizador) return;
+    const angulo = parseFloat(correctedAngle);
+    if (isNaN(angulo) || angulo < 0 || angulo > 180) {
+      mostrarToast(t('examViewer.invalidCobb'), 'error');
+      return;
+    }
+    setACorrigir(true);
+    try {
+      await corrigirMetricasIA(
+        estudo.resultado.id,
+        estudo.id,
+        utilizador.id,
+        utilizador.nomeCompleto,
+        utilizador.perfil,
+        estudo.estado,
+        angulo,
+        correctedVertebra.trim() || null,
+        correctionJustification.trim() || `Ângulo corrigido para ${angulo}°`,
+      );
+      setEstudo((prev) => prev
+        ? {
+            ...prev,
+            estado: 'VALIDATED',
+            resultado: {
+              ...prev.resultado!,
+              decisao: 'CORRIGIDO',
+              anguloCobbCorrigido: angulo,
+              nivelVertebras: correctedVertebra.trim() || prev.resultado!.nivelVertebras,
+              dataValidacao: new Date().toISOString(),
+            },
+          }
+        : prev,
+      );
+      setShowCorrectModal(false);
+      mostrarToast(t('examViewer.correctedMetrics'));
+    } catch {
+      mostrarToast(t('examViewer.errorCorrect'), 'error');
+    } finally {
+      setACorrigir(false);
+    }
+  };
+
+  const handleGuardarNotas = async () => {
+    if (!estudo) return;
+    setAGuardarNotas(true);
+    try {
+      await guardarNotasClinicas(estudo.id, clinicalNotes);
+      mostrarToast(t('examViewer.notesSaved'));
+    } catch {
+      mostrarToast(t('examViewer.notesError'), 'error');
+    } finally {
+      setAGuardarNotas(false);
+    }
+  };
+
+  const handleArquivar = async () => {
+    if (!estudo || !utilizador) return;
+    setAArquivar(true);
+    try {
+      await arquivarEstudoMedico(
+        estudo.id,
+        utilizador.id,
+        utilizador.nomeCompleto,
+        utilizador.perfil,
+        estudo.estado,
+      );
+      navigate(-1);
+    } catch {
+      mostrarToast(t('examViewer.errorArchive'), 'error');
+      setAArquivar(false);
+    }
+  };
+
+  // ── Loading ────────────────────────────────────────────────────────────────
+
+  if (aCarregar) {
+    return (
+      <div className="h-full flex bg-[var(--scolio-page-surface)]">
+        <div className="flex-[65] bg-black flex items-center justify-center">
+          <div className="w-48 space-y-3 opacity-30">
+            <SkeletonBlock height="400px" />
+          </div>
+        </div>
+        <div className="flex-[35] bg-white p-6 space-y-6">
+          <SkeletonBlock height="56px" />
+          <SkeletonBlock height="220px" />
+          <SkeletonBlock height="140px" />
+          <SkeletonBlock height="80px" />
+        </div>
+      </div>
+    );
+  }
+
+  if (erroDados || !estudo) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--weight-semibold)' }}>
+            {t('examViewer.notFoundTitle')}
+          </p>
+          <p className="text-[var(--scolio-text-secondary)] mb-4" style={{ fontSize: 'var(--text-body)' }}>
+            {t('examViewer.notFoundDesc')}
+          </p>
+          <Button variant="secondary" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            {t('common.back')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Dados derivados ────────────────────────────────────────────────────────
+
+  const resultado = estudo.resultado;
+  const anguloFinal = resultado
+    ? (resultado.anguloCobbCorrigido ?? resultado.anguloCobb)
+    : null;
+  const temImagens = imageUrls.length > 0;
+  const jaValidado = resultado?.decisao !== null;
+  const emProcessamento = estudo.estado === 'PROCESSING' || estudo.estado === 'UPLOADED';
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="h-full flex bg-[var(--scolio-page-surface)]">
-      {/* Left Column - Image Viewer (65%) */}
+
+      {/* ── Coluna esquerda — Visualizador de imagem (65%) ─────────────────── */}
       <div className="flex-[65] flex flex-col bg-black">
-        {/* Clinical Toolbar */}
+
+        {/* Toolbar clínica */}
         <div className="bg-[#1a1a1a] border-b border-gray-800 px-6 py-3">
           <div className="flex items-center justify-between">
-            {/* Left Side Tools */}
+            {/* Controlos esquerda */}
             <div className="flex items-center gap-4">
-              {/* Zoom Controls */}
+              {/* Zoom */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setZoom(Math.max(25, zoom - 25))}
@@ -82,57 +314,45 @@ export default function ExamViewerScreen() {
 
               <div className="w-px h-6 bg-gray-700" />
 
-              {/* Pan */}
-              <button
-                className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
-                title="Pan"
-              >
+              <button className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors" title="Pan">
                 <Move className="w-5 h-5" />
               </button>
-
-              {/* Reset */}
               <button
-                onClick={handleReset}
+                onClick={() => { setZoom(100); setBrightness(100); setContrast(100); }}
                 className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
-                title="Reset view"
+                title={t('examViewer.resetView')}
               >
                 <RotateCcw className="w-5 h-5" />
               </button>
 
               <div className="w-px h-6 bg-gray-700" />
 
-              {/* Brightness */}
+              {/* Brilho */}
               <div className="flex items-center gap-3">
                 <Sun className="w-4 h-4 text-gray-400" />
                 <input
-                  type="range"
-                  min="0"
-                  max="200"
-                  value={brightness}
+                  type="range" min="0" max="200" value={brightness}
                   onChange={(e) => setBrightness(Number(e.target.value))}
                   className="w-24 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[var(--scolio-primary-blue)]"
-                  title="Brightness"
+                  title="Brilho"
                 />
                 <span className="text-gray-400 text-xs min-w-8">{brightness}%</span>
               </div>
 
-              {/* Contrast */}
+              {/* Contraste */}
               <div className="flex items-center gap-3">
                 <div className="w-4 h-4 bg-gradient-to-r from-gray-600 to-white rounded" />
                 <input
-                  type="range"
-                  min="0"
-                  max="200"
-                  value={contrast}
+                  type="range" min="0" max="200" value={contrast}
                   onChange={(e) => setContrast(Number(e.target.value))}
                   className="w-24 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[var(--scolio-primary-blue)]"
-                  title="Contrast"
+                  title="Contraste"
                 />
                 <span className="text-gray-400 text-xs min-w-8">{contrast}%</span>
               </div>
             </div>
 
-            {/* AI Overlay Toggle */}
+            {/* Toggle overlay IA */}
             <button
               onClick={() => setAiOverlay(!aiOverlay)}
               className={`flex items-center gap-2 px-4 py-2 rounded-[var(--radius-component)] transition-colors ${
@@ -143,369 +363,453 @@ export default function ExamViewerScreen() {
             >
               {aiOverlay ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               <span style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                AI Overlay {aiOverlay ? 'ON' : 'OFF'}
+                {t('examViewer.aiOverlay')} {aiOverlay ? 'ON' : 'OFF'}
               </span>
             </button>
           </div>
         </div>
 
-        {/* Image Display Area */}
+        {/* Área de imagem */}
         <div className="flex-1 flex items-center justify-center p-8 overflow-hidden">
-          <div
-            className="relative max-w-full max-h-full"
-            style={{
-              transform: `scale(${zoom / 100})`,
-              filter: `brightness(${brightness}%) contrast(${contrast}%)`,
-              transition: 'transform 0.2s, filter 0.2s'
-            }}
-          >
-            <img
-              src={examImages[selectedImage]}
-              alt="Medical spine X-ray"
-              className="max-w-full max-h-full object-contain"
-            />
-            
-            {/* AI Overlay - Simulated */}
-            {aiOverlay && (
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none"
-                style={{ mixBlendMode: 'screen' }}
-              >
-                {/* Cobb angle lines (simulated) */}
-                <line x1="30%" y1="25%" x2="70%" y2="25%" stroke="#1A6FAF" strokeWidth="2" strokeDasharray="5,5" />
-                <line x1="25%" y1="65%" x2="75%" y2="65%" stroke="#1A6FAF" strokeWidth="2" strokeDasharray="5,5" />
-                <line x1="50%" y1="25%" x2="50%" y2="65%" stroke="#1A6FAF" strokeWidth="3" />
-                
-                {/* Vertebra labels */}
-                <circle cx="50%" cy="30%" r="6" fill="#1D9E75" opacity="0.8" />
-                <text x="50%" y="30%" fill="white" fontSize="10" textAnchor="middle" dy="3">T7</text>
-                
-                <circle cx="50%" cy="45%" r="6" fill="#BA7517" opacity="0.8" />
-                <text x="50%" y="45%" fill="white" fontSize="10" textAnchor="middle" dy="3">T8</text>
-                
-                <circle cx="50%" cy="60%" r="6" fill="#1D9E75" opacity="0.8" />
-                <text x="50%" y="60%" fill="white" fontSize="10" textAnchor="middle" dy="3">T9</text>
+          {temImagens ? (
+            <div
+              className="relative max-w-full max-h-full"
+              style={{
+                transform: `scale(${zoom / 100})`,
+                filter: `brightness(${brightness}%) contrast(${contrast}%)`,
+                transition: 'transform 0.2s, filter 0.2s',
+              }}
+            >
+              <img
+                src={imageUrls[selectedImage]}
+                alt="Radiografia da coluna"
+                className="max-w-full max-h-full object-contain"
+              />
 
-                {/* Angle measurement */}
-                <text x="55%" y="45%" fill="#1A6FAF" fontSize="16" fontWeight="600">15.7°</text>
-              </svg>
-            )}
-          </div>
+              {/* Overlay SVG gerado com coordenadas do modelo (overlay_json) */}
+              {aiOverlay && resultado && anguloFinal !== null && (
+                <svg
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  style={{ mixBlendMode: 'screen' }}
+                >
+                  {/* Linhas do ângulo de Cobb — coordenadas base até overlay_json do ML ser parseado */}
+                  <line x1="30%" y1="25%" x2="70%" y2="25%" stroke="#1A6FAF" strokeWidth="2" strokeDasharray="5,5" />
+                  <line x1="25%" y1="65%" x2="75%" y2="65%" stroke="#1A6FAF" strokeWidth="2" strokeDasharray="5,5" />
+                  <line x1="50%" y1="25%" x2="50%" y2="65%" stroke="#1A6FAF" strokeWidth="3" />
+                  {resultado.nivelVertebras && (
+                    <>
+                      <circle cx="50%" cy="45%" r="6" fill="#BA7517" opacity="0.8" />
+                      <text x="50%" y="45%" fill="white" fontSize="10" textAnchor="middle" dy="3">
+                        {resultado.nivelVertebras}
+                      </text>
+                    </>
+                  )}
+                  <text x="55%" y="42%" fill="#1A6FAF" fontSize="16" fontWeight="600">
+                    {anguloFinal.toFixed(1)}°
+                  </text>
+                </svg>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-4 text-gray-500">
+              {emProcessamento ? (
+                <>
+                  <div className="w-12 h-12 border-4 border-gray-600 border-t-[var(--scolio-primary-blue)] rounded-full animate-spin" />
+                  <p style={{ fontSize: 'var(--text-body)' }}>
+                    {estudo.estado === 'PROCESSING'
+                      ? t('examViewer.processing')
+                      : t('examViewer.awaitingUpload')}
+                  </p>
+                </>
+              ) : (
+                <p style={{ fontSize: 'var(--text-body)' }}>{t('examViewer.noImage')}</p>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Thumbnail Strip */}
-        <div className="bg-[#1a1a1a] border-t border-gray-800 px-6 py-4">
-          <div className="flex gap-3 justify-center">
-            {examImages.map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => setSelectedImage(idx)}
-                className={`w-20 h-20 rounded border-2 overflow-hidden transition-all ${
-                  selectedImage === idx
-                    ? 'border-[var(--scolio-primary-blue)] opacity-100'
-                    : 'border-gray-700 opacity-50 hover:opacity-75'
-                }`}
-              >
-                <img
-                  src={img}
-                  alt={`Exam view ${idx + 1}`}
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
+        {/* Tira de miniaturas */}
+        {temImagens && (
+          <div className="bg-[#1a1a1a] border-t border-gray-800 px-6 py-4">
+            <div className="flex gap-3 justify-center">
+              {imageUrls.map((url, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedImage(idx)}
+                  className={`w-20 h-20 rounded border-2 overflow-hidden transition-all ${
+                    selectedImage === idx
+                      ? 'border-[var(--scolio-primary-blue)] opacity-100'
+                      : 'border-gray-700 opacity-50 hover:opacity-75'
+                  }`}
+                >
+                  <img
+                    src={url}
+                    alt={`Vista ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Right Column - Information Panel (35%) */}
+      {/* ── Coluna direita — Painel de informação (35%) ────────────────────── */}
       <div className="flex-[35] bg-white overflow-y-auto">
         <div className="p-6 space-y-6">
-          {/* Patient & Exam Header */}
+
+          {/* Cabeçalho */}
           <div className="pb-4 border-b border-[var(--scolio-border-light)]">
-            <h2 className="text-[var(--scolio-text-primary)] mb-1">Maria Silva</h2>
+            <h2 className="text-[var(--scolio-text-primary)] mb-1">{estudo.pacienteNome}</h2>
             <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-              Data do exame: 8 de abril de 2026
+              {t('examViewer.examDate')}{' '}
+              {new Date(estudo.dataEstudo).toLocaleDateString('pt-PT', {
+                day: 'numeric', month: 'long', year: 'numeric',
+              })}
             </p>
+            {estudo.geradoPorIA && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--scolio-light-blue-surface)] text-[var(--scolio-primary-blue)] mt-1"
+                style={{ fontSize: 'var(--text-caption)' }}
+              >
+                {t('examViewer.iaAssisted')}
+              </span>
+            )}
           </div>
 
-          {/* AI Metrics Section */}
+          {/* Métricas IA */}
           <section>
-            <h3 className="text-[var(--scolio-text-primary)] mb-4">Métricas IA</h3>
-            <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5 space-y-5">
-              {/* Cobb Angle - Large Value + Gauge */}
-              <div>
-                <p className="text-[var(--scolio-text-secondary)] mb-3" style={{ fontSize: 'var(--text-body)' }}>
-                  Ângulo de Cobb
-                </p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[var(--scolio-text-primary)] font-semibold mb-1" style={{ fontSize: '48px', lineHeight: '1' }}>
-                      15.7°
+            <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('examViewer.aiMetrics')}</h3>
+            {resultado ? (
+              <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5 space-y-5">
+
+                {/* Ângulo de Cobb */}
+                <div>
+                  <p className="text-[var(--scolio-text-secondary)] mb-3" style={{ fontSize: 'var(--text-body)' }}>
+                    {t('examViewer.cobbAngle')}
+                    {resultado.decisao === 'CORRIGIDO' ? t('examViewer.correctedByDoctor') : ''}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p
+                        className="text-[var(--scolio-text-primary)] font-semibold mb-1"
+                        style={{ fontSize: '48px', lineHeight: '1' }}
+                      >
+                        {anguloFinal!.toFixed(1)}°
+                      </p>
+                      <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                        {resultado.grauCurvatura}
+                      </p>
+                    </div>
+                    <CobbAngleGauge angle={anguloFinal!} size={120} />
+                  </div>
+                  {resultado.decisao === 'CORRIGIDO' && (
+                    <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
+                      {t('examViewer.originalAI', { angle: resultado.anguloCobb.toFixed(1) })}
                     </p>
-                    <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                      Escoliose moderada
+                  )}
+                </div>
+
+                {/* Vértebra apical */}
+                {resultado.nivelVertebras && (
+                  <div className="flex items-center justify-between py-3 border-t border-[var(--scolio-border-light)]">
+                    <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                      {t('examViewer.apicalVertebra')}
+                    </span>
+                    <span
+                      className="text-[var(--scolio-text-primary)] font-semibold"
+                      style={{ fontSize: 'var(--text-h3)' }}
+                    >
+                      {resultado.nivelVertebras}
+                    </span>
+                  </div>
+                )}
+
+                {/* Localização */}
+                {resultado.localizacaoCurva && (
+                  <div className="flex items-center justify-between py-2 border-t border-[var(--scolio-border-light)]">
+                    <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                      {t('examViewer.location')}
+                    </span>
+                    <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
+                      {resultado.localizacaoCurva}
+                    </span>
+                  </div>
+                )}
+
+                {/* Confiança do modelo */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                      {t('examViewer.aiConfidence')}
+                    </span>
+                    <span
+                      className="font-semibold"
+                      style={{
+                        fontSize: 'var(--text-body)',
+                        color: resultado.confiancaModelo >= 0.8
+                          ? 'var(--scolio-success-green)'
+                          : resultado.confiancaModelo >= 0.6
+                          ? 'var(--scolio-warning-amber)'
+                          : 'var(--scolio-danger-coral)',
+                      }}
+                    >
+                      {Math.round(resultado.confiancaModelo * 100)}%
+                    </span>
+                  </div>
+                  <ProgressBar progress={Math.round(resultado.confiancaModelo * 100)} showLabel={false} />
+                </div>
+
+                {/* Estado de validação */}
+                {resultado.decisao && (
+                  <div
+                    className={`flex items-center gap-2 p-3 rounded-[var(--radius-component)] border ${
+                      resultado.decisao === 'ACEITE'
+                        ? 'bg-[var(--scolio-success-surface)] border-[var(--scolio-success-green)]'
+                        : resultado.decisao === 'CORRIGIDO'
+                        ? 'bg-[var(--scolio-warning-surface)] border-[var(--scolio-warning-amber)]'
+                        : 'bg-[var(--scolio-danger-surface)] border-[var(--scolio-danger-coral)]'
+                    }`}
+                  >
+                    <Check
+                      className="w-4 h-4 flex-shrink-0"
+                      style={{
+                        color: resultado.decisao === 'ACEITE'
+                          ? 'var(--scolio-success-green)'
+                          : resultado.decisao === 'CORRIGIDO'
+                          ? 'var(--scolio-warning-amber)'
+                          : 'var(--scolio-danger-coral)',
+                      }}
+                    />
+                    <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
+                      {resultado.decisao === 'ACEITE'
+                        ? t('examViewer.metricsAccepted')
+                        : resultado.decisao === 'CORRIGIDO'
+                        ? t('examViewer.metricsCorrected')
+                        : t('examViewer.metricsRejected')}
+                      {resultado.dataValidacao && (
+                        <> · {new Date(resultado.dataValidacao).toLocaleDateString('pt-PT')}</>
+                      )}
                     </p>
                   </div>
-                  <CobbAngleGauge angle={15.7} size={120} />
-                </div>
-              </div>
+                )}
 
-              {/* Apical Vertebra */}
-              <div className="flex items-center justify-between py-3 border-t border-[var(--scolio-border-light)]">
-                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Vértebra apical
-                </span>
-                <span className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>
-                  T8
-                </span>
+                {/* Botões de acção — apenas se ainda não validado */}
+                {!jaValidado && (
+                  <div className="flex gap-2 pt-3">
+                    <Button
+                      variant="primary"
+                      className="flex-1 bg-[var(--scolio-success-green)] hover:bg-[#188D68]"
+                      onClick={handleConfirmar}
+                      disabled={aConfirmar}
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      {aConfirmar ? t('examViewer.confirming') : t('examViewer.confirmMetrics')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="flex-1"
+                      onClick={() => setShowCorrectModal(true)}
+                      disabled={aConfirmar}
+                    >
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      {t('examViewer.correctMetrics')}
+                    </Button>
+                  </div>
+                )}
               </div>
-
-              {/* Confidence Score */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                    Confiança IA
-                  </span>
-                  <span className="text-[var(--scolio-success-green)] font-semibold" style={{ fontSize: 'var(--text-body)' }}>
-                    94%
-                  </span>
-                </div>
-                <ProgressBar progress={94} showLabel={false} />
+            ) : (
+              /* Sem resultado IA ainda */
+              <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-8 text-center">
+                {estudo.estado === 'PROCESSING' ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded-full border-4 border-[var(--scolio-border-light)] border-t-[var(--scolio-primary-blue)] animate-spin"
+                    />
+                    <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                      {t('examViewer.processingModel')}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                    {t('examViewer.noResults')}
+                  </p>
+                )}
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-3">
-                <Button
-                  variant="primary"
-                  className="flex-1 bg-[var(--scolio-success-green)] hover:bg-[#188D68]"
-                  onClick={() => {
-                    setMetricsConfirmed(true);
-                    setShowMetricsToast(true);
-                    setTimeout(() => setShowMetricsToast(false), 3000);
-                  }}
-                >
-                  <Check className="w-4 h-4 mr-2" />
-                  Confirmar métricas IA
-                </Button>
-                <Button variant="ghost" className="flex-1" onClick={() => setShowCorrectModal(true)}>
-                  <Edit3 className="w-4 h-4 mr-2" />
-                  Corrigir métricas
-                </Button>
-              </div>
-            </div>
+            )}
           </section>
 
-          {/* Clinical Notes Section */}
+          {/* Notas clínicas */}
           <section>
-            <h3 className="text-[var(--scolio-text-primary)] mb-4">Notas clínicas</h3>
+            <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('examViewer.clinicalNotes')}</h3>
             <div className="space-y-3">
               <Textarea
                 value={clinicalNotes}
                 onChange={(e) => setClinicalNotes(e.target.value)}
                 rows={6}
-                placeholder="Introduza observações clínicas..."
+                placeholder={t('examViewer.clinicalNotesPlaceholder')}
               />
               <Button
                 variant="primary"
                 className="w-full"
-                onClick={() => {
-                  setShowNotesToast(true);
-                  setTimeout(() => setShowNotesToast(false), 3000);
-                }}
+                onClick={handleGuardarNotas}
+                disabled={aGuardarNotas}
               >
-                Guardar notas
+                {aGuardarNotas ? t('examViewer.savingNotes') : t('examViewer.saveNotes')}
               </Button>
             </div>
           </section>
 
-          {/* Exam Status Section */}
+          {/* Estado do exame */}
           <section>
-            <h3 className="text-[var(--scolio-text-primary)] mb-4">Estado do exame</h3>
-            <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5 space-y-4">
+            <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('examViewer.examStatus')}</h3>
+            <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5">
               <div className="flex items-center justify-between">
                 <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Estado actual
+                  {t('examViewer.currentStatus')}
                 </span>
-                <StatusBadge status="analyzed" />
+                <StatusBadge status={estadoParaBadge(estudo.estado)} />
               </div>
-
-              {/* Status History Timeline */}
-              <div className="space-y-3 pt-3 border-t border-[var(--scolio-border-light)]">
-                <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                  Histórico de estados
-                </p>
-                <div className="space-y-3">
-                  <StatusTimelineItem
-                    status="Analisado"
-                    date="8 abr. 2026"
-                    time="15:42"
-                    color="var(--scolio-success-green)"
-                  />
-                  <StatusTimelineItem
-                    status="Em análise"
-                    date="8 abr. 2026"
-                    time="15:38"
-                    color="var(--scolio-primary-blue)"
-                  />
-                  <StatusTimelineItem
-                    status="Carregado"
-                    date="8 abr. 2026"
-                    time="15:35"
-                    color="var(--scolio-neutral-gray)"
-                  />
-                </div>
-              </div>
+              <p className="text-[var(--scolio-text-secondary)] mt-2" style={{ fontSize: 'var(--text-caption)' }}>
+                {t('examViewer.modelVersion')} {resultado?.versaoModelo ?? '—'}
+              </p>
             </div>
           </section>
 
-          {/* Footer Action Buttons */}
+          {/* Acções finais */}
           <div className="space-y-3 pt-4 border-t border-[var(--scolio-border-light)]">
-            <Button variant="primary" className="w-full" onClick={() => navigate('/report-generation')}>
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={() => navigate(`/report-generation/${estudoId}`)}
+              disabled={!resultado || emProcessamento}
+            >
               <FileText className="w-4 h-4 mr-2" />
-              Gerar relatório PDF
+              {t('examViewer.generatePDF')}
             </Button>
-            <Button variant="secondary" className="w-full" onClick={() => navigate('/exam-comparison')}>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() => navigate('/exam-comparison')}
+            >
               <GitCompare className="w-4 h-4 mr-2" />
-              Comparar com outro exame
+              {t('examViewer.compareExam')}
             </Button>
             <Button
               variant="ghost"
               className="w-full text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)]"
               onClick={() => setShowArchiveModal(true)}
+              disabled={estudo.arquivado || aArquivar}
             >
               <Archive className="w-4 h-4 mr-2" />
-              Arquivar exame
+              {estudo.arquivado ? t('examViewer.examArchived') : t('examViewer.archiveExam')}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Correct Metrics Modal */}
+      {/* ── Modal: Corrigir métricas ────────────────────────────────────────── */}
       {showCorrectModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-[var(--radius-modal)] shadow-lg w-[480px]">
             <div className="p-6 border-b border-[var(--scolio-border-light)]">
-              <h2 className="text-[var(--scolio-text-primary)]">Corrigir métricas</h2>
+              <h2 className="text-[var(--scolio-text-primary)]">{t('examViewer.correctMetricsTitle')}</h2>
             </div>
-
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                  Ângulo de Cobb (graus)
+                <label
+                  className="block text-[var(--scolio-text-primary)] mb-2"
+                  style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
+                >
+                  {t('examViewer.cobbDegrees')}
                 </label>
                 <Input
                   type="number"
                   value={correctedAngle}
                   onChange={(e) => setCorrectedAngle(e.target.value)}
-                  placeholder="15.7"
+                  placeholder={t('examViewer.cobbPlaceholder')}
                 />
               </div>
-
               <div>
-                <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                  Vértebra apical
+                <label
+                  className="block text-[var(--scolio-text-primary)] mb-2"
+                  style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
+                >
+                  {t('examViewer.apicalVertebra')}
                 </label>
                 <Input
                   type="text"
                   value={correctedVertebra}
                   onChange={(e) => setCorrectedVertebra(e.target.value)}
-                  placeholder="T8"
+                  placeholder={t('examViewer.vertebraPlaceholder')}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-[var(--scolio-text-primary)] mb-2"
+                  style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
+                >
+                  {t('examViewer.justification')} <span className="text-[var(--scolio-text-secondary)] font-normal">{t('examViewer.justificationOptional')}</span>
+                </label>
+                <Textarea
+                  value={correctionJustification}
+                  onChange={(e) => setCorrectionJustification(e.target.value)}
+                  rows={3}
+                  placeholder={t('examViewer.justificationPlaceholder')}
                 />
               </div>
             </div>
-
             <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setShowCorrectModal(false)}>
-                Cancelar
+              <Button variant="secondary" onClick={() => setShowCorrectModal(false)} disabled={aCorrigir}>
+                {t('common.cancel')}
               </Button>
-              <Button variant="primary" onClick={() => setShowCorrectModal(false)}>
-                Guardar correção
+              <Button variant="primary" onClick={handleCorrigir} disabled={aCorrigir}>
+                {aCorrigir ? t('examViewer.savingCorrection') : t('examViewer.saveCorrection')}
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Archive Confirmation Modal */}
+      {/* ── Modal: Arquivar exame ───────────────────────────────────────────── */}
       {showArchiveModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-[var(--radius-modal)] shadow-lg w-[480px]">
             <div className="p-6 border-b border-[var(--scolio-border-light)]">
-              <h2 className="text-[var(--scolio-text-primary)]">Arquivar exame</h2>
+              <h2 className="text-[var(--scolio-text-primary)]">{t('examViewer.archiveTitle')}</h2>
             </div>
-
             <div className="p-6">
               <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                Tem a certeza que pretende arquivar este exame? Esta ação não pode ser desfeita.
+                {t('examViewer.archiveConfirm')}
               </p>
             </div>
-
             <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setShowArchiveModal(false)}>
-                Cancelar
+              <Button variant="secondary" onClick={() => setShowArchiveModal(false)} disabled={aArquivar}>
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="primary"
                 className="bg-[var(--scolio-danger-coral)] hover:bg-[#C24D25]"
-                onClick={() => setShowArchiveModal(false)}
+                onClick={handleArquivar}
+                disabled={aArquivar}
               >
-                Arquivar
+                {aArquivar ? t('examViewer.archiving') : t('examViewer.archiveButton')}
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Toast Notifications */}
-      {showMetricsToast && (
+      {/* ── Toast ──────────────────────────────────────────────────────────── */}
+      {toast && (
         <div className="fixed top-8 right-8 z-50">
           <Toast
-            title="Métricas confirmadas com sucesso."
-            type="success"
-            onClose={() => setShowMetricsToast(false)}
+            title={toast.msg}
+            type={toast.type === 'error' ? 'error' : 'success'}
+            onClose={() => setToast(null)}
           />
         </div>
       )}
-
-      {showNotesToast && (
-        <div className="fixed top-8 right-8 z-50">
-          <Toast
-            title="Notas clínicas guardadas."
-            type="success"
-            onClose={() => setShowNotesToast(false)}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Status Timeline Item Component
-interface StatusTimelineItemProps {
-  status: string;
-  date: string;
-  time: string;
-  color: string;
-}
-
-function StatusTimelineItem({ status, date, time, color }: StatusTimelineItemProps) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="flex flex-col items-center">
-        <div
-          className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
-          style={{ backgroundColor: color }}
-        />
-        <div className="w-0.5 h-full bg-[var(--scolio-border-light)] mt-1" />
-      </div>
-      <div className="flex-1 pb-2">
-        <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-          {status}
-        </p>
-        <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-          {date} às {time}
-        </p>
-      </div>
     </div>
   );
 }

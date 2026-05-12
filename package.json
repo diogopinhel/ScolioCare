@@ -10,11 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.105.1",
+    "@supabase/supabase-js": "^2.105.3",
+    "i18next": "^26.0.10",
     "input-otp": "1.4.2",
     "lucide-react": "0.487.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-i18next": "^17.0.7",
     "react-router": "7.13.0",
     "recharts": "2.15.2"
   },

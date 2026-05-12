@@ -2,9 +2,15 @@ import React from 'react';
 import { ShieldOff, ArrowLeft, Mail, Home } from 'lucide-react';
 import { Button } from '../../components/scolio';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { useAuth, rotaInicialPara } from '../../auth/AuthContext';
 
 export default function Error403Screen() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { utilizador } = useAuth();
+
+  const destino = utilizador ? rotaInicialPara(utilizador.perfil) : '/login';
 
   return (
     <div className="h-full flex flex-col items-center justify-center bg-[var(--scolio-page-surface)] p-8">
@@ -25,37 +31,37 @@ export default function Error403Screen() {
           >
             403
           </p>
-          <h1 className="text-[var(--scolio-text-primary)] mb-3">Acesso proibido</h1>
+          <h1 className="text-[var(--scolio-text-primary)] mb-3">{t('errors.error403Title')}</h1>
           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-            Não tem permissão para aceder a este recurso. O seu perfil de utilizador não tem os privilégios necessários para esta área do ScolioScan.
+            {t('errors.error403Desc')}
           </p>
         </div>
 
         {/* Role info */}
         <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-card)] p-5 text-left space-y-3">
           <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-            Detalhes do erro
+            {t('errors.errorDetails')}
           </p>
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                O seu perfil
+                {t('errors.yourProfile')}
               </span>
               <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>
-                Técnico
+                {t('errors.profileTechnician')}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                Perfil necessário
+                {t('errors.requiredProfile')}
               </span>
               <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>
-                Administrador
+                {t('errors.profileAdmin')}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                Recurso solicitado
+                {t('errors.requestedResource')}
               </span>
               <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>
                 /admin
@@ -69,10 +75,10 @@ export default function Error403Screen() {
           <Button
             variant="primary"
             className="w-full"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(destino, { replace: true })}
           >
             <Home className="w-4 h-4 mr-2" />
-            Voltar ao dashboard
+            {t('common.homeDash')}
           </Button>
           <Button
             variant="secondary"
@@ -80,19 +86,19 @@ export default function Error403Screen() {
             onClick={() => navigate(-1)}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Página anterior
+            {t('common.backPrev')}
           </Button>
           <button
             className="flex items-center justify-center gap-2 w-full text-[var(--scolio-primary-blue)] hover:underline"
             style={{ fontSize: 'var(--text-body)' }}
           >
             <Mail className="w-4 h-4" />
-            Contactar administrador do sistema
+            {t('common.contactAdmin')}
           </button>
         </div>
 
         <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-          Se considerar que esta restrição é um erro, contacte o administrador do sistema com referência ao erro 403-AUTH-ROLE.
+          {t('errors.error403Note')}
         </p>
       </div>
     </div>

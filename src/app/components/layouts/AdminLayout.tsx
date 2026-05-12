@@ -9,20 +9,11 @@ import {
   ShieldCheck,
   Bell,
   ChevronRight,
-  Search,
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
-
-const breadcrumbMap: Record<string, string> = {
-  '/admin-panel': 'Painel',
-  '/admin-panel/users': 'Gestão de utilizadores',
-  '/admin-panel/audit': 'Auditoria global',
-  '/admin-panel/settings': 'Definições do sistema',
-  '/admin-panel/ai': 'IA & Dados',
-  '/admin-panel/compliance': 'Compliance & RGPD',
-  '/admin-panel/ui-audit': 'Auditoria UI/UX',
-};
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../LanguageSwitcher';
 
 function obterIniciais(nomeCompleto: string): string {
   const partes = nomeCompleto.trim().split(/\s+/);
@@ -36,9 +27,20 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { utilizador, logout } = useAuth();
+  const { t } = useTranslation();
+
+  const breadcrumbMap: Record<string, string> = {
+    '/admin-panel': t('nav.dashboard'),
+    '/admin-panel/users': t('admin.usersTitle'),
+    '/admin-panel/audit': t('admin.auditTitle'),
+    '/admin-panel/settings': t('admin.settingsTitle'),
+    '/admin-panel/ai': t('admin.aiTitle'),
+    '/admin-panel/compliance': t('admin.complianceTitle'),
+    '/admin-panel/ui-audit': 'Auditoria UI/UX',
+  };
 
   const currentLabel =
-    breadcrumbMap[location.pathname.replace(/\/$/, '')] || 'Painel';
+    breadcrumbMap[location.pathname.replace(/\/$/, '')] || t('nav.dashboard');
 
   const nome = utilizador?.nomeCompleto ?? 'Administrador';
   const iniciais = obterIniciais(nome);
@@ -90,7 +92,7 @@ export default function AdminLayout() {
                 ScolioScan
               </h2>
               <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                Administração
+                {t('nav.administration')}
               </p>
             </div>
           </div>
@@ -102,33 +104,33 @@ export default function AdminLayout() {
             className="px-4 mb-2 uppercase tracking-wider text-[var(--scolio-text-secondary)]"
             style={{ fontSize: '11px', fontWeight: 'var(--weight-semibold)' }}
           >
-            Geral
+            {t('nav.general')}
           </p>
           <ul className="space-y-1 mb-6">
-            {navItem('/admin-panel', LayoutDashboard, 'Painel', true)}
+            {navItem('/admin-panel', LayoutDashboard, t('nav.dashboard'), true)}
           </ul>
 
           <p
             className="px-4 mb-2 uppercase tracking-wider text-[var(--scolio-text-secondary)]"
             style={{ fontSize: '11px', fontWeight: 'var(--weight-semibold)' }}
           >
-            Acessos
+            {t('nav.access')}
           </p>
           <ul className="space-y-1 mb-6">
-            {navItem('/admin-panel/users', Users, 'Utilizadores')}
-            {navItem('/admin-panel/audit', ScrollText, 'Auditoria')}
+            {navItem('/admin-panel/users', Users, t('nav.users'))}
+            {navItem('/admin-panel/audit', ScrollText, t('nav.audit'))}
           </ul>
 
           <p
             className="px-4 mb-2 uppercase tracking-wider text-[var(--scolio-text-secondary)]"
             style={{ fontSize: '11px', fontWeight: 'var(--weight-semibold)' }}
           >
-            Sistema
+            {t('nav.system')}
           </p>
           <ul className="space-y-1 mb-6">
-            {navItem('/admin-panel/settings', Settings, 'Definições')}
-            {navItem('/admin-panel/ai', Cpu, 'IA & Dados')}
-            {navItem('/admin-panel/compliance', ShieldCheck, 'Compliance')}
+            {navItem('/admin-panel/settings', Settings, t('nav.settings'))}
+            {navItem('/admin-panel/ai', Cpu, t('nav.aiData'))}
+            {navItem('/admin-panel/compliance', ShieldCheck, t('nav.compliance'))}
           </ul>
         </nav>
 
@@ -149,7 +151,7 @@ export default function AdminLayout() {
                 className="text-[var(--scolio-text-secondary)] truncate"
                 style={{ fontSize: 'var(--text-caption)' }}
               >
-                Administrador
+                {t('nav.administrator')}
               </p>
             </div>
           </div>
@@ -160,7 +162,7 @@ export default function AdminLayout() {
             style={{ fontSize: 'var(--text-body)' }}
           >
             <LogOut className="w-4 h-4" />
-            <span>Sair</span>
+            <span>{t('common.logout')}</span>
           </button>
         </div>
       </aside>
@@ -174,7 +176,7 @@ export default function AdminLayout() {
                 className="text-[var(--scolio-text-secondary)]"
                 style={{ fontSize: 'var(--text-body)' }}
               >
-                Administração
+                {t('nav.breadcrumbAdmin')}
               </span>
               <ChevronRight className="w-4 h-4 text-[var(--scolio-neutral-gray)]" />
               <span
@@ -187,18 +189,19 @@ export default function AdminLayout() {
 
             <div className="flex items-center gap-4">
               <div className="relative w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)]" />
                 <input
                   type="search"
-                  placeholder="Pesquisar utilizadores, eventos..."
+                  placeholder={t('nav.searchUsersEvents')}
                   className="pl-10 pr-3 py-2 w-full border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)] focus:border-transparent"
                 />
               </div>
 
+              <LanguageSwitcher />
+
               <button
                 type="button"
                 className="relative p-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors"
-                aria-label="Notificações"
+                aria-label={t('common.notifications')}
               >
                 <Bell className="w-5 h-5" />
                 {notificationCount > 0 && (
