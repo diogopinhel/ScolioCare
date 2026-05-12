@@ -57,16 +57,10 @@ function mapUtilizadorDoBD(row: Record<string, any>, email: string): UtilizadorA
       };
 
     case 'PACIENTE':
-      return {
-        ...base,
-        perfil: 'PACIENTE',
-        dataNascimento: (row.data_nascimento ?? '') as string,
-        genero: (row.genero ?? '') as string,
-        numeroUtente: (row.numero_utente ?? '') as string,
-        contacto: (row.contacto ?? undefined) as string | undefined,
-        morada: (row.morada ?? undefined) as string | undefined,
-        contaAtivada: (row.conta_ativada ?? false) as boolean,
-      };
+      throw new AuthenticationError(
+        'CONTA_INATIVA',
+        'O acesso de pacientes está disponível apenas na aplicação móvel.',
+      );
 
     default:
       throw new AuthenticationError('ERRO_SERVIDOR', 'Perfil de utilizador desconhecido.');

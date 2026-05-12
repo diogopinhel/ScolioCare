@@ -67,8 +67,7 @@ export interface Paciente extends Utilizador {
 export type UtilizadorAutenticado =
   | Administrador
   | MedicoEspecialista
-  | TecnicoSaude
-  | Paciente;
+  | TecnicoSaude;
 
 // ─── Estudos ───────────────────────────────────────────────────────────────
 
