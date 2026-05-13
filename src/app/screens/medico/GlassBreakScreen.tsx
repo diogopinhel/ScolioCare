@@ -93,8 +93,9 @@ export default function GlassBreakScreen() {
     const nasc = new Date(dataNasc);
     const hoje = new Date();
     let idade = hoje.getFullYear() - nasc.getFullYear();
-    if (hoje.getMonth() - nasc.getMonth() < 0) idade--;
-    return `${idade} anos`;
+    const m = hoje.getMonth() - nasc.getMonth();
+    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+    return t('patients.yearsOld', { age: idade });
   };
 
   const canProceed = selectedReason && justification.trim().length >= 20 && acknowledged;

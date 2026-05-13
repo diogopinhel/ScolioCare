@@ -20,14 +20,14 @@ function exibirGenero(genero: string | null): string {
   return genero;
 }
 
-function calcularIdade(dataNascimento: string | null): string {
+function calcularIdade(dataNascimento: string | null, ageLabel: (age: number) => string): string {
   if (!dataNascimento) return '—';
   const nasc = new Date(dataNascimento);
   const hoje = new Date();
   let idade = hoje.getFullYear() - nasc.getFullYear();
   const m = hoje.getMonth() - nasc.getMonth();
   if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-  return `${idade} anos`;
+  return ageLabel(idade);
 }
 
 export default function TecnicoPatientsScreen() {
@@ -160,7 +160,7 @@ export default function TecnicoPatientsScreen() {
                     {p.numeroUtente ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                    {calcularIdade(p.dataNascimento)}
+                    {calcularIdade(p.dataNascimento, (age) => t('patients.yearsOld', { age }))}
                   </td>
                   <td className="px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                     {exibirGenero(p.genero)}

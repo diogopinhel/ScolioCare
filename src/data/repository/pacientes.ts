@@ -186,18 +186,16 @@ export interface PacienteResultadoGlobal {
  * Usado exclusivamente no fluxo de acesso de emergência (glass-break).
  * Requer que a RLS de `utilizadores` permita MEDICO ler rows de PACIENTE.
  */
+/**
+ * Pesquisa pacientes activos por nome ou número de utente via RPC SECURITY DEFINER.
+ * Query directa a `utilizadores` bloqueada por RLS para MEDICOs — esta função
+ * bypassa RLS tal como `get_medicos_ativos()` faz para TECNICOs.
+ */
 export async function pesquisarPacientesGlobal(query: string): Promise<PacienteResultadoGlobal[]> {
   const q = query.trim();
   if (q.length < 2) return [];
 
-  const { data, error } = await supabase
-    .from('utilizadores')
-    .select('id, nome_completo, numero_utente, data_nascimento, genero')
-    .eq('perfil', 'PACIENTE')
-    .eq('ativo', true)
-    .or(`nome_completo.ilike.%${q}%,numero_utente.ilike.%${q}%`)
-    .order('nome_completo')
-    .limit(15);
+  const { data, error } = await supabase.rpc('pesquisar_pacientes_global', { q });
 
   if (error || !data) return [];
 

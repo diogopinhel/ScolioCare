@@ -3,6 +3,7 @@ import { ArrowLeft, FileText, Shield, Check, Loader2, AlertCircle } from 'lucide
 import { Button, Modal, Toast } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { getEstudoCompleto, getUrlImagemEstudo } from '../../../data/repository/estudos';
 import { getPaciente } from '../../../data/repository/pacientes';
 import type { EstudoCompleto, PacienteDetalhe, MedicoEspecialista } from '../../../data/types';
@@ -12,20 +13,21 @@ function formatarDataPT(isoDate: string | null): string {
   return new Date(isoDate).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function calcularIdade(dataNascimento: string | null): string {
-  if (!dataNascimento) return '';
+function computeAge(dataNascimento: string | null): number | null {
+  if (!dataNascimento) return null;
   const nasc = new Date(dataNascimento);
   const hoje = new Date();
   let idade = hoje.getFullYear() - nasc.getFullYear();
   const m = hoje.getMonth() - nasc.getMonth();
   if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-  return ` (${idade} anos)`;
+  return idade;
 }
 
 export default function ReportGenerationScreen() {
   const navigate = useNavigate();
   const { estudoId } = useParams<{ estudoId: string }>();
   const { utilizador } = useAuth();
+  const { t } = useTranslation();
 
   const [estudo, setEstudo] = React.useState<EstudoCompleto | null>(null);
   const [paciente, setPaciente] = React.useState<PacienteDetalhe | null>(null);
@@ -87,7 +89,7 @@ export default function ReportGenerationScreen() {
         sigBy: 'Médico', license: 'Cédula', specialty: 'Especialidade',
         pending: 'Documento por assinar',
         footer: 'Documento gerado automaticamente pelo ScolioScan — não substitui relatório clínico assinado.',
-        metric: 'Métrica', value: 'Valor',
+        metric: 'Métrica', value: 'Valor', yearsUnit: 'anos',
       },
       en: {
         title: 'Clinical Scoliosis Report', subtitle: 'Clinical Spine Analysis',
@@ -101,7 +103,7 @@ export default function ReportGenerationScreen() {
         sigBy: 'Physician', license: 'Medical license', specialty: 'Specialty',
         pending: 'Document pending signature',
         footer: 'Automatically generated document — does not replace a signed clinical report.',
-        metric: 'Metric', value: 'Value',
+        metric: 'Metric', value: 'Value', yearsUnit: 'years',
       },
     } as const;
 
@@ -109,13 +111,14 @@ export default function ReportGenerationScreen() {
     const agora = new Date().toLocaleString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const dataExameStr = formatarDataPT(estudo.dataEstudo);
     const r = estudo.resultado;
+    const idadePaciente = computeAge(paciente?.dataNascimento ?? null);
 
     const secaoPaciente = includedSections.dadosPaciente ? `
       <h2>${s.patient}</h2>
       <div class="grid">
         <div class="field"><label>${s.fullName}</label><span>${estudo.pacienteNome}</span></div>
         ${paciente?.numeroUtente ? `<div class="field"><label>${s.utente}</label><span>${paciente.numeroUtente}</span></div>` : ''}
-        ${paciente?.dataNascimento ? `<div class="field"><label>${s.dob}</label><span>${formatarDataPT(paciente.dataNascimento)}${calcularIdade(paciente.dataNascimento)}</span></div>` : ''}
+        ${paciente?.dataNascimento ? `<div class="field"><label>${s.dob}</label><span>${formatarDataPT(paciente.dataNascimento)}${idadePaciente !== null ? ` (${idadePaciente} ${s.yearsUnit})` : ''}</span></div>` : ''}
         ${paciente?.genero ? `<div class="field"><label>${s.gender}</label><span>${paciente.genero}</span></div>` : ''}
       </div>` : '';
 
@@ -360,7 +363,7 @@ export default function ReportGenerationScreen() {
                         <DataLine label="Nome completo" value={estudo.pacienteNome} />
                         {paciente?.numeroUtente && <DataLine label="Nº utente" value={paciente.numeroUtente} />}
                         {paciente?.dataNascimento && (
-                          <DataLine label="Data de nascimento" value={`${formatarDataPT(paciente.dataNascimento)}${calcularIdade(paciente.dataNascimento)}`} />
+                          <DataLine label="Data de nascimento" value={`${formatarDataPT(paciente.dataNascimento)}${computeAge(paciente.dataNascimento) !== null ? ` (${t('patients.yearsOld', { age: computeAge(paciente.dataNascimento) })})` : ''}`} />
                         )}
                         {paciente?.genero && <DataLine label="Género" value={paciente.genero} />}
                       </div>

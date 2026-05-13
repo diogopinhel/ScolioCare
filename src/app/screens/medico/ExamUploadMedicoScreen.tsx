@@ -4,7 +4,7 @@ import { Upload, FileImage, X, CheckCircle2, Loader2, Image as ImageIcon } from 
 import { Button, Toast } from '../../components/scolio';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { getPacientesAssociados } from '../../../data/repository/pacientes';
+import { getPacientesAssociados, getPaciente } from '../../../data/repository/pacientes';
 import { criarEstudo, uploadImagemEstudo } from '../../../data/repository/tecnico';
 import { registarAcao } from '../../../data/repository/audit';
 import { supabase } from '../../../lib/supabase';
@@ -33,11 +33,24 @@ export default function ExamUploadMedicoScreen() {
   };
 
   React.useEffect(() => {
-    getPacientesAssociados().then((lista) => {
+    getPacientesAssociados().then(async (lista) => {
       setPacientes(lista);
       if (pacienteId) {
-        const pre = lista.find((p) => p.id === pacienteId) ?? null;
-        setPacienteSelecionado(pre);
+        const associado = lista.find((p) => p.id === pacienteId) ?? null;
+        if (associado) {
+          setPacienteSelecionado(associado);
+        } else {
+          // Paciente não está na lista — acesso via glass-break
+          const p = await getPaciente(pacienteId);
+          if (p) {
+            setPacienteSelecionado({
+              id: p.id,
+              nomeCompleto: p.nomeCompleto,
+              numeroUtente: p.numeroUtente ?? '—',
+              dataAssociacao: '',
+            });
+          }
+        }
       }
     }).finally(() => setACarregarPacientes(false));
   }, [pacienteId]);
