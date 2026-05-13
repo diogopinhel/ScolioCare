@@ -7,6 +7,7 @@ import { Button, Input, Textarea } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { supabase } from '../../../lib/supabase';
+import { registarAcao } from '../../../data/repository/audit';
 import { useTranslation } from 'react-i18next';
 
 const EMERGENCY_REASON_IDS = ['r1', 'r2', 'r3', 'r4', 'r5'] as const;
@@ -113,6 +114,7 @@ export default function GlassBreakScreen() {
         data_expiracao: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // preenchido também pelo trigger
       });
       if (error) throw error;
+      registarAcao('GLASS_BREAK', 'glassbreak_log', pacienteId);
       setStep('access');
     } catch (err) {
       console.error('Erro ao registar glass-break:', err);

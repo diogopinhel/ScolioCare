@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
-import { Search, UserPlus } from 'lucide-react';
-import { Button } from '../../components/scolio';
+import { Search, UserPlus, UserCog } from 'lucide-react';
+import { Button, Toast } from '../../components/scolio';
 import { getPacientesTecnico } from '../../../data/repository/tecnico';
-import type { PacienteTecnico } from '../../../data/types';
+import { getMedicos, reatribuirMedico } from '../../../data/repository/pacientes';
+import type { PacienteTecnico, MedicoResumo } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
 
 function formatarData(iso: string | null): string {
@@ -36,11 +37,46 @@ export default function TecnicoPatientsScreen() {
   const [aCarregar, setACarregar] = React.useState(true);
   const [search, setSearch] = React.useState('');
 
+  // Modal de reatribuição
+  const [pacienteReatribuir, setPacienteReatribuir] = React.useState<PacienteTecnico | null>(null);
+  const [medicos, setMedicos] = React.useState<MedicoResumo[]>([]);
+  const [novoMedicoId, setNovoMedicoId] = React.useState('');
+  const [aReatribuir, setAReatribuir] = React.useState(false);
+  const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  const mostrarToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   React.useEffect(() => {
     getPacientesTecnico()
       .then(setPacientes)
       .finally(() => setACarregar(false));
   }, []);
+
+  const abrirReatribuicao = async (p: PacienteTecnico) => {
+    setPacienteReatribuir(p);
+    setNovoMedicoId('');
+    if (medicos.length === 0) {
+      const lista = await getMedicos();
+      setMedicos(lista);
+    }
+  };
+
+  const confirmarReatribuicao = async () => {
+    if (!pacienteReatribuir || !novoMedicoId) return;
+    setAReatribuir(true);
+    try {
+      await reatribuirMedico(pacienteReatribuir.id, novoMedicoId);
+      mostrarToast(t('patients.reassignSuccess'));
+      setPacienteReatribuir(null);
+    } catch (err) {
+      mostrarToast(err instanceof Error ? err.message : t('patients.reassignError'), 'error');
+    } finally {
+      setAReatribuir(false);
+    }
+  };
 
   const filtrados = pacientes.filter(
     (p) =>
@@ -136,13 +172,22 @@ export default function TecnicoPatientsScreen() {
                     {p.totalExames}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => navigate('/tecnico/upload')}
-                      className="px-3 py-1 text-[var(--scolio-success-green)] border border-[var(--scolio-success-green)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-success-surface)] transition-colors"
-                      style={{ fontSize: 'var(--text-caption)' }}
-                    >
-                      {t('patients.newExamButton')}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => navigate('/tecnico/upload')}
+                        className="px-3 py-1 text-[var(--scolio-success-green)] border border-[var(--scolio-success-green)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-success-surface)] transition-colors"
+                        style={{ fontSize: 'var(--text-caption)' }}
+                      >
+                        {t('patients.newExamButton')}
+                      </button>
+                      <button
+                        title={t('patients.reassignDoctor')}
+                        onClick={() => abrirReatribuicao(p)}
+                        className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-success-green)] hover:bg-[var(--scolio-success-surface)] rounded transition-colors"
+                      >
+                        <UserCog className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -150,6 +195,52 @@ export default function TecnicoPatientsScreen() {
           </tbody>
         </table>
       </div>
+      {/* Modal reatribuição de médico */}
+      {pacienteReatribuir && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[var(--radius-modal)] w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-[var(--scolio-border-light)]">
+              <h2 className="text-[var(--scolio-text-primary)]">{t('patients.reassignDoctor')}</h2>
+              <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
+                {pacienteReatribuir.nomeCompleto}
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                  {t('patients.newDoctor')}
+                </label>
+                <select
+                  value={novoMedicoId}
+                  onChange={(e) => setNovoMedicoId(e.target.value)}
+                  className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
+                >
+                  <option value="">{t('newPatient.selectDoctor')}</option>
+                  {medicos.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nomeCompleto}{m.especialidade ? ` — ${m.especialidade}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setPacienteReatribuir(null)} disabled={aReatribuir}>
+                {t('common.cancel')}
+              </Button>
+              <Button variant="primary" onClick={confirmarReatribuicao} disabled={!novoMedicoId || aReatribuir}>
+                {aReatribuir ? t('common.saving') : t('common.confirm')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed top-8 right-8 z-50">
+          <Toast title={toast.msg} type={toast.type} onClose={() => setToast(null)} />
+        </div>
+      )}
     </div>
   );
 }

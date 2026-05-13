@@ -246,6 +246,14 @@ export async function atualizarPaciente(dados: DadosAtualizacaoPaciente): Promis
   if (data?.erro) throw new Error(data.erro as string);
 }
 
+export async function reatribuirMedico(pacienteId: string, novoMedicoId: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('reatribuir-medico', {
+    body: { pacienteId, novoMedicoId },
+  });
+  if (error) throw new Error(error.message);
+  if (data?.erro) throw new Error(data.erro as string);
+}
+
 export async function criarPaciente(dados: DadosCriacaoPaciente): Promise<string> {
   const { data, error } = await supabase.functions.invoke('criar-paciente', {
     body: dados,

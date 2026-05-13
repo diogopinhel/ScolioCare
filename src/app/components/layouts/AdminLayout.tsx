@@ -23,7 +23,6 @@ function obterIniciais(nomeCompleto: string): string {
 }
 
 export default function AdminLayout() {
-  const [notificationCount] = React.useState(4);
   const location = useLocation();
   const navigate = useNavigate();
   const { utilizador, logout } = useAuth();
@@ -204,11 +203,6 @@ export default function AdminLayout() {
                 aria-label={t('common.notifications')}
               >
                 <Bell className="w-5 h-5" />
-                {notificationCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-[var(--scolio-danger-coral)] text-white rounded-full flex items-center justify-center text-xs font-medium">
-                    {notificationCount}
-                  </span>
-                )}
               </button>
 
               <div className="w-9 h-9 rounded-full bg-[var(--scolio-primary-blue)] flex items-center justify-center text-white font-medium">

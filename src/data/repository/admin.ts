@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import type { AuditLogEntry, UtilizadorAdmin, MetricasDashboardAdmin } from '../types';
+import type { AuditLogEntry, UtilizadorAdmin, UtilizadorAdminCompleto, MetricasDashboardAdmin } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════
 // Dashboard Admin
@@ -51,13 +51,13 @@ export async function getAuditLog(
 ): Promise<AuditLogEntry[]> {
   let query = supabase
     .from('audit_log')
-    .select('id, utilizador_snapshot, tipo_acao, entidade_afetada, entidade_id, ip_origem, data_hora')
+    .select('id, utilizador_snapshot, tipo_acao, entidade_afetada, entidade_id, data_hora')
     .order('data_hora', { ascending: false })
     .limit(limite);
 
   if (pesquisa) {
     query = query.or(
-      `tipo_acao.ilike.%${pesquisa}%,entidade_afetada.ilike.%${pesquisa}%,ip_origem.ilike.%${pesquisa}%`,
+      `tipo_acao.ilike.%${pesquisa}%,entidade_afetada.ilike.%${pesquisa}%`,
     );
   }
 
@@ -71,7 +71,6 @@ export async function getAuditLog(
     tipoAcao: row.tipo_acao as string,
     entidadeAfetada: row.entidade_afetada as string,
     entidadeId: row.entidade_id as string | null,
-    ipOrigem: row.ip_origem as string | null,
     dataHora: row.data_hora as string,
   }));
 }
@@ -111,12 +110,111 @@ export async function toggleAtivoUtilizador(id: string, ativo: boolean): Promise
   if (error) throw error;
 }
 
+export async function getUtilizadorCompleto(id: string): Promise<UtilizadorAdminCompleto | null> {
+  const { data, error } = await supabase
+    .from('utilizadores')
+    .select(`id, nome_completo, perfil, ativo, conta_bloqueada, two_factor_ativo, ultimo_login,
+             data_criacao, cedula_profissional, especialidade, codigo_funcionario, departamento,
+             data_nascimento, genero, numero_utente, contacto, morada, cartao_cidadao`)
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = data as any;
+  return {
+    id: r.id,
+    nomeCompleto: r.nome_completo,
+    perfil: r.perfil,
+    ativo: r.ativo,
+    contaBloqueada: r.conta_bloqueada,
+    twoFactorAtivo: r.two_factor_ativo,
+    ultimoLogin: r.ultimo_login,
+    dataCriacao: r.data_criacao,
+    cedulaProfissional: r.cedula_profissional,
+    especialidade: r.especialidade,
+    codigoFuncionario: r.codigo_funcionario,
+    departamento: r.departamento,
+    dataNascimento: r.data_nascimento,
+    genero: r.genero,
+    numeroUtente: r.numero_utente,
+    contacto: r.contacto,
+    morada: r.morada,
+    cartaoCidadao: r.cartao_cidadao,
+  };
+}
+
+export interface CamposEdicaoUtilizador {
+  nomeCompleto: string;
+  // MEDICO
+  cedulaProfissional?: string;
+  especialidade?: string;
+  // TECNICO
+  codigoFuncionario?: string;
+  departamento?: string;
+  // PACIENTE
+  dataNascimento?: string;
+  genero?: string;
+  numeroUtente?: string;
+  contacto?: string;
+  morada?: string;
+  cartaoCidadao?: string;
+}
+
+export async function editarUtilizadorAdmin(id: string, perfil: string, campos: CamposEdicaoUtilizador): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dados: Record<string, any> = {
+    nome_completo: campos.nomeCompleto.trim(),
+  };
+
+  if (perfil === 'MEDICO') {
+    dados.cedula_profissional = campos.cedulaProfissional?.trim() ?? null;
+    dados.especialidade       = campos.especialidade?.trim() ?? null;
+  } else if (perfil === 'TECNICO') {
+    dados.codigo_funcionario = campos.codigoFuncionario?.trim() ?? null;
+    dados.departamento       = campos.departamento?.trim() ?? null;
+  } else if (perfil === 'PACIENTE') {
+    dados.data_nascimento = campos.dataNascimento ?? null;
+    dados.genero          = campos.genero ?? null;
+    dados.numero_utente   = campos.numeroUtente?.trim() ?? null;
+    dados.contacto        = campos.contacto?.trim() ?? null;
+    dados.morada          = campos.morada?.trim() ?? null;
+    dados.cartao_cidadao  = campos.cartaoCidadao?.trim() ?? null;
+  }
+
+  const { error } = await supabase.from('utilizadores').update(dados).eq('id', id);
+  if (error) throw error;
+}
+
 export async function toggleBloqueioUtilizador(id: string, contaBloqueada: boolean): Promise<void> {
   const { error } = await supabase
     .from('utilizadores')
     .update({ conta_bloqueada: contaBloqueada })
     .eq('id', id);
   if (error) throw error;
+}
+
+export interface UsoSemanalDia {
+  dia: string;   // 'Seg', 'Ter', …
+  medico: number;
+  tecnico: number;
+  admin: number;
+}
+
+const DIAS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+export async function getUsoPorPerfil(): Promise<UsoSemanalDia[]> {
+  const { data } = await supabase.rpc('get_uso_semanal');
+  if (!data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((row) => ({
+    dia: DIAS_PT[new Date(row.data + 'T00:00:00').getDay()],
+    medico: Number(row.medico),
+    tecnico: Number(row.tecnico),
+    admin: Number(row.admin_count),
+  }));
 }
 
 export interface DadosCriarUtilizador {

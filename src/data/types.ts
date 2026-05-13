@@ -34,7 +34,6 @@ export interface Utilizador {
 
 export interface Administrador extends Utilizador {
   perfil: 'ADMIN';
-  nivelAdmin: number;           // default 1
 }
 
 export interface MedicoEspecialista extends Utilizador {
@@ -238,7 +237,6 @@ export interface AuditLogEntry {
   tipoAcao: string;
   entidadeAfetada: string;
   entidadeId: string | null;
-  ipOrigem: string | null;
   dataHora: string;
 }
 
@@ -253,6 +251,23 @@ export interface UtilizadorAdmin {
   twoFactorAtivo: boolean;
   ultimoLogin: string | null;
   dataCriacao: string;
+}
+
+/** Extensão com campos editáveis específicos por perfil */
+export interface UtilizadorAdminCompleto extends UtilizadorAdmin {
+  // MEDICO
+  cedulaProfissional?: string | null;
+  especialidade?: string | null;
+  // TECNICO
+  codigoFuncionario?: string | null;
+  departamento?: string | null;
+  // PACIENTE
+  dataNascimento?: string | null;
+  genero?: string | null;
+  numeroUtente?: string | null;
+  contacto?: string | null;
+  morada?: string | null;
+  cartaoCidadao?: string | null;
 }
 
 export interface MetricasDashboardAdmin {

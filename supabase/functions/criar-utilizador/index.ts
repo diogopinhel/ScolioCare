@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: perfilRow } = await adminClient
       .from('utilizadores')
-      .select('perfil')
+      .select('perfil, nome_completo')
       .eq('id', user.id)
       .single()
 
@@ -107,6 +107,14 @@ Deno.serve(async (req: Request) => {
       await adminClient.auth.admin.deleteUser(novoId)
       return json({ erro: `Falha ao actualizar perfil: ${updateErr.message}` }, 500)
     }
+
+    await adminClient.from('audit_log').insert({
+      utilizador_snapshot: { nome: perfilRow.nome_completo, perfil: perfilRow.perfil },
+      tipo_acao: 'CRIAR_UTILIZADOR',
+      entidade_afetada: 'utilizadores',
+      entidade_id: novoId,
+      data_hora: new Date().toISOString(),
+    })
 
     return json({ id: novoId }, 201)
 

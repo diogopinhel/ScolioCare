@@ -2,31 +2,27 @@ import React from 'react';
 import { useNavigate } from 'react-router';
 import { Users, Activity, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getMetricasDashboardAdmin } from '../../../data/repository/admin';
+import { getMetricasDashboardAdmin, getUsoPorPerfil } from '../../../data/repository/admin';
 import type { MetricasDashboardAdmin } from '../../../data/types';
+import type { UsoSemanalDia } from '../../../data/repository/admin';
 import { useTranslation } from 'react-i18next';
-
-// Dados de uso semanal ficam como mock enquanto não existe endpoint de métricas por perfil
-const usageData = [
-  { day: 'Seg', medico: 0, tecnico: 0, admin: 0 },
-  { day: 'Ter', medico: 0, tecnico: 0, admin: 0 },
-  { day: 'Qua', medico: 0, tecnico: 0, admin: 0 },
-  { day: 'Qui', medico: 0, tecnico: 0, admin: 0 },
-  { day: 'Sex', medico: 0, tecnico: 0, admin: 0 },
-  { day: 'Sáb', medico: 0, tecnico: 0, admin: 0 },
-  { day: 'Dom', medico: 0, tecnico: 0, admin: 0 },
-];
 
 export default function AdminDashboardScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [aCarregar, setACarregar] = React.useState(true);
   const [metricas, setMetricas] = React.useState<MetricasDashboardAdmin | null>(null);
+  const [usageData, setUsageData] = React.useState<UsoSemanalDia[]>([]);
 
   React.useEffect(() => {
     let cancelado = false;
-    getMetricasDashboardAdmin()
-      .then((m) => { if (!cancelado) setMetricas(m); })
+    Promise.all([getMetricasDashboardAdmin(), getUsoPorPerfil()])
+      .then(([m, uso]) => {
+        if (!cancelado) {
+          setMetricas(m);
+          setUsageData(uso);
+        }
+      })
       .finally(() => { if (!cancelado) setACarregar(false); });
     return () => { cancelado = true; };
   }, []);
@@ -112,7 +108,7 @@ export default function AdminDashboardScreen() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={usageData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--scolio-border-light)" />
-              <XAxis dataKey="day" tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }} />
+              <XAxis dataKey="dia" tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }} />
               <YAxis tick={{ fill: 'var(--scolio-text-secondary)', fontSize: 13 }} />
               <Tooltip
                 contentStyle={{

@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { getPacientesAssociados } from '../../../data/repository/pacientes';
 import { criarEstudo, uploadImagemEstudo } from '../../../data/repository/tecnico';
+import { registarAcao } from '../../../data/repository/audit';
 import { supabase } from '../../../lib/supabase';
 import type { PacienteResumo } from '../../../data/types';
 
@@ -61,6 +62,7 @@ export default function ExamUploadMedicoScreen() {
         await supabase.from('estudos').update({ arquivado: true }).eq('id', estudoId);
         throw uploadErr;
       }
+      registarAcao('CRIAR_ESTUDO', 'estudos', estudoId);
       setFase('done');
       mostrarToast(t('upload.successToast'));
       setTimeout(() => navigate(`/patients/${pacienteSelecionado.id}`), 2000);

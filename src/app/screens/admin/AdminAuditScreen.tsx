@@ -72,24 +72,25 @@ export default function AdminAuditScreen() {
       !pesquisa ||
       (e.utilizadorSnapshot?.nome ?? '').toLowerCase().includes(termo) ||
       e.tipoAcao.toLowerCase().includes(termo) ||
-      e.entidadeAfetada.toLowerCase().includes(termo) ||
-      (e.ipOrigem ?? '').includes(pesquisa);
+      e.entidadeAfetada.toLowerCase().includes(termo);
     return matchCat && matchPesquisa;
   });
 
   const exportarCSV = () => {
     const linhas = [
-      ['ID', 'Data/Hora', 'Utilizador', 'Tipo de ação', 'Entidade', 'IP'].join(','),
+      ['ID', 'Data/Hora', 'Utilizador', 'Perfil', 'Tipo de ação', 'Entidade', 'Entidade ID'].join(','),
       ...filtrados.map((e) => [
         e.id,
-        e.dataHora,
+        formatarDataHora(e.dataHora),
         e.utilizadorSnapshot?.nome ?? '—',
+        e.utilizadorSnapshot?.perfil ?? '—',
         e.tipoAcao,
         e.entidadeAfetada,
-        e.ipOrigem ?? '—',
+        e.entidadeId ?? '—',
       ].map((v) => `"${v}"`).join(',')),
     ];
-    const blob = new Blob([linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    // ﻿ = UTF-8 BOM — necessário para o Excel reconhecer acentos e cedilhas correctamente
+    const blob = new Blob(['﻿' + linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -148,7 +149,7 @@ export default function AdminAuditScreen() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-              {[t('admin.colDateTime'), t('admin.colUser'), t('admin.colActionType'), t('admin.colEntity'), t('admin.colIP'), t('admin.colCategory')].map((h) => (
+              {[t('admin.colDateTime'), t('admin.colUser'), t('admin.colActionType'), t('admin.colEntity'), t('admin.colCategory')].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>
                   {h}
                 </th>
@@ -159,7 +160,7 @@ export default function AdminAuditScreen() {
             {aCarregar ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i} className="border-b border-[var(--scolio-border-light)]">
-                  {Array.from({ length: 6 }).map((__, j) => (
+                  {Array.from({ length: 5 }).map((__, j) => (
                     <td key={j} className="px-4 py-4">
                       <div className="h-4 bg-[var(--scolio-page-surface)] rounded animate-pulse" />
                     </td>
@@ -168,7 +169,7 @@ export default function AdminAuditScreen() {
               ))
             ) : filtrados.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                <td colSpan={5} className="px-4 py-12 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                   {pesquisa || categoriaFiltro !== 'all' ? t('admin.noMatchEvents') : t('admin.noEvents')}
                 </td>
               </tr>
@@ -197,9 +198,6 @@ export default function AdminAuditScreen() {
                       {e.entidadeId && (
                         <span className="ml-1 font-mono">·{e.entidadeId.slice(0, 8)}…</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--scolio-text-secondary)] font-mono" style={{ fontSize: 'var(--text-caption)' }}>
-                      {e.ipOrigem ?? '—'}
                     </td>
                     <td className="px-4 py-3">
                       <span
