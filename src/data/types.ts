@@ -352,6 +352,9 @@ export interface EstudoCompleto {
   estado: EstadoEstudo;
   notasClinicas: string | null;
   ficheiroPdf: string | null;
+  hashDocumento: string | null;
+  assinaturaDigital: string | null;
+  dataAssinatura: string | null;
   arquivado: boolean;
   geradoPorIA: boolean;
   resultado: ResultadoCompleto | null;

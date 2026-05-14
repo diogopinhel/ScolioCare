@@ -5,13 +5,21 @@ import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { getEstudoCompleto, getUrlImagemEstudo, guardarObservacoesMedico, guardarFicheiroPdf } from '../../../data/repository/estudos';
+import { getEstudoCompleto, getUrlImagemEstudo, guardarObservacoesMedico, guardarAssinaturaDocumento } from '../../../data/repository/estudos';
 import { supabase } from '../../../lib/supabase';
 import { getPaciente } from '../../../data/repository/pacientes';
 import type { EstudoCompleto, PacienteDetalhe, MedicoEspecialista } from '../../../data/types';
 
 const BUCKET_RELATORIOS = 'relatorios';
 const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10 MB
+
+async function calcularHashSHA256(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 function formatarDataPT(isoDate: string | null): string {
   if (!isoDate) return '—';
@@ -51,6 +59,8 @@ export default function ReportGenerationScreen() {
   });
   const [idioma, setIdioma] = React.useState('pt');
   const [observacoesMedico, setObservacoesMedico] = React.useState('');
+  const [hashDocumento, setHashDocumento] = React.useState<string | null>(null);
+  const [dataAssinatura, setDataAssinatura] = React.useState<string | null>(null);
   const [aEnviar, setAEnviar] = React.useState(false);
   const [showSignatureModal, setShowSignatureModal] = React.useState(false);
   const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -67,6 +77,8 @@ export default function ReportGenerationScreen() {
       if (!e) { setErroCarregamento(true); setACarregar(false); return; }
       setEstudo(e);
       setObservacoesMedico(e.resultado?.observacoesMedico ?? '');
+      setHashDocumento(e.hashDocumento);
+      setDataAssinatura(e.dataAssinatura);
 
       const [p, url] = await Promise.all([
         getPaciente(e.pacienteId),
@@ -167,12 +179,18 @@ export default function ReportGenerationScreen() {
       <div class="notes-box">${observacoesMedico}</div>` : '';
 
     const secaoAssinatura = includedSections.assinaturaDigital ? `
-      <div class="sig-block">
-        <div class="sig-header">🔒 ${s.sig}</div>
+      <div class="sig-block" style="${hashDocumento ? 'background:#f0faf5;border-color:#22c55e' : ''}">
+        <div class="sig-header" style="color:${hashDocumento ? '#16a34a' : '#1a6faf'}">
+          ${hashDocumento ? '✔ ' : '🔒 '}${s.sig}
+        </div>
         <div class="field"><label>${s.sigBy}</label><span>${nomeMedico}</span></div>
         ${medico?.cedulaProfissional ? `<div class="field"><label>${s.license}</label><span>${medico.cedulaProfissional}</span></div>` : ''}
         ${medico?.especialidade ? `<div class="field"><label>${s.specialty}</label><span>${medico.especialidade}</span></div>` : ''}
-        <p style="font-size:11px;color:#999;margin-top:8px">${s.pending}</p>
+        ${hashDocumento && dataAssinatura
+          ? `<div class="field" style="margin-top:8px"><label>Data</label><span>${new Date(dataAssinatura).toLocaleString('pt-PT')}</span></div>
+             <p style="font-size:10px;color:#666;margin-top:6px;font-family:monospace;word-break:break-all">SHA-256: ${hashDocumento}</p>`
+          : `<p style="font-size:11px;color:#999;margin-top:8px">${s.pending}</p>`
+        }
       </div>` : '';
 
     const html = `<!DOCTYPE html>
@@ -241,7 +259,7 @@ export default function ReportGenerationScreen() {
     }
   };
 
-  const handleEnviarAoPaciente = async () => {
+  const assinarEEnviar = async () => {
     if (!estudo || !previewRef.current) return;
     setAEnviar(true);
     try {
@@ -269,6 +287,16 @@ export default function ReportGenerationScreen() {
         return;
       }
 
+      // Calcular hash SHA-256 do conteúdo do PDF
+      const hash = await calcularHashSHA256(blob);
+      const agora = new Date().toISOString();
+      const assinatura = [
+        `SHA256:${hash}`,
+        `MEDICO_ID:${utilizador?.id ?? ''}`,
+        `CEDULA:${medico?.cedulaProfissional ?? ''}`,
+        `TS:${agora}`,
+      ].join('|');
+
       // Upload para Supabase Storage
       const path = `${estudo.pacienteId}/${estudo.id}.pdf`;
       const { error: uploadError } = await supabase.storage
@@ -276,16 +304,20 @@ export default function ReportGenerationScreen() {
         .upload(path, blob, { contentType: 'application/pdf', upsert: true });
       if (uploadError) throw uploadError;
 
-      // Guardar path na BD
-      await guardarFicheiroPdf(estudo.id, path);
+      // Guardar path, hash e assinatura na BD
+      await guardarAssinaturaDocumento(estudo.id, path, hash, assinatura, agora);
 
-      mostrarToast('Relatório enviado ao paciente com sucesso.');
+      setHashDocumento(hash);
+      setDataAssinatura(agora);
+      mostrarToast('Relatório assinado e enviado ao paciente com sucesso.');
     } catch {
       mostrarToast('Erro ao enviar o relatório. Tenta novamente.', 'error');
     } finally {
       setAEnviar(false);
     }
   };
+
+  const handleEnviarAoPaciente = assinarEEnviar;
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (aCarregar) {
@@ -539,22 +571,49 @@ export default function ReportGenerationScreen() {
                   {includedSections.assinaturaDigital && medico && (
                     <section className="mt-8 pt-6 border-t-2 border-[var(--scolio-border-light)]">
                       <h3 className="text-[var(--scolio-text-primary)] mb-3">Assinatura digital</h3>
-                      <div className="bg-[var(--scolio-light-blue-surface)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)] p-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Shield className="w-5 h-5 text-[var(--scolio-primary-blue)]" />
-                          <span className="text-[var(--scolio-primary-blue)] font-semibold" style={{ fontSize: 'var(--text-body)' }}>Documento por assinar</span>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                            <strong>Médico:</strong> {nomeMedico}
-                          </p>
-                          {medico.cedulaProfissional && (
+                      {hashDocumento ? (
+                        <div className="bg-[#f0faf5] border border-[var(--scolio-success-green)] rounded-[var(--radius-component)] p-4 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Check className="w-5 h-5 text-[var(--scolio-success-green)]" />
+                            <span className="text-[var(--scolio-success-green)] font-semibold" style={{ fontSize: 'var(--text-body)' }}>Documento assinado digitalmente</span>
+                          </div>
+                          <div className="space-y-1">
                             <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                              <strong>Cédula:</strong> {medico.cedulaProfissional}
+                              <strong>Médico:</strong> {nomeMedico}
                             </p>
-                          )}
+                            {medico.cedulaProfissional && (
+                              <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                                <strong>Cédula:</strong> {medico.cedulaProfissional}
+                              </p>
+                            )}
+                            {dataAssinatura && (
+                              <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                                <strong>Data:</strong> {new Date(dataAssinatura).toLocaleString('pt-PT')}
+                              </p>
+                            )}
+                            <p className="text-[var(--scolio-text-secondary)] break-all font-mono" style={{ fontSize: '10px', marginTop: '6px' }}>
+                              SHA-256: {hashDocumento}
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="bg-[var(--scolio-light-blue-surface)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)] p-4 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Shield className="w-5 h-5 text-[var(--scolio-primary-blue)]" />
+                            <span className="text-[var(--scolio-primary-blue)] font-semibold" style={{ fontSize: 'var(--text-body)' }}>Documento por assinar</span>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                              <strong>Médico:</strong> {nomeMedico}
+                            </p>
+                            {medico.cedulaProfissional && (
+                              <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                                <strong>Cédula:</strong> {medico.cedulaProfissional}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </section>
                   )}
                 </div>
@@ -569,23 +628,43 @@ export default function ReportGenerationScreen() {
         isOpen={showSignatureModal}
         onClose={() => setShowSignatureModal(false)}
         title="Confirmação de assinatura digital"
-        confirmLabel="Assinar documento"
+        confirmLabel="Assinar e enviar ao paciente"
         cancelLabel="Cancelar"
         onConfirm={() => {
           setShowSignatureModal(false);
-          mostrarToast('Assinatura digital em desenvolvimento.', 'error');
+          assinarEEnviar();
         }}
       >
         <div className="space-y-4">
-          <div className="bg-[var(--scolio-light-blue-surface)] rounded-[var(--radius-component)] p-4 flex items-start gap-3">
-            <Shield className="w-6 h-6 text-[var(--scolio-primary-blue)] flex-shrink-0" />
-            <div>
-              <p className="text-[var(--scolio-text-primary)] font-medium mb-2" style={{ fontSize: 'var(--text-body)' }}>Assinatura digital qualificada</p>
-              <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                O documento será assinado com o seu certificado digital qualificado, garantindo validade legal e autenticidade.
-              </p>
+          {hashDocumento ? (
+            <div className="bg-[#f0faf5] rounded-[var(--radius-component)] p-4 flex items-start gap-3">
+              <Check className="w-6 h-6 text-[var(--scolio-success-green)] flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[var(--scolio-success-green)] font-medium mb-1" style={{ fontSize: 'var(--text-body)' }}>Documento já assinado</p>
+                {dataAssinatura && (
+                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                    Assinado em {new Date(dataAssinatura).toLocaleString('pt-PT')}
+                  </p>
+                )}
+                <p className="text-[var(--scolio-text-secondary)] break-all font-mono mt-2" style={{ fontSize: '10px' }}>
+                  SHA-256: {hashDocumento}
+                </p>
+                <p className="text-[var(--scolio-text-secondary)] mt-2" style={{ fontSize: 'var(--text-caption)' }}>
+                  Confirmar irá gerar um novo PDF e substituir a assinatura existente.
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-[var(--scolio-light-blue-surface)] rounded-[var(--radius-component)] p-4 flex items-start gap-3">
+              <Shield className="w-6 h-6 text-[var(--scolio-primary-blue)] flex-shrink-0" />
+              <div>
+                <p className="text-[var(--scolio-text-primary)] font-medium mb-2" style={{ fontSize: 'var(--text-body)' }}>Assinatura com hash de integridade</p>
+                <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                  O PDF será gerado, e um hash SHA-256 do seu conteúdo será calculado e guardado na base de dados, vinculando o documento ao médico signatário.
+                </p>
+              </div>
+            </div>
+          )}
           {medico && (
             <div className="space-y-2">
               <DataLine label="Signatário" value={nomeMedico} />
