@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import type { AuditLogEntry, UtilizadorAdmin, UtilizadorAdminCompleto, MetricasDashboardAdmin } from '../types';
+import type { AuditLogEntry, UtilizadorAdmin, UtilizadorAdminCompleto, MetricasDashboardAdmin, SystemSettings, RgpdPedido, EstadoRgpdPedido } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════
 // Dashboard Admin
@@ -236,4 +236,115 @@ export async function criarUtilizador(dados: DadosCriarUtilizador): Promise<{ id
   if (error) throw new Error(error.message);
   if (data?.erro) throw new Error(data.erro);
   return data as { id: string };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// System Settings
+// ═══════════════════════════════════════════════════════════════════
+
+const DEFAULTS: SystemSettings = {
+  instituicao: '', nif: '', rgpdContact: '',
+  timeoutSessao: 30, tentativasLogin: 5, minPasswordLength: 12, validadePassword: 90,
+  force2faMedico: true, force2faTecnico: true, force2faAdmin: true,
+  modoManutencao: false, backupSchedule: '0 3 * * *', backupRetencao: 30,
+};
+
+function rowsToSettings(rows: { chave: string; valor: string | null }[]): SystemSettings {
+  const m = Object.fromEntries(rows.map((r) => [r.chave, r.valor ?? '']));
+  return {
+    instituicao:        m.instituicao        ?? DEFAULTS.instituicao,
+    nif:                m.nif               ?? DEFAULTS.nif,
+    rgpdContact:        m.rgpd_contact      ?? DEFAULTS.rgpdContact,
+    timeoutSessao:      Number(m.timeout_sessao)      || DEFAULTS.timeoutSessao,
+    tentativasLogin:    Number(m.tentativas_login)    || DEFAULTS.tentativasLogin,
+    minPasswordLength:  Number(m.min_password_length) || DEFAULTS.minPasswordLength,
+    validadePassword:   Number(m.validade_password)   || DEFAULTS.validadePassword,
+    force2faMedico:     m.force_2fa_medico  !== 'false',
+    force2faTecnico:    m.force_2fa_tecnico !== 'false',
+    force2faAdmin:      m.force_2fa_admin   !== 'false',
+    modoManutencao:     m.modo_manutencao   === 'true',
+    backupSchedule:     m.backup_schedule   ?? DEFAULTS.backupSchedule,
+    backupRetencao:     Number(m.backup_retencao)     || DEFAULTS.backupRetencao,
+  };
+}
+
+export async function getSystemSettings(): Promise<SystemSettings> {
+  const { data, error } = await supabase
+    .from('system_settings')
+    .select('chave, valor');
+  if (error || !data) return { ...DEFAULTS };
+  return rowsToSettings(data as { chave: string; valor: string | null }[]);
+}
+
+export async function saveSystemSettings(s: SystemSettings): Promise<void> {
+  const rows = [
+    { chave: 'instituicao',         valor: s.instituicao },
+    { chave: 'nif',                 valor: s.nif },
+    { chave: 'rgpd_contact',        valor: s.rgpdContact },
+    { chave: 'timeout_sessao',      valor: String(s.timeoutSessao) },
+    { chave: 'tentativas_login',    valor: String(s.tentativasLogin) },
+    { chave: 'min_password_length', valor: String(s.minPasswordLength) },
+    { chave: 'validade_password',   valor: String(s.validadePassword) },
+    { chave: 'force_2fa_medico',    valor: String(s.force2faMedico) },
+    { chave: 'force_2fa_tecnico',   valor: String(s.force2faTecnico) },
+    { chave: 'force_2fa_admin',     valor: String(s.force2faAdmin) },
+    { chave: 'modo_manutencao',     valor: String(s.modoManutencao) },
+    { chave: 'backup_schedule',     valor: s.backupSchedule },
+    { chave: 'backup_retencao',     valor: String(s.backupRetencao) },
+  ];
+  const { error } = await supabase
+    .from('system_settings')
+    .upsert(rows, { onConflict: 'chave' });
+  if (error) throw error;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RGPD Pedidos
+// ═══════════════════════════════════════════════════════════════════
+
+export async function getRgpdPedidos(estado?: EstadoRgpdPedido): Promise<RgpdPedido[]> {
+  let query = supabase
+    .from('rgpd_pedidos')
+    .select(`id, paciente_id, tipo, estado, descricao, notas_admin, tratado_por,
+             data_pedido, data_resolucao,
+             utilizadores!rgpd_pedidos_paciente_id_fkey(nome_completo)`)
+    .order('data_pedido', { ascending: false });
+
+  if (estado) query = query.eq('estado', estado);
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((r) => ({
+    id: r.id as string,
+    pacienteId: r.paciente_id as string,
+    pacienteNome: (r.utilizadores?.nome_completo ?? '—') as string,
+    tipo: r.tipo as RgpdPedido['tipo'],
+    estado: r.estado as RgpdPedido['estado'],
+    descricao: r.descricao as string | null,
+    notasAdmin: r.notas_admin as string | null,
+    tratadoPor: r.tratado_por as string | null,
+    dataPedido: r.data_pedido as string,
+    dataResolucao: r.data_resolucao as string | null,
+    prazo: new Date(new Date(r.data_pedido).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  }));
+}
+
+export async function atualizarRgpdPedido(
+  id: string,
+  estado: EstadoRgpdPedido,
+  notasAdmin?: string,
+): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const update: Record<string, unknown> = {
+    estado,
+    tratado_por: user?.id ?? null,
+    notas_admin: notasAdmin ?? null,
+  };
+  if (estado === 'CONCLUIDO' || estado === 'REJEITADO') {
+    update.data_resolucao = new Date().toISOString();
+  }
+  const { error } = await supabase.from('rgpd_pedidos').update(update).eq('id', id);
+  if (error) throw error;
 }
