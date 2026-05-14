@@ -823,7 +823,7 @@ export default function PatientRecordScreen() {
                     />
                     <ReferenceLine y={10} stroke="var(--scolio-warning-amber)" strokeDasharray="5 5" strokeWidth={2}>
                       <text x="50%" y={10} dy={-10} textAnchor="middle" fill="var(--scolio-warning-amber)" fontSize={13} fontWeight={500}>
-                        Limiar de escoliose
+                        {t('patientRecord.scoliosisThreshold')}
                       </text>
                     </ReferenceLine>
                     <Line

@@ -18,15 +18,6 @@ import type {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function tempoRelativo(dataISO: string): string {
-  const diff = Date.now() - new Date(dataISO).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return 'agora mesmo';
-  if (min < 60) return `há ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `há ${h}h`;
-  return `há ${Math.floor(h / 24)} dias`;
-}
 
 function estadoBadge(estado: EstadoEstudo, t: (key: string) => string) {
   const map: Record<string, { label: string; bg: string; fg: string }> = {
@@ -53,6 +44,18 @@ export default function TecnicoDashboardScreen() {
   const navigate = useNavigate();
   const { utilizador } = useAuth();
   const { t } = useTranslation();
+
+  const tempoRelativo = (dataISO: string): string => {
+    const diff = Date.now() - new Date(dataISO).getTime();
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return t('dashboard.timeNow');
+    if (min < 60) return t('dashboard.timeMinutes', { count: min });
+    const h = Math.floor(min / 60);
+    if (h < 24) return h === 1
+      ? t('dashboard.timeHour', { count: h })
+      : t('dashboard.timeHours', { count: h });
+    return t('dashboard.timeDays', { count: Math.floor(h / 24) });
+  };
 
   const [aCarregar, setACarregar] = React.useState(true);
   const [metricas, setMetricas] = React.useState<MetricasDashboardTecnico | null>(null);
