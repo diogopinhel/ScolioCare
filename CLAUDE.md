@@ -76,6 +76,10 @@ Several screens have UI wired up but no DB persistence yet:
 - Age filter and sort dropdown in `PatientListScreen` — decorative, not wired to state
 - Route `/patients/:id/edit` is referenced in buttons but not defined in `routes.tsx`
 
+## Git
+
+Quando pedido para fazer commit, criar o commit sem linha `Co-Authored-By`.
+
 ## Language
 
 Domain code, variable names, comments and UI strings are in **Portuguese**. Keep this convention when editing existing files (e.g. `paciente`, `estudo`, `utilizador`, not `patient`, `exam`, `user`).
