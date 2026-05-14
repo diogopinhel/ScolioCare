@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../LanguageSwitcher';
+import { NotificationDropdown } from '../NotificationDropdown';
 
 function obterIniciais(nomeCompleto: string): string {
   const partes = nomeCompleto
@@ -145,13 +146,7 @@ export default function Layout() {
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
 
-              <button
-                type="button"
-                className="relative p-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors"
-                aria-label={t('common.notifications')}
-              >
-                <Bell className="w-5 h-5" />
-              </button>
+              <NotificationDropdown />
 
               <div className="w-9 h-9 rounded-full bg-[var(--scolio-primary-blue)] flex items-center justify-center text-white font-medium">
                 {iniciais}

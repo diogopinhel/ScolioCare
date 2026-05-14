@@ -281,7 +281,7 @@ export default function ReportGenerationScreen() {
       if (uploadError) throw uploadError;
 
       // Guardar path na BD
-      await guardarFicheiroPdf(estudo.id, path);
+      await guardarFicheiroPdf(estudo.id, path, estudo.pacienteId);
 
       mostrarToast('Relatório enviado ao paciente com sucesso.');
     } catch {

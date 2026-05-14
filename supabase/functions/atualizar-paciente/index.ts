@@ -115,6 +115,16 @@ Deno.serve(async (req: Request) => {
       data_hora: new Date().toISOString(),
     })
 
+    // Notificar o paciente (fire-and-forget — não bloqueia a resposta)
+    adminClient.from('notificacoes').insert({
+      destinatario_id: pacienteId,
+      tipo: 'PACIENTE',
+      titulo: 'Dados clínicos atualizados',
+      mensagem: 'Os seus dados clínicos foram atualizados pelo médico responsável.',
+      referencia_entidade: 'utilizadores',
+      referencia_id: pacienteId,
+    }).then(() => {/* silencioso */})
+
     return json({ ok: true }, 200)
 
   } catch (err) {
