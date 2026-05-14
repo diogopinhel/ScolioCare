@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
       .eq('id', user.id)
       .single()
 
-    if (!perfilRow || !['MEDICO', 'ADMIN'].includes(perfilRow.perfil)) {
+    if (!perfilRow || !['TECNICO', 'ADMIN'].includes(perfilRow.perfil)) {
       return json({ erro: 'Sem permissão para editar dados de pacientes' }, 403)
     }
 
@@ -52,28 +52,7 @@ Deno.serve(async (req: Request) => {
     if (!pacienteId) return json({ erro: 'pacienteId é obrigatório' }, 400)
     if (!nomeCompleto?.trim()) return json({ erro: 'Nome completo é obrigatório' }, 400)
 
-    // ── 4. MEDICO: verificar associação regular OU glass-break activo ──────
-    // ADMIN tem acesso irrestrito; MEDICO pode editar os seus pacientes ou
-    // pacientes acedidos via protocolo de emergência (glass-break activo).
-    if (perfilRow.perfil === 'MEDICO') {
-      const { count: countAssoc } = await adminClient
-        .from('paciente_medico')
-        .select('paciente_id', { count: 'exact', head: true })
-        .eq('medico_id', user.id)
-        .eq('paciente_id', pacienteId)
-        .is('data_fim', null)
-
-      const { count: countGlassBreak } = await adminClient
-        .from('glassbreak_log')
-        .select('id', { count: 'exact', head: true })
-        .eq('medico_id', user.id)
-        .eq('paciente_id', pacienteId)
-        .gt('data_expiracao', new Date().toISOString())
-
-      if ((countAssoc ?? 0) === 0 && (countGlassBreak ?? 0) === 0) {
-        return json({ erro: 'Não está associado a este paciente' }, 403)
-      }
-    }
+    // TECNICO e ADMIN têm acesso irrestrito a todos os pacientes.
 
     // ── 5. Verificar que o paciente existe e é realmente PACIENTE ───────────
     const { data: pacienteExistente } = await adminClient
@@ -120,7 +99,7 @@ Deno.serve(async (req: Request) => {
       destinatario_id: pacienteId,
       tipo: 'PACIENTE',
       titulo: 'Dados clínicos atualizados',
-      mensagem: 'Os seus dados clínicos foram atualizados pelo médico responsável.',
+      mensagem: 'Os seus dados clínicos foram atualizados pelo técnico de saúde.',
       referencia_entidade: 'utilizadores',
       referencia_id: pacienteId,
     }).then(() => {/* silencioso */})

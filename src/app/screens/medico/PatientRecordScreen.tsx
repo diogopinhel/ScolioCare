@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit, FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown, GitCompare, ShieldAlert, Lock, Trash2 } from 'lucide-react';
+import { FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown, GitCompare, ShieldAlert, Lock, Trash2 } from 'lucide-react';
 import { Button, StatusBadge, type BadgeStatus, Textarea, Toast, ExamCard, SkeletonBlock } from '../../components/scolio';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Dot } from 'recharts';
 import { useNavigate, useParams } from 'react-router';
@@ -456,10 +456,6 @@ export default function PatientRecordScreen() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="secondary" onClick={() => navigate(`/patients/${id}/edit`)}>
-              <Edit className="w-4 h-4 mr-2" />
-              {t('patientRecord.editData')}
-            </Button>
             <Button variant="primary" onClick={() => navigate(`/exam-upload/${id}`)}>
               <FileText className="w-4 h-4 mr-2" />
               {t('patientRecord.newExam')}

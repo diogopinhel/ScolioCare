@@ -14,7 +14,6 @@ import AdminLayout from "./components/layouts/AdminLayout";
 import DashboardScreen from "./screens/medico/DashboardScreen";
 import PatientListScreen from "./screens/medico/PatientListScreen";
 import PatientRecordScreen from "./screens/medico/PatientRecordScreen";
-import PatientEditScreen from "./screens/medico/PatientEditScreen";
 import ExamViewerScreen from "./screens/medico/ExamViewerScreen";
 import ExamComparisonScreen from "./screens/medico/ExamComparisonScreen";
 import ReportGenerationScreen from "./screens/medico/ReportGenerationScreen";
@@ -27,6 +26,7 @@ import ExamUploadScreen from "./screens/tecnico/ExamUploadScreen";
 import ExamQueueScreen from "./screens/tecnico/ExamQueueScreen";
 import TecnicoPatientsScreen from "./screens/tecnico/TecnicoPatientsScreen";
 import TecnicoNewPatientScreen from "./screens/tecnico/TecnicoNewPatientScreen";
+import PatientEditScreen from "./screens/tecnico/PatientEditScreen";
 
 // Admin
 import AdminDashboardScreen from "./screens/admin/AdminDashboardScreen";
@@ -64,7 +64,6 @@ export const router = createBrowserRouter([
       { index: true, Component: DashboardScreen },
       { path: "patients", Component: PatientListScreen },
       { path: "patients/:id", Component: PatientRecordScreen },
-      { path: "patients/:id/edit", Component: PatientEditScreen },
       { path: "exam-viewer/:estudoId", Component: ExamViewerScreen },
       { path: "exam-comparison/:pacienteId", Component: ExamComparisonScreen },
       { path: "report-generation/:estudoId", Component: ReportGenerationScreen },
@@ -88,6 +87,7 @@ export const router = createBrowserRouter([
       { path: "queue", Component: ExamQueueScreen },
       { path: "patients", Component: TecnicoPatientsScreen },
       { path: "patients/new", Component: TecnicoNewPatientScreen },
+      { path: "patients/:id/edit", Component: PatientEditScreen },
       { path: "*", Component: Error404Screen },
     ],
   },

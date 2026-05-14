@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
-import { Search, UserPlus, UserCog } from 'lucide-react';
+import { Search, UserPlus, UserCog, Edit } from 'lucide-react';
 import { Button, Modal, Select } from '../../components/scolio';
 import { getPacientesTecnico, alterarMedicoPaciente } from '../../../data/repository/tecnico';
 import { getMedicos } from '../../../data/repository/pacientes';
@@ -226,6 +226,15 @@ export default function TecnicoPatientsScreen() {
                         style={{ fontSize: 'var(--text-caption)' }}
                       >
                         {t('patients.newExamButton')}
+                      </button>
+                      <button
+                        onClick={() => navigate(`/tecnico/patients/${p.id}/edit`)}
+                        className="px-3 py-1 text-[var(--scolio-primary-blue)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-light-blue-surface)] transition-colors flex items-center gap-1"
+                        style={{ fontSize: 'var(--text-caption)' }}
+                        title={t('patients.editPatient')}
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                        {t('patients.editPatient')}
                       </button>
                       <button
                         onClick={() => abrirModal(p)}

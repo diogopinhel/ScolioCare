@@ -345,7 +345,9 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
   const { data, error } = await supabase
     .from('estudos')
     .select(`
-      id, data_estudo, tipo_estudo, estado, notas_clinicas, ficheiro_pdf, arquivado, gerado_por_ia,
+      id, data_estudo, tipo_estudo, estado, notas_clinicas, ficheiro_pdf,
+      hash_documento, assinatura_digital, data_assinatura,
+      arquivado, gerado_por_ia,
       utilizadores!estudos_paciente_id_fkey(id, nome_completo),
       resultados(
         id, angulo_cobb, grau_curvatura, localizacao_curva,
@@ -402,6 +404,9 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
     estado: row.estado as EstadoEstudo,
     notasClinicas: row.notas_clinicas as string | null,
     ficheiroPdf: row.ficheiro_pdf as string | null,
+    hashDocumento: row.hash_documento as string | null,
+    assinaturaDigital: row.assinatura_digital as string | null,
+    dataAssinatura: row.data_assinatura as string | null,
     arquivado: row.arquivado as boolean,
     geradoPorIA: row.gerado_por_ia as boolean,
     resultado,
@@ -594,6 +599,28 @@ export async function guardarFicheiroPdf(
 }
 
 /**
+ * Guarda o path do PDF, o hash SHA-256 e a assinatura digital numa única operação atómica.
+ */
+export async function guardarAssinaturaDocumento(
+  estudoId: string,
+  path: string,
+  hashDocumento: string,
+  assinaturaDigital: string,
+  dataAssinatura: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('estudos')
+    .update({
+      ficheiro_pdf: path,
+      hash_documento: hashDocumento,
+      assinatura_digital: assinaturaDigital,
+      data_assinatura: dataAssinatura,
+    })
+    .eq('id', estudoId);
+  if (error) throw error;
+}
+
+/**
  * Gera URL assinada (válida 7 dias) para um relatório PDF no Storage.
  */
 export async function getUrlRelatorioPdf(path: string): Promise<string | null> {
@@ -613,6 +640,24 @@ export async function guardarNotasClinicas(estudoId: string, notas: string): Pro
     .update({ notas_clinicas: notas })
     .eq('id', estudoId);
   if (error) throw error;
+}
+
+export async function enviarEstudoAoPaciente(estudoId: string, pacienteId: string): Promise<void> {
+  const { error } = await supabase
+    .from('estudos')
+    .update({ estado: 'SENT' })
+    .eq('id', estudoId);
+  if (error) throw error;
+
+  // Notificar o paciente que o relatório está disponível (fire-and-forget)
+  notificarPaciente(
+    pacienteId,
+    'RELATORIO',
+    'Relatório clínico disponível',
+    'O seu relatório clínico foi assinado e enviado pelo seu médico.',
+    'estudos',
+    estudoId,
+  );
 }
 
 /**
