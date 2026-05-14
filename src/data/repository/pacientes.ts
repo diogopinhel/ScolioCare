@@ -245,7 +245,7 @@ export async function atualizarPaciente(dados: DadosAtualizacaoPaciente): Promis
 }
 
 export async function reatribuirMedico(pacienteId: string, novoMedicoId: string): Promise<void> {
-  const { data, error } = await supabase.functions.invoke('reatribuir-medico', {
+  const { data, error } = await supabase.functions.invoke('alterar-medico-paciente', {
     body: { pacienteId, novoMedicoId },
   });
   if (error) throw new Error(error.message);
