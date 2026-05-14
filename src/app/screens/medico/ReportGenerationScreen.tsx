@@ -1,12 +1,18 @@
 import React from 'react';
-import { ArrowLeft, FileText, Shield, Check, Loader2, AlertCircle } from 'lucide-react';
-import { Button, Modal, Toast } from '../../components/scolio';
+import { ArrowLeft, FileText, Shield, Check, Loader2, AlertCircle, Send } from 'lucide-react';
+import { Button, Modal, Toast, Textarea } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { getEstudoCompleto, getUrlImagemEstudo } from '../../../data/repository/estudos';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { getEstudoCompleto, getUrlImagemEstudo, guardarObservacoesMedico, guardarFicheiroPdf } from '../../../data/repository/estudos';
+import { supabase } from '../../../lib/supabase';
 import { getPaciente } from '../../../data/repository/pacientes';
 import type { EstudoCompleto, PacienteDetalhe, MedicoEspecialista } from '../../../data/types';
+
+const BUCKET_RELATORIOS = 'relatorios';
+const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10 MB
 
 function formatarDataPT(isoDate: string | null): string {
   if (!isoDate) return '—';
@@ -35,15 +41,19 @@ export default function ReportGenerationScreen() {
   const [aCarregar, setACarregar] = React.useState(true);
   const [erroCarregamento, setErroCarregamento] = React.useState(false);
 
+  const previewRef = React.useRef<HTMLDivElement>(null);
+
   const [includedSections, setIncludedSections] = React.useState({
     dadosPaciente: true,
     imagemExame: true,
     overlayIA: true,
     metricasValidadas: true,
-    notasClinicas: true,
+    observacoesMedico: true,
     assinaturaDigital: true,
   });
   const [idioma, setIdioma] = React.useState('pt');
+  const [observacoesMedico, setObservacoesMedico] = React.useState('');
+  const [aEnviar, setAEnviar] = React.useState(false);
   const [showSignatureModal, setShowSignatureModal] = React.useState(false);
   const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
@@ -58,6 +68,7 @@ export default function ReportGenerationScreen() {
     getEstudoCompleto(estudoId).then(async (e) => {
       if (!e) { setErroCarregamento(true); setACarregar(false); return; }
       setEstudo(e);
+      setObservacoesMedico(e.resultado?.observacoesMedico ?? '');
 
       const [p, url] = await Promise.all([
         getPaciente(e.pacienteId),
@@ -154,9 +165,9 @@ export default function ReportGenerationScreen() {
         </tbody>
       </table>` : '';
 
-    const secaoNotas = includedSections.notasClinicas && estudo.notasClinicas ? `
+    const secaoNotas = includedSections.observacoesMedico && observacoesMedico ? `
       <h2>${s.notes}</h2>
-      <div class="notes-box">${estudo.notasClinicas}</div>` : '';
+      <div class="notes-box">${observacoesMedico}</div>` : '';
 
     const secaoAssinatura = includedSections.assinaturaDigital ? `
       <div class="sig-block">
@@ -233,6 +244,52 @@ export default function ReportGenerationScreen() {
     }
   };
 
+  const handleEnviarAoPaciente = async () => {
+    if (!estudo || !previewRef.current) return;
+    setAEnviar(true);
+    try {
+      // Guardar observações na BD antes de gerar o PDF
+      if (estudo.resultado) {
+        await guardarObservacoesMedico(estudo.resultado.id, observacoesMedico);
+      }
+
+      // Capturar prévia e gerar PDF Blob
+      const canvas = await html2canvas(previewRef.current, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = (canvas.height * pageWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+      const blob = pdf.output('blob');
+
+      // Validar tamanho e tipo
+      if (blob.size > MAX_PDF_SIZE) {
+        mostrarToast('O PDF gerado excede os 10 MB. Reduz as secções incluídas e tenta novamente.', 'error');
+        return;
+      }
+      if (blob.type !== 'application/pdf') {
+        mostrarToast('Tipo de ficheiro inválido. Só são aceites ficheiros PDF.', 'error');
+        return;
+      }
+
+      // Upload para Supabase Storage
+      const path = `${estudo.pacienteId}/${estudo.id}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET_RELATORIOS)
+        .upload(path, blob, { contentType: 'application/pdf', upsert: true });
+      if (uploadError) throw uploadError;
+
+      // Guardar path na BD
+      await guardarFicheiroPdf(estudo.id, path);
+
+      mostrarToast('Relatório enviado ao paciente com sucesso.');
+    } catch {
+      mostrarToast('Erro ao enviar o relatório. Tenta novamente.', 'error');
+    } finally {
+      setAEnviar(false);
+    }
+  };
+
   // ── Loading ──────────────────────────────────────────────────────────────
   if (aCarregar) {
     return (
@@ -295,9 +352,23 @@ export default function ReportGenerationScreen() {
               <CheckboxItem label="Imagem do exame" checked={includedSections.imagemExame} onChange={() => toggleSection('imagemExame')} />
               <CheckboxItem label="Overlay IA" checked={includedSections.overlayIA} onChange={() => toggleSection('overlayIA')} disabled={!includedSections.imagemExame} />
               <CheckboxItem label="Métricas validadas" checked={includedSections.metricasValidadas} onChange={() => toggleSection('metricasValidadas')} />
-              <CheckboxItem label="Notas clínicas" checked={includedSections.notasClinicas} onChange={() => toggleSection('notasClinicas')} />
+              <CheckboxItem label="Observações do médico" checked={includedSections.observacoesMedico} onChange={() => toggleSection('observacoesMedico')} />
               <CheckboxItem label="Assinatura digital" checked={includedSections.assinaturaDigital} onChange={() => toggleSection('assinaturaDigital')} />
             </div>
+          </div>
+
+          {/* Observações do médico */}
+          <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
+            <h3 className="text-[var(--scolio-text-primary)] mb-1">Observações do médico</h3>
+            <p className="text-[var(--scolio-text-secondary)] mb-3" style={{ fontSize: 'var(--text-caption)' }}>
+              Texto visível ao paciente na app móvel e incluído no PDF.
+            </p>
+            <Textarea
+              value={observacoesMedico}
+              onChange={(e) => setObservacoesMedico(e.target.value)}
+              rows={5}
+              placeholder="Escreva aqui as observações a partilhar com o paciente…"
+            />
           </div>
 
           <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
@@ -315,6 +386,15 @@ export default function ReportGenerationScreen() {
           <div className="space-y-3">
             <Button variant="primary" className="w-full" onClick={handleGenerate}>
               <FileText className="w-4 h-4 mr-2" />Gerar PDF
+            </Button>
+            <Button
+              variant="primary"
+              className="w-full bg-[var(--scolio-success-green)] hover:bg-[#188D68]"
+              onClick={handleEnviarAoPaciente}
+              disabled={aEnviar || !estudo?.resultado}
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {aEnviar ? 'A enviar…' : 'Guardar e enviar ao paciente'}
             </Button>
             <Button variant="secondary" className="w-full" onClick={() => setShowSignatureModal(true)} disabled={!includedSections.assinaturaDigital}>
               <Shield className="w-4 h-4 mr-2" />Assinar digitalmente
@@ -337,7 +417,7 @@ export default function ReportGenerationScreen() {
             </div>
 
             <div className="p-8 bg-[var(--scolio-page-surface)] flex justify-center">
-              <div className="w-[595px] bg-white shadow-lg" style={{ minHeight: '842px' }}>
+              <div ref={previewRef} className="w-[595px] bg-white shadow-lg" style={{ minHeight: '842px' }}>
                 <div className="p-12 space-y-6">
                   {/* Cabeçalho do documento */}
                   <div className="border-b border-[var(--scolio-border-light)] pb-6">
@@ -446,13 +526,13 @@ export default function ReportGenerationScreen() {
                     </section>
                   )}
 
-                  {/* Notas clínicas */}
-                  {includedSections.notasClinicas && estudo.notasClinicas && (
+                  {/* Observações do médico */}
+                  {includedSections.observacoesMedico && observacoesMedico && (
                     <section>
                       <h3 className="text-[var(--scolio-text-primary)] mb-3">Observações do médico</h3>
                       <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-4">
-                        <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', lineHeight: '1.6' }}>
-                          {estudo.notasClinicas}
+                        <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                          {observacoesMedico}
                         </p>
                       </div>
                     </section>

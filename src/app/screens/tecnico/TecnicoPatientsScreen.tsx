@@ -1,9 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
 import { Search, UserPlus, UserCog } from 'lucide-react';
-import { Button, Toast } from '../../components/scolio';
-import { getPacientesTecnico } from '../../../data/repository/tecnico';
-import { getMedicos, reatribuirMedico } from '../../../data/repository/pacientes';
+import { Button, Modal, Select } from '../../components/scolio';
+import { getPacientesTecnico, alterarMedicoPaciente } from '../../../data/repository/tecnico';
+import { getMedicos } from '../../../data/repository/pacientes';
 import type { PacienteTecnico, MedicoResumo } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
 
@@ -30,6 +30,10 @@ function calcularIdade(dataNascimento: string | null, ageLabel: (age: number) =>
   return ageLabel(idade);
 }
 
+interface EstadoModal {
+  paciente: PacienteTecnico;
+}
+
 export default function TecnicoPatientsScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -37,17 +41,13 @@ export default function TecnicoPatientsScreen() {
   const [aCarregar, setACarregar] = React.useState(true);
   const [search, setSearch] = React.useState('');
 
-  // Modal de reatribuição
-  const [pacienteReatribuir, setPacienteReatribuir] = React.useState<PacienteTecnico | null>(null);
+  // Estado do modal de alteração de médico
+  const [modal, setModal] = React.useState<EstadoModal | null>(null);
   const [medicos, setMedicos] = React.useState<MedicoResumo[]>([]);
   const [novoMedicoId, setNovoMedicoId] = React.useState('');
-  const [aReatribuir, setAReatribuir] = React.useState(false);
-  const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-
-  const mostrarToast = (msg: string, type: 'success' | 'error' = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 4000);
-  };
+  const [aGuardar, setAGuardar] = React.useState(false);
+  const [erroModal, setErroModal] = React.useState<string | null>(null);
+  const [sucessoId, setSucessoId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     getPacientesTecnico()
@@ -55,34 +55,70 @@ export default function TecnicoPatientsScreen() {
       .finally(() => setACarregar(false));
   }, []);
 
-  const abrirReatribuicao = async (p: PacienteTecnico) => {
-    setPacienteReatribuir(p);
-    setNovoMedicoId('');
-    if (medicos.length === 0) {
-      const lista = await getMedicos();
-      setMedicos(lista);
-    }
-  };
-
-  const confirmarReatribuicao = async () => {
-    if (!pacienteReatribuir || !novoMedicoId) return;
-    setAReatribuir(true);
-    try {
-      await reatribuirMedico(pacienteReatribuir.id, novoMedicoId);
-      mostrarToast(t('patients.reassignSuccess'));
-      setPacienteReatribuir(null);
-    } catch (err) {
-      mostrarToast(err instanceof Error ? err.message : t('patients.reassignError'), 'error');
-    } finally {
-      setAReatribuir(false);
-    }
-  };
-
   const filtrados = pacientes.filter(
     (p) =>
       p.nomeCompleto.toLowerCase().includes(search.toLowerCase()) ||
       (p.numeroUtente ?? '').toLowerCase().includes(search.toLowerCase()),
   );
+
+  function abrirModal(paciente: PacienteTecnico) {
+    setModal({ paciente });
+    setNovoMedicoId('');
+    setErroModal(null);
+    setSucessoId(null);
+    // Carregar lista de médicos apenas uma vez
+    if (medicos.length === 0) {
+      getMedicos().then(setMedicos);
+    }
+  }
+
+  function fecharModal() {
+    setModal(null);
+    setErroModal(null);
+  }
+
+  async function confirmarAlteracaoMedico() {
+    if (!modal || !novoMedicoId) return;
+    setAGuardar(true);
+    setErroModal(null);
+    try {
+      await alterarMedicoPaciente(modal.paciente.id, novoMedicoId);
+      const medicoSelecionado = medicos.find((m) => m.id === novoMedicoId);
+      // Atualizar estado local para refletir a mudança sem recarregar
+      setPacientes((prev) =>
+        prev.map((p) =>
+          p.id === modal.paciente.id
+            ? { ...p, medicoId: novoMedicoId, medicoNome: medicoSelecionado?.nomeCompleto ?? null }
+            : p,
+        ),
+      );
+      setSucessoId(modal.paciente.id);
+      fecharModal();
+    } catch (err) {
+      setErroModal(err instanceof Error ? err.message : t('patients.changeDoctorError'));
+    } finally {
+      setAGuardar(false);
+    }
+  }
+
+  const opcoesSelect = [
+    { value: '', label: t('patients.selectDoctorPlaceholder') },
+    ...medicos.map((m) => ({
+      value: m.id,
+      label: m.especialidade ? `${m.nomeCompleto} — ${m.especialidade}` : m.nomeCompleto,
+    })),
+  ];
+
+  const colunas = [
+    t('patients.colName'),
+    t('patients.colUtenteShort'),
+    t('patients.colAge'),
+    t('patients.colGender'),
+    t('patients.colAssignedDoctor'),
+    t('patients.colLastExamShort'),
+    t('patients.colExamCount'),
+    t('patients.colActions'),
+  ];
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
@@ -118,7 +154,7 @@ export default function TecnicoPatientsScreen() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-              {[t('patients.colName'), t('patients.colUtenteShort'), t('patients.colAge'), t('patients.colGender'), t('patients.colLastExamShort'), t('patients.colExamCount'), t('patients.colActions')].map((h) => (
+              {colunas.map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>
                   {h}
                 </th>
@@ -129,7 +165,7 @@ export default function TecnicoPatientsScreen() {
             {aCarregar ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="border-b border-[var(--scolio-border-light)]">
-                  {Array.from({ length: 7 }).map((__, j) => (
+                  {Array.from({ length: 8 }).map((__, j) => (
                     <td key={j} className="px-4 py-4">
                       <div className="h-4 bg-[var(--scolio-page-surface)] rounded animate-pulse" />
                     </td>
@@ -138,13 +174,17 @@ export default function TecnicoPatientsScreen() {
               ))
             ) : filtrados.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                <td colSpan={8} className="px-4 py-12 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                   {search ? t('patients.noMatchSearch') : t('patients.noRegistered')}
                 </td>
               </tr>
             ) : (
               filtrados.map((p) => (
-                <tr key={p.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
+                <tr
+                  key={p.id}
+                  className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors"
+                  style={sucessoId === p.id ? { backgroundColor: 'var(--scolio-success-surface)' } : undefined}
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div
@@ -165,6 +205,13 @@ export default function TecnicoPatientsScreen() {
                   <td className="px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                     {exibirGenero(p.genero)}
                   </td>
+                  <td className="px-4 py-3" style={{ fontSize: 'var(--text-body)' }}>
+                    {p.medicoNome ? (
+                      <span className="text-[var(--scolio-text-primary)]">{p.medicoNome}</span>
+                    ) : (
+                      <span className="text-[var(--scolio-text-secondary)] italic">{t('patients.noDoctor')}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                     {formatarData(p.ultimoExame)}
                   </td>
@@ -181,11 +228,13 @@ export default function TecnicoPatientsScreen() {
                         {t('patients.newExamButton')}
                       </button>
                       <button
-                        title={t('patients.reassignDoctor')}
-                        onClick={() => abrirReatribuicao(p)}
-                        className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-success-green)] hover:bg-[var(--scolio-success-surface)] rounded transition-colors"
+                        onClick={() => abrirModal(p)}
+                        className="px-3 py-1 text-[var(--scolio-text-secondary)] border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-page-surface)] transition-colors flex items-center gap-1"
+                        style={{ fontSize: 'var(--text-caption)' }}
+                        title={t('patients.changeDoctor')}
                       >
-                        <UserCog className="w-4 h-4" />
+                        <UserCog className="w-3.5 h-3.5" />
+                        {t('patients.changeDoctor')}
                       </button>
                     </div>
                   </td>
@@ -195,52 +244,59 @@ export default function TecnicoPatientsScreen() {
           </tbody>
         </table>
       </div>
-      {/* Modal reatribuição de médico */}
-      {pacienteReatribuir && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[var(--radius-modal)] w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-[var(--scolio-border-light)]">
-              <h2 className="text-[var(--scolio-text-primary)]">{t('patients.reassignDoctor')}</h2>
-              <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
-                {pacienteReatribuir.nomeCompleto}
-              </p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                  {t('patients.newDoctor')}
-                </label>
-                <select
-                  value={novoMedicoId}
-                  onChange={(e) => setNovoMedicoId(e.target.value)}
-                  className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
-                >
-                  <option value="">{t('newPatient.selectDoctor')}</option>
-                  {medicos.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nomeCompleto}{m.especialidade ? ` — ${m.especialidade}` : ''}
-                    </option>
-                  ))}
-                </select>
+
+      {/* Modal de alteração de médico */}
+      <Modal
+        isOpen={modal !== null}
+        onClose={fecharModal}
+        title={t('patients.changeDoctorTitle')}
+        confirmLabel={aGuardar ? t('common.saving') : t('common.confirm')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={confirmarAlteracaoMedico}
+        confirmVariant="primary"
+      >
+        {modal && (
+          <div className="space-y-4">
+            {/* Informação readonly do paciente */}
+            <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-4 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.colName')}</span>
+                <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>{modal.paciente.nomeCompleto}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.colUtenteShort')}</span>
+                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{modal.paciente.numeroUtente ?? '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.colAge')}</span>
+                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{calcularIdade(modal.paciente.dataNascimento, (age) => t('patients.yearsOld', { age }))}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.colGender')}</span>
+                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{exibirGenero(modal.paciente.genero)}</span>
               </div>
             </div>
-            <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setPacienteReatribuir(null)} disabled={aReatribuir}>
-                {t('common.cancel')}
-              </Button>
-              <Button variant="primary" onClick={confirmarReatribuicao} disabled={!novoMedicoId || aReatribuir}>
-                {aReatribuir ? t('common.saving') : t('common.confirm')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {toast && (
-        <div className="fixed top-8 right-8 z-50">
-          <Toast title={toast.msg} type={toast.type} onClose={() => setToast(null)} />
-        </div>
-      )}
+            {/* Médico atual */}
+            <div>
+              <p className="text-[var(--scolio-text-secondary)] mb-1" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.currentDoctor')}</p>
+              <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                {modal.paciente.medicoNome ?? <span className="italic text-[var(--scolio-text-secondary)]">{t('patients.noDoctor')}</span>}
+              </p>
+            </div>
+
+            {/* Seleção do novo médico */}
+            <Select
+              label={t('patients.newDoctorLabel')}
+              value={novoMedicoId}
+              onChange={(e) => { setNovoMedicoId(e.target.value); setErroModal(null); }}
+              options={opcoesSelect}
+              error={erroModal ?? undefined}
+              disabled={aGuardar}
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

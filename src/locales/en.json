@@ -195,12 +195,21 @@
     "newDoctor": "New responsible doctor",
     "reassignSuccess": "Responsible doctor updated successfully.",
     "reassignError": "Error changing responsible doctor.",
+    "colAssignedDoctor": "ASSIGNED DOCTOR",
     "noMatchSearch": "No patients match the search.",
     "noRegistered": "No patients registered.",
     "newExamButton": "New exam",
     "notFoundTitle": "Patient not found",
     "notFoundDesc": "The requested patient does not exist or you do not have access to this record.",
-    "yearsOld": "{{age}} years"
+    "yearsOld": "{{age}} years",
+    "changeDoctor": "Change doctor",
+    "changeDoctorTitle": "Change responsible doctor",
+    "currentDoctor": "Current doctor",
+    "noDoctor": "No assigned doctor",
+    "newDoctorLabel": "New responsible doctor",
+    "selectDoctorPlaceholder": "Select a doctor...",
+    "changeDoctorSuccess": "Responsible doctor changed successfully.",
+    "changeDoctorError": "Error changing responsible doctor."
   },
   "patientRecord": {
     "editData": "Edit data",

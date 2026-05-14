@@ -195,12 +195,21 @@
     "newDoctor": "Novo médico responsável",
     "reassignSuccess": "Médico responsável actualizado com sucesso.",
     "reassignError": "Erro ao mudar o médico responsável.",
-    "noMatchSearch":"Nenhum paciente corresponde à pesquisa.",
+    "colAssignedDoctor": "MÉDICO RESPONSÁVEL",
+    "noMatchSearch": "Nenhum paciente corresponde à pesquisa.",
     "noRegistered": "Sem pacientes registados.",
     "newExamButton": "Novo exame",
     "notFoundTitle": "Paciente não encontrado",
     "notFoundDesc": "O paciente solicitado não existe ou não tem acesso a este registo.",
-    "yearsOld": "{{age}} anos"
+    "yearsOld": "{{age}} anos",
+    "changeDoctor": "Alterar médico",
+    "changeDoctorTitle": "Alterar médico responsável",
+    "currentDoctor": "Médico atual",
+    "noDoctor": "Sem médico associado",
+    "newDoctorLabel": "Novo médico responsável",
+    "selectDoctorPlaceholder": "Selecionar médico...",
+    "changeDoctorSuccess": "Médico responsável alterado com sucesso.",
+    "changeDoctorError": "Erro ao alterar o médico responsável."
   },
   "patientRecord": {
     "editData": "Editar dados",

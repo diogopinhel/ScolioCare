@@ -75,6 +75,10 @@ desktop.ini
 .scolisscan_clean.zip
 
 # Outros
-.CONTEXT_BRIEFING.md
-.relevant_files/
-.CLAUDE.md
+CONTEXT_BRIEFING.md
+CONTEXT_REWRITE.md
+relevant_files/
+CLAUDE.md
+schema.sql
+seed_utilizadores.ts
+
