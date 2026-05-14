@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { getEstudoCompleto, getUrlImagemEstudo, guardarObservacoesMedico, guardarAssinaturaDocumento } from '../../../data/repository/estudos';
+import { getEstudoCompleto, getUrlImagemEstudo, guardarObservacoesMedico, guardarAssinaturaDocumento, enviarEstudoAoPaciente } from '../../../data/repository/estudos';
 import { supabase } from '../../../lib/supabase';
 import { getPaciente } from '../../../data/repository/pacientes';
 import type { EstudoCompleto, PacienteDetalhe, MedicoEspecialista } from '../../../data/types';
@@ -61,7 +61,9 @@ export default function ReportGenerationScreen() {
   const [observacoesMedico, setObservacoesMedico] = React.useState('');
   const [hashDocumento, setHashDocumento] = React.useState<string | null>(null);
   const [dataAssinatura, setDataAssinatura] = React.useState<string | null>(null);
+  const [aAssinar, setAAssinar] = React.useState(false);
   const [aEnviar, setAEnviar] = React.useState(false);
+  const [foiEnviado, setFoiEnviado] = React.useState(false);
   const [showSignatureModal, setShowSignatureModal] = React.useState(false);
   const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
@@ -79,6 +81,7 @@ export default function ReportGenerationScreen() {
       setObservacoesMedico(e.resultado?.observacoesMedico ?? '');
       setHashDocumento(e.hashDocumento);
       setDataAssinatura(e.dataAssinatura);
+      setFoiEnviado(e.estado === 'SENT');
 
       const [p, url] = await Promise.all([
         getPaciente(e.pacienteId),
@@ -259,9 +262,9 @@ export default function ReportGenerationScreen() {
     }
   };
 
-  const assinarEEnviar = async () => {
+  const assinar = async () => {
     if (!estudo || !previewRef.current) return;
-    setAEnviar(true);
+    setAAssinar(true);
     try {
       // Guardar observações na BD antes de gerar o PDF
       if (estudo.resultado) {
@@ -309,15 +312,27 @@ export default function ReportGenerationScreen() {
 
       setHashDocumento(hash);
       setDataAssinatura(agora);
-      mostrarToast('Relatório assinado e enviado ao paciente com sucesso.');
+      mostrarToast('Documento assinado com sucesso.');
+    } catch {
+      mostrarToast('Erro ao assinar o documento. Tenta novamente.', 'error');
+    } finally {
+      setAAssinar(false);
+    }
+  };
+
+  const enviarAoPaciente = async () => {
+    if (!estudo) return;
+    setAEnviar(true);
+    try {
+      await enviarEstudoAoPaciente(estudo.id);
+      setFoiEnviado(true);
+      mostrarToast('Relatório enviado ao paciente com sucesso.');
     } catch {
       mostrarToast('Erro ao enviar o relatório. Tenta novamente.', 'error');
     } finally {
       setAEnviar(false);
     }
   };
-
-  const handleEnviarAoPaciente = assinarEEnviar;
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (aCarregar) {
@@ -419,14 +434,14 @@ export default function ReportGenerationScreen() {
             <Button
               variant="primary"
               className="w-full bg-[var(--scolio-success-green)] hover:bg-[#188D68]"
-              onClick={handleEnviarAoPaciente}
-              disabled={aEnviar || !estudo?.resultado}
+              onClick={enviarAoPaciente}
+              disabled={aEnviar || !hashDocumento || foiEnviado}
             >
               <Send className="w-4 h-4 mr-2" />
-              {aEnviar ? 'A enviar…' : 'Guardar e enviar ao paciente'}
+              {foiEnviado ? '✓ Enviado ao paciente' : aEnviar ? 'A enviar…' : 'Enviar ao paciente'}
             </Button>
-            <Button variant="secondary" className="w-full" onClick={() => setShowSignatureModal(true)} disabled={!includedSections.assinaturaDigital}>
-              <Shield className="w-4 h-4 mr-2" />Assinar digitalmente
+            <Button variant="secondary" className="w-full" onClick={() => setShowSignatureModal(true)} disabled={!includedSections.assinaturaDigital || aAssinar}>
+              <Shield className="w-4 h-4 mr-2" />{aAssinar ? 'A assinar…' : 'Assinar digitalmente'}
             </Button>
           </div>
 
@@ -628,11 +643,11 @@ export default function ReportGenerationScreen() {
         isOpen={showSignatureModal}
         onClose={() => setShowSignatureModal(false)}
         title="Confirmação de assinatura digital"
-        confirmLabel="Assinar e enviar ao paciente"
+        confirmLabel="Assinar documento"
         cancelLabel="Cancelar"
         onConfirm={() => {
           setShowSignatureModal(false);
-          assinarEEnviar();
+          assinar();
         }}
       >
         <div className="space-y-4">

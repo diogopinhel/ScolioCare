@@ -592,6 +592,14 @@ export async function guardarNotasClinicas(estudoId: string, notas: string): Pro
   if (error) throw error;
 }
 
+export async function enviarEstudoAoPaciente(estudoId: string): Promise<void> {
+  const { error } = await supabase
+    .from('estudos')
+    .update({ estado: 'SENT' })
+    .eq('id', estudoId);
+  if (error) throw error;
+}
+
 /**
  * Arquiva um estudo (soft-delete). Regista o estado anterior para possível
  * restauro futuro e insere linha em historico_estado.

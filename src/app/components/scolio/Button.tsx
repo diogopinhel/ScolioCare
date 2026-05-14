@@ -14,7 +14,7 @@ export function Button({
   className = '',
   ...props 
 }: ButtonProps) {
-  const baseStyles = 'px-4 py-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles = 'inline-flex items-center justify-center px-4 py-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variantStyles = {
     primary: 'bg-[var(--scolio-primary-blue)] text-white hover:bg-[#155A8F] active:bg-[#124B77] disabled:bg-[var(--scolio-primary-blue)]',

@@ -301,11 +301,12 @@ export default function PatientListScreen() {
                 pacientesNaPagina.map((patient) => (
                   <tr
                     key={patient.id}
-                    className={`border-b border-[var(--scolio-border-light)] transition-colors ${
+                    className={`border-b border-[var(--scolio-border-light)] transition-colors cursor-pointer ${
                       hoveredRow === patient.id ? 'bg-[var(--scolio-light-blue-surface)]' : 'bg-white'
                     }`}
                     onMouseEnter={() => setHoveredRow(patient.id)}
                     onMouseLeave={() => setHoveredRow(null)}
+                    onClick={() => navigate(`/patients/${patient.id}`)}
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -350,7 +351,7 @@ export default function PatientListScreen() {
                         <button
                           className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)] rounded transition-colors"
                           title={t('patients.archivePatient')}
-                          onClick={() => handleArchiveClick(patient.id, patient.nomeCompleto)}
+                          onClick={(e) => { e.stopPropagation(); handleArchiveClick(patient.id, patient.nomeCompleto); }}
                         >
                           <Archive className="w-4 h-4" />
                         </button>
