@@ -19,6 +19,38 @@ function formatarDataPT(isoDate: string | null): string {
   return new Date(isoDate).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// ── Traduções PT / EN do documento (usadas no PDF e na prévia) ────────────────
+const REPORT_TR = {
+  pt: {
+    title: 'Relatório Clínico de Escoliose', subtitle: 'Análise Clínica da Coluna Vertebral',
+    patient: 'Informação do paciente', fullName: 'Nome completo', utente: 'Nº utente',
+    dob: 'Data de nascimento', gender: 'Género',
+    examDate: 'Data do exame', reportDate: 'Data do relatório',
+    examImage: 'Imagem do exame', noImage: 'Sem imagem', metrics: 'Métricas validadas',
+    cobbAI: 'Ângulo de Cobb (IA)', cobbCorr: 'Ângulo de Cobb (corrigido)',
+    vertebra: 'Vértebra apical', classif: 'Classificação',
+    notes: 'Observações do médico', sig: 'Assinatura digital',
+    sigBy: 'Médico', license: 'Cédula', specialty: 'Especialidade',
+    pending: 'Documento por assinar',
+    footer: 'Documento gerado automaticamente pelo ScolioScan — não substitui relatório clínico assinado.',
+    metric: 'Métrica', value: 'Valor', yearsUnit: 'anos',
+  },
+  en: {
+    title: 'Clinical Scoliosis Report', subtitle: 'Clinical Spine Analysis',
+    patient: 'Patient information', fullName: 'Full name', utente: 'Patient ID',
+    dob: 'Date of birth', gender: 'Gender',
+    examDate: 'Exam date', reportDate: 'Report date',
+    examImage: 'Exam image', noImage: 'No image', metrics: 'Validated metrics',
+    cobbAI: 'Cobb angle (AI)', cobbCorr: 'Cobb angle (corrected)',
+    vertebra: 'Apical vertebra', classif: 'Classification',
+    notes: "Doctor's observations", sig: 'Digital signature',
+    sigBy: 'Physician', license: 'Medical license', specialty: 'Specialty',
+    pending: 'Document pending signature',
+    footer: 'Automatically generated document — does not replace a signed clinical report.',
+    metric: 'Metric', value: 'Value', yearsUnit: 'years',
+  },
+} as const;
+
 function computeAge(dataNascimento: string | null): number | null {
   if (!dataNascimento) return null;
   const nasc = new Date(dataNascimento);
@@ -52,6 +84,7 @@ export default function ReportGenerationScreen() {
     assinaturaDigital: true,
   });
   const [idioma, setIdioma] = React.useState('pt');
+  const ps = REPORT_TR[idioma as 'pt' | 'en'] ?? REPORT_TR.pt;
   const [observacoesMedico, setObservacoesMedico] = React.useState('');
   const [aEnviar, setAEnviar] = React.useState(false);
   const [showSignatureModal, setShowSignatureModal] = React.useState(false);
@@ -86,39 +119,7 @@ export default function ReportGenerationScreen() {
   const handleGenerate = () => {
     if (!estudo) return;
 
-    // ── Traduções PT / EN ──────────────────────────────────────────────────
-    const tr = {
-      pt: {
-        title: 'Relatório Clínico de Escoliose', subtitle: 'Análise Clínica da Coluna Vertebral',
-        patient: 'Informação do paciente', fullName: 'Nome completo', utente: 'Nº utente',
-        dob: 'Data de nascimento', gender: 'Género',
-        examDate: 'Data do exame', reportDate: 'Data do relatório',
-        examImage: 'Imagem do exame', metrics: 'Métricas validadas',
-        cobbAI: 'Ângulo de Cobb (IA)', cobbCorr: 'Ângulo de Cobb (corrigido)',
-        vertebra: 'Vértebra apical', classif: 'Classificação',
-        notes: 'Observações do médico', sig: 'Assinatura digital',
-        sigBy: 'Médico', license: 'Cédula', specialty: 'Especialidade',
-        pending: 'Documento por assinar',
-        footer: 'Documento gerado automaticamente pelo ScolioScan — não substitui relatório clínico assinado.',
-        metric: 'Métrica', value: 'Valor', yearsUnit: 'anos',
-      },
-      en: {
-        title: 'Clinical Scoliosis Report', subtitle: 'Clinical Spine Analysis',
-        patient: 'Patient information', fullName: 'Full name', utente: 'Patient ID',
-        dob: 'Date of birth', gender: 'Gender',
-        examDate: 'Exam date', reportDate: 'Report date',
-        examImage: 'Exam image', metrics: 'Validated metrics',
-        cobbAI: 'Cobb angle (AI)', cobbCorr: 'Cobb angle (corrected)',
-        vertebra: 'Apical vertebra', classif: 'Classification',
-        notes: "Doctor's observations", sig: 'Digital signature',
-        sigBy: 'Physician', license: 'Medical license', specialty: 'Specialty',
-        pending: 'Document pending signature',
-        footer: 'Automatically generated document — does not replace a signed clinical report.',
-        metric: 'Metric', value: 'Value', yearsUnit: 'years',
-      },
-    } as const;
-
-    const s = tr[idioma as 'pt' | 'en'] ?? tr.pt;
+    const s = REPORT_TR[idioma as 'pt' | 'en'] ?? REPORT_TR.pt;
     const agora = new Date().toLocaleString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const dataExameStr = formatarDataPT(estudo.dataEstudo);
     const r = estudo.resultado;
@@ -348,33 +349,33 @@ export default function ReportGenerationScreen() {
           <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
             <h3 className="text-[var(--scolio-text-primary)] mb-4">Secções incluídas</h3>
             <div className="space-y-3">
-              <CheckboxItem label="Dados do paciente" checked={includedSections.dadosPaciente} onChange={() => toggleSection('dadosPaciente')} />
-              <CheckboxItem label="Imagem do exame" checked={includedSections.imagemExame} onChange={() => toggleSection('imagemExame')} />
-              <CheckboxItem label="Overlay IA" checked={includedSections.overlayIA} onChange={() => toggleSection('overlayIA')} disabled={!includedSections.imagemExame} />
-              <CheckboxItem label="Métricas validadas" checked={includedSections.metricasValidadas} onChange={() => toggleSection('metricasValidadas')} />
-              <CheckboxItem label="Observações do médico" checked={includedSections.observacoesMedico} onChange={() => toggleSection('observacoesMedico')} />
-              <CheckboxItem label="Assinatura digital" checked={includedSections.assinaturaDigital} onChange={() => toggleSection('assinaturaDigital')} />
+              <CheckboxItem label={ps.patient} checked={includedSections.dadosPaciente} onChange={() => toggleSection('dadosPaciente')} />
+              <CheckboxItem label={ps.examImage} checked={includedSections.imagemExame} onChange={() => toggleSection('imagemExame')} />
+              <CheckboxItem label={t('report.overlayAI')} checked={includedSections.overlayIA} onChange={() => toggleSection('overlayIA')} disabled={!includedSections.imagemExame} />
+              <CheckboxItem label={ps.metrics} checked={includedSections.metricasValidadas} onChange={() => toggleSection('metricasValidadas')} />
+              <CheckboxItem label={ps.notes} checked={includedSections.observacoesMedico} onChange={() => toggleSection('observacoesMedico')} />
+              <CheckboxItem label={ps.sig} checked={includedSections.assinaturaDigital} onChange={() => toggleSection('assinaturaDigital')} />
             </div>
           </div>
 
           {/* Observações do médico */}
           <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-            <h3 className="text-[var(--scolio-text-primary)] mb-1">Observações do médico</h3>
+            <h3 className="text-[var(--scolio-text-primary)] mb-1">{ps.notes}</h3>
             <p className="text-[var(--scolio-text-secondary)] mb-3" style={{ fontSize: 'var(--text-caption)' }}>
-              Texto visível ao paciente na app móvel e incluído no PDF.
+              {t('report.observationsHint')}
             </p>
             <Textarea
               value={observacoesMedico}
               onChange={(e) => setObservacoesMedico(e.target.value)}
               rows={5}
-              placeholder="Escreva aqui as observações a partilhar com o paciente…"
+              placeholder={t('report.observationsPlaceholder')}
             />
           </div>
 
           <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-            <h3 className="text-[var(--scolio-text-primary)] mb-4">Idioma do relatório</h3>
+            <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('report.languageTitle')}</h3>
             <div className="space-y-2">
-              {[{ val: 'pt', label: 'Português (PT)' }, { val: 'en', label: 'English' }].map(({ val, label }) => (
+              {[{ val: 'pt', label: t('report.langPT') }, { val: 'en', label: t('report.langEN') }].map(({ val, label }) => (
                 <label key={val} className="flex items-center gap-3 cursor-pointer">
                   <input type="radio" name="language" value={val} checked={idioma === val} onChange={() => setIdioma(val)} className="w-4 h-4 text-[var(--scolio-primary-blue)] focus:ring-[var(--scolio-primary-blue)]" />
                   <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>{label}</span>
@@ -385,7 +386,7 @@ export default function ReportGenerationScreen() {
 
           <div className="space-y-3">
             <Button variant="primary" className="w-full" onClick={handleGenerate}>
-              <FileText className="w-4 h-4 mr-2" />Gerar PDF
+              <FileText className="w-4 h-4 mr-2" />{t('report.generatePdf')}
             </Button>
             <Button
               variant="primary"
@@ -394,16 +395,16 @@ export default function ReportGenerationScreen() {
               disabled={aEnviar || !estudo?.resultado}
             >
               <Send className="w-4 h-4 mr-2" />
-              {aEnviar ? 'A enviar…' : 'Guardar e enviar ao paciente'}
+              {aEnviar ? t('report.sending') : t('report.sendToPatient')}
             </Button>
             <Button variant="secondary" className="w-full" onClick={() => setShowSignatureModal(true)} disabled={!includedSections.assinaturaDigital}>
-              <Shield className="w-4 h-4 mr-2" />Assinar digitalmente
+              <Shield className="w-4 h-4 mr-2" />{t('report.signDigitally')}
             </Button>
           </div>
 
           <div className="bg-[var(--scolio-light-blue-surface)] rounded-[var(--radius-card)] border border-[var(--scolio-primary-blue)] p-4">
             <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-caption)' }}>
-              O PDF abre numa nova janela de impressão. Selecciona <strong>"Guardar como PDF"</strong> no diálogo do browser.
+              {t('report.pdfHintBefore')} <strong>&quot;{t('report.pdfHintSaveAsPdf')}&quot;</strong> {t('report.pdfHintAfter')}
             </p>
           </div>
         </div>
@@ -412,8 +413,8 @@ export default function ReportGenerationScreen() {
         <div className="col-span-7">
           <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] overflow-hidden">
             <div className="px-6 py-4 bg-[var(--scolio-page-surface)] border-b border-[var(--scolio-border-light)] flex items-center justify-between">
-              <h3 className="text-[var(--scolio-text-primary)]">Prévia do documento</h3>
-              <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Formato A4</span>
+              <h3 className="text-[var(--scolio-text-primary)]">{t('report.documentPreview')}</h3>
+              <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('report.formatA4')}</span>
             </div>
 
             <div className="p-8 bg-[var(--scolio-page-surface)] flex justify-center">
@@ -428,24 +429,24 @@ export default function ReportGenerationScreen() {
                         </div>
                         <div>
                           <h3 className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>ScolioScan</h3>
-                          <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Análise Clínica da Coluna Vertebral</p>
+                          <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{ps.subtitle}</p>
                         </div>
                       </div>
                     </div>
-                    <h2 className="text-[var(--scolio-primary-blue)]">Relatório Clínico de Escoliose</h2>
+                    <h2 className="text-[var(--scolio-primary-blue)]">{ps.title}</h2>
                   </div>
 
                   {/* Dados do paciente */}
                   {includedSections.dadosPaciente && (
                     <section>
-                      <h3 className="text-[var(--scolio-text-primary)] mb-3">Informação do paciente</h3>
+                      <h3 className="text-[var(--scolio-text-primary)] mb-3">{ps.patient}</h3>
                       <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-4 space-y-2">
-                        <DataLine label="Nome completo" value={estudo.pacienteNome} />
-                        {paciente?.numeroUtente && <DataLine label="Nº utente" value={paciente.numeroUtente} />}
+                        <DataLine label={ps.fullName} value={estudo.pacienteNome} />
+                        {paciente?.numeroUtente && <DataLine label={ps.utente} value={paciente.numeroUtente} />}
                         {paciente?.dataNascimento && (
-                          <DataLine label="Data de nascimento" value={`${formatarDataPT(paciente.dataNascimento)}${computeAge(paciente.dataNascimento) !== null ? ` (${t('patients.yearsOld', { age: computeAge(paciente.dataNascimento) })})` : ''}`} />
+                          <DataLine label={ps.dob} value={`${formatarDataPT(paciente.dataNascimento)}${computeAge(paciente.dataNascimento) !== null ? ` (${computeAge(paciente.dataNascimento)} ${ps.yearsUnit})` : ''}`} />
                         )}
-                        {paciente?.genero && <DataLine label="Género" value={paciente.genero} />}
+                        {paciente?.genero && <DataLine label={ps.gender} value={paciente.genero} />}
                       </div>
                     </section>
                   )}
@@ -453,11 +454,11 @@ export default function ReportGenerationScreen() {
                   {/* Datas */}
                   <section className="grid grid-cols-2 gap-4">
                     <div>
-                      <h3 className="text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)' }}>Data do exame</h3>
+                      <h3 className="text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)' }}>{ps.examDate}</h3>
                       <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{dataExame}</p>
                     </div>
                     <div>
-                      <h3 className="text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)' }}>Data do relatório</h3>
+                      <h3 className="text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)' }}>{ps.reportDate}</h3>
                       <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{dataRelatorio}</p>
                     </div>
                   </section>
@@ -465,7 +466,7 @@ export default function ReportGenerationScreen() {
                   {/* Imagem */}
                   {includedSections.imagemExame && (
                     <section>
-                      <h3 className="text-[var(--scolio-text-primary)] mb-3">Imagem do exame</h3>
+                      <h3 className="text-[var(--scolio-text-primary)] mb-3">{ps.examImage}</h3>
                       <div className="bg-black rounded-[var(--radius-component)] p-4 flex justify-center">
                         <div className="relative w-48 h-64">
                           {urlImagem ? (
@@ -481,7 +482,7 @@ export default function ReportGenerationScreen() {
                             </>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-[var(--scolio-neutral-gray)]">
-                              Sem imagem
+                              {ps.noImage}
                             </div>
                           )}
                         </div>
@@ -492,33 +493,33 @@ export default function ReportGenerationScreen() {
                   {/* Métricas validadas */}
                   {includedSections.metricasValidadas && resultado && (
                     <section>
-                      <h3 className="text-[var(--scolio-text-primary)] mb-3">Métricas validadas</h3>
+                      <h3 className="text-[var(--scolio-text-primary)] mb-3">{ps.metrics}</h3>
                       <table className="w-full border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] overflow-hidden">
                         <thead>
                           <tr className="bg-[var(--scolio-page-surface)]">
-                            <th className="text-left px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>Métrica</th>
-                            <th className="text-left px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>Valor</th>
+                            <th className="text-left px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>{ps.metric}</th>
+                            <th className="text-left px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>{ps.value}</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
-                            <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Ângulo de Cobb (IA)</td>
+                            <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{ps.cobbAI}</td>
                             <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-caption)' }}>{resultado.anguloCobb.toFixed(1)}°</td>
                           </tr>
                           {resultado.anguloCobbCorrigido !== null && (
                             <tr>
-                              <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Ângulo de Cobb (corrigido)</td>
+                              <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{ps.cobbCorr}</td>
                               <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-caption)' }}>{resultado.anguloCobbCorrigido.toFixed(1)}°</td>
                             </tr>
                           )}
                           {resultado.nivelVertebras && (
                             <tr>
-                              <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Vértebra apical</td>
+                              <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{ps.vertebra}</td>
                               <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>{resultado.nivelVertebras}</td>
                             </tr>
                           )}
                           <tr>
-                            <td className="px-4 py-2 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>Classificação</td>
+                            <td className="px-4 py-2 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{ps.classif}</td>
                             <td className="px-4 py-2 text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>{resultado.grauCurvatura}</td>
                           </tr>
                         </tbody>
@@ -529,7 +530,7 @@ export default function ReportGenerationScreen() {
                   {/* Observações do médico */}
                   {includedSections.observacoesMedico && observacoesMedico && (
                     <section>
-                      <h3 className="text-[var(--scolio-text-primary)] mb-3">Observações do médico</h3>
+                      <h3 className="text-[var(--scolio-text-primary)] mb-3">{ps.notes}</h3>
                       <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-4">
                         <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
                           {observacoesMedico}
@@ -541,19 +542,19 @@ export default function ReportGenerationScreen() {
                   {/* Assinatura digital */}
                   {includedSections.assinaturaDigital && medico && (
                     <section className="mt-8 pt-6 border-t-2 border-[var(--scolio-border-light)]">
-                      <h3 className="text-[var(--scolio-text-primary)] mb-3">Assinatura digital</h3>
+                      <h3 className="text-[var(--scolio-text-primary)] mb-3">{ps.sig}</h3>
                       <div className="bg-[var(--scolio-light-blue-surface)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)] p-4 space-y-2">
                         <div className="flex items-center gap-2">
                           <Shield className="w-5 h-5 text-[var(--scolio-primary-blue)]" />
-                          <span className="text-[var(--scolio-primary-blue)] font-semibold" style={{ fontSize: 'var(--text-body)' }}>Documento por assinar</span>
+                          <span className="text-[var(--scolio-primary-blue)] font-semibold" style={{ fontSize: 'var(--text-body)' }}>{ps.pending}</span>
                         </div>
                         <div className="space-y-1">
                           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                            <strong>Médico:</strong> {nomeMedico}
+                            <strong>{ps.sigBy}:</strong> {nomeMedico}
                           </p>
                           {medico.cedulaProfissional && (
                             <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                              <strong>Cédula:</strong> {medico.cedulaProfissional}
+                              <strong>{ps.license}:</strong> {medico.cedulaProfissional}
                             </p>
                           )}
                         </div>
@@ -571,33 +572,33 @@ export default function ReportGenerationScreen() {
       <Modal
         isOpen={showSignatureModal}
         onClose={() => setShowSignatureModal(false)}
-        title="Confirmação de assinatura digital"
-        confirmLabel="Assinar documento"
-        cancelLabel="Cancelar"
+        title={t('report.signConfirmTitle')}
+        confirmLabel={t('report.signConfirmButton')}
+        cancelLabel={t('common.cancel')}
         onConfirm={() => {
           setShowSignatureModal(false);
-          mostrarToast('Assinatura digital em desenvolvimento.', 'error');
+          mostrarToast(t('report.signInDev'), 'error');
         }}
       >
         <div className="space-y-4">
           <div className="bg-[var(--scolio-light-blue-surface)] rounded-[var(--radius-component)] p-4 flex items-start gap-3">
             <Shield className="w-6 h-6 text-[var(--scolio-primary-blue)] flex-shrink-0" />
             <div>
-              <p className="text-[var(--scolio-text-primary)] font-medium mb-2" style={{ fontSize: 'var(--text-body)' }}>Assinatura digital qualificada</p>
+              <p className="text-[var(--scolio-text-primary)] font-medium mb-2" style={{ fontSize: 'var(--text-body)' }}>{t('report.signQualified')}</p>
               <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                O documento será assinado com o seu certificado digital qualificado, garantindo validade legal e autenticidade.
+                {t('report.signExplanation')}
               </p>
             </div>
           </div>
           {medico && (
             <div className="space-y-2">
-              <DataLine label="Signatário" value={nomeMedico} />
-              {medico.cedulaProfissional && <DataLine label="Cédula profissional" value={medico.cedulaProfissional} />}
-              {medico.especialidade && <DataLine label="Especialidade" value={medico.especialidade} />}
+              <DataLine label={t('report.signatory')} value={nomeMedico} />
+              {medico.cedulaProfissional && <DataLine label={ps.license} value={medico.cedulaProfissional} />}
+              {medico.especialidade && <DataLine label={ps.specialty} value={medico.especialidade} />}
             </div>
           )}
           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-            Ao confirmar, certifica que as informações neste relatório são precisas e completas.
+            {t('report.signCertify')}
           </p>
         </div>
       </Modal>

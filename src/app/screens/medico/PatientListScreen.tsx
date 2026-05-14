@@ -118,7 +118,8 @@ export default function PatientListScreen() {
     const nasc = new Date(dataNasc);
     const hoje = new Date();
     let idade = hoje.getFullYear() - nasc.getFullYear();
-    if (hoje.getMonth() - nasc.getMonth() < 0) idade--;
+    const m = hoje.getMonth() - nasc.getMonth();
+    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
     return idade;
   }
 
