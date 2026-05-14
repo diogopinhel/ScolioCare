@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
       .eq('id', user.id)
       .single()
 
-    if (!perfilRow || !['MEDICO', 'ADMIN'].includes(perfilRow.perfil)) {
+    if (!perfilRow || !['TECNICO', 'ADMIN'].includes(perfilRow.perfil)) {
       return json({ erro: 'Sem permissão para editar dados de pacientes' }, 403)
     }
 
@@ -52,20 +52,7 @@ Deno.serve(async (req: Request) => {
     if (!pacienteId) return json({ erro: 'pacienteId é obrigatório' }, 400)
     if (!nomeCompleto?.trim()) return json({ erro: 'Nome completo é obrigatório' }, 400)
 
-    // ── 4. MEDICO: verificar que está associado ao paciente ─────────────────
-    // ADMIN tem acesso irrestrito; MEDICO só pode editar os seus pacientes.
-    if (perfilRow.perfil === 'MEDICO') {
-      const { count } = await adminClient
-        .from('paciente_medico')
-        .select('paciente_id', { count: 'exact', head: true })
-        .eq('medico_id', user.id)
-        .eq('paciente_id', pacienteId)
-        .is('data_fim', null)
-
-      if ((count ?? 0) === 0) {
-        return json({ erro: 'Não está associado a este paciente' }, 403)
-      }
-    }
+    // TECNICO e ADMIN têm acesso irrestrito a todos os pacientes.
 
     // ── 5. Verificar que o paciente existe e é realmente PACIENTE ───────────
     const { data: pacienteExistente } = await adminClient

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Edit, Archive, ChevronLeft, ChevronRight, ChevronDown, ShieldAlert, Search, Loader2, Lock, UserCheck } from 'lucide-react';
+import { Eye, Archive, ChevronLeft, ChevronRight, ChevronDown, ShieldAlert, Search, Loader2, Lock, UserCheck } from 'lucide-react';
 import { Button, SearchBar, StatusBadge, TableSkeleton } from '../../components/scolio';
 import type { BadgeStatus } from '../../components/scolio';
 import { useNavigate } from 'react-router';
@@ -346,13 +346,6 @@ export default function PatientListScreen() {
                           onClick={() => navigate(`/patients/${patient.id}`)}
                         >
                           <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-primary-blue)] hover:bg-[var(--scolio-light-blue-surface)] rounded transition-colors"
-                          title={t('patients.editPatient')}
-                          onClick={() => navigate(`/patients/${patient.id}/edit`)}
-                        >
-                          <Edit className="w-4 h-4" />
                         </button>
                         <button
                           className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)] rounded transition-colors"
