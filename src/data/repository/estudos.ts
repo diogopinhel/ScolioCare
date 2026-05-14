@@ -345,13 +345,13 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
   const { data, error } = await supabase
     .from('estudos')
     .select(`
-      id, data_estudo, tipo_estudo, estado, notas_clinicas, arquivado, gerado_por_ia,
+      id, data_estudo, tipo_estudo, estado, notas_clinicas, ficheiro_pdf, arquivado, gerado_por_ia,
       utilizadores!estudos_paciente_id_fkey(id, nome_completo),
       resultados(
         id, angulo_cobb, grau_curvatura, localizacao_curva,
         nivel_vertebras, confianca_modelo, versao_modelo, overlay_json,
         decisao, angulo_cobb_corrigido, justificacao_validacao,
-        data_validacao, concluido
+        data_validacao, concluido, observacoes_medico
       ),
       imagens_estudo(id, caminho_armazenamento, projecao, formato)
     `)
@@ -381,6 +381,7 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
         justificacaoValidacao: r.justificacao_validacao as string | null,
         dataValidacao: r.data_validacao as string | null,
         concluido: r.concluido as boolean,
+        observacoesMedico: r.observacoes_medico as string | null,
       }
     : null;
 
@@ -400,6 +401,7 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
     tipoEstudo: row.tipo_estudo as string,
     estado: row.estado as EstadoEstudo,
     notasClinicas: row.notas_clinicas as string | null,
+    ficheiroPdf: row.ficheiro_pdf as string | null,
     arquivado: row.arquivado as boolean,
     geradoPorIA: row.gerado_por_ia as boolean,
     resultado,
@@ -517,6 +519,39 @@ export async function corrigirMetricasIA(
     estadoAtual, 'VALIDATED',
     `Métricas corrigidas: ângulo ${anguloCorrigido}°${vertebraCorrigida ? `, vértebra ${vertebraCorrigida}` : ''}`,
   );
+}
+
+/**
+ * Guarda as observações do médico visíveis ao paciente na app mobile.
+ */
+export async function guardarObservacoesMedico(resultadoId: string, observacoes: string): Promise<void> {
+  const { error } = await supabase
+    .from('resultados')
+    .update({ observacoes_medico: observacoes })
+    .eq('id', resultadoId);
+  if (error) throw error;
+}
+
+/**
+ * Guarda o path do PDF no Storage em estudos.ficheiro_pdf.
+ */
+export async function guardarFicheiroPdf(estudoId: string, path: string): Promise<void> {
+  const { error } = await supabase
+    .from('estudos')
+    .update({ ficheiro_pdf: path })
+    .eq('id', estudoId);
+  if (error) throw error;
+}
+
+/**
+ * Gera URL assinada (válida 7 dias) para um relatório PDF no Storage.
+ */
+export async function getUrlRelatorioPdf(path: string): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from('relatorios')
+    .createSignedUrl(path, 3600 * 24 * 7);
+  if (error || !data) return null;
+  return data.signedUrl;
 }
 
 /**

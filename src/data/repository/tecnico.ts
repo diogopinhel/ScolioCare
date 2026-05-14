@@ -178,15 +178,18 @@ export async function getPacientesTecnico(): Promise<PacienteTecnico[]> {
   const ids = pacientes.map((p) => p.id);
   if (ids.length === 0) return [];
 
-  const { data: estudos } = await supabase
-    .from('estudos')
-    .select('paciente_id, data_estudo')
-    .in('paciente_id', ids)
-    .eq('arquivado', false)
-    .order('data_estudo', { ascending: false });
+  const [estudosResult, medicosResult] = await Promise.all([
+    supabase
+      .from('estudos')
+      .select('paciente_id, data_estudo')
+      .in('paciente_id', ids)
+      .eq('arquivado', false)
+      .order('data_estudo', { ascending: false }),
+    supabase.rpc('get_medicos_dos_pacientes', { p_ids: ids }),
+  ]);
 
   const resumoPorPaciente = new Map<string, { total: number; ultimaData: string }>();
-  for (const e of (estudos ?? [])) {
+  for (const e of (estudosResult.data ?? [])) {
     const pid = e.paciente_id as string;
     const existing = resumoPorPaciente.get(pid);
     if (!existing) {
@@ -194,6 +197,15 @@ export async function getPacientesTecnico(): Promise<PacienteTecnico[]> {
     } else {
       existing.total++;
     }
+  }
+
+  const medicoPorPaciente = new Map<string, { medicoId: string; medicoNome: string }>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const m of ((medicosResult.data as any[]) ?? [])) {
+    medicoPorPaciente.set(m.paciente_id as string, {
+      medicoId: m.medico_id as string,
+      medicoNome: m.medico_nome as string,
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -205,7 +217,17 @@ export async function getPacientesTecnico(): Promise<PacienteTecnico[]> {
     genero: p.genero as string | null,
     totalExames: resumoPorPaciente.get(p.id)?.total ?? 0,
     ultimoExame: resumoPorPaciente.get(p.id)?.ultimaData ?? null,
+    medicoId: medicoPorPaciente.get(p.id)?.medicoId ?? null,
+    medicoNome: medicoPorPaciente.get(p.id)?.medicoNome ?? null,
   }));
+}
+
+export async function alterarMedicoPaciente(pacienteId: string, novoMedicoId: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('alterar-medico-paciente', {
+    body: { pacienteId, novoMedicoId },
+  });
+  if (error) throw new Error(error.message ?? 'Erro ao invocar a Edge Function');
+  if (data?.erro) throw new Error(data.erro as string);
 }
 
 // ═══════════════════════════════════════════════════════════════════

@@ -207,6 +207,7 @@ export interface ResultadoCompleto {
   justificacaoValidacao: string | null;
   dataValidacao: string | null;  // ISO datetime
   concluido: boolean;
+  observacoesMedico: string | null;
 }
 
 // ─── Dashboard Técnico ─────────────────────────────────────────────────────
@@ -337,6 +338,8 @@ export interface PacienteTecnico {
   genero: string | null;
   totalExames: number;
   ultimoExame: string | null;
+  medicoId: string | null;
+  medicoNome: string | null;
 }
 
 /** Estudo com todas as relações necessárias para o ExamViewerScreen */
@@ -348,6 +351,7 @@ export interface EstudoCompleto {
   tipoEstudo: string;
   estado: EstadoEstudo;
   notasClinicas: string | null;
+  ficheiroPdf: string | null;
   arquivado: boolean;
   geradoPorIA: boolean;
   resultado: ResultadoCompleto | null;
