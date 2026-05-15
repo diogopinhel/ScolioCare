@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type { UtilizadorAutenticado, Perfil } from '../types';
+import { registarAcao } from './audit';
 
 // ─── Erros de autenticação ──────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ function mapUtilizadorDoBD(row: Record<string, any>, email: string): UtilizadorA
 
   switch (base.perfil) {
     case 'ADMIN':
-      return { ...base, perfil: 'ADMIN', nivelAdmin: (row.nivel_admin as number) ?? 1 };
+      return { ...base, perfil: 'ADMIN' };
 
     case 'MEDICO':
       return {
@@ -119,8 +120,8 @@ export async function login(
   }
 
   const utilizador = await fetchPerfil(data.user.id, data.user.email!);
-  // Atualizar ultimo_login sem bloquear o login em caso de falha
   supabase.rpc('registar_ultimo_login').then(() => undefined, () => undefined);
+  registarAcao('LOGIN', 'utilizadores', data.user.id);
   return utilizador;
 }
 

@@ -138,6 +138,7 @@ export default function ExamViewerScreen() {
       await confirmarMetricasIA(
         estudo.resultado.id,
         estudo.id,
+        estudo.pacienteId,
         utilizador.id,
         utilizador.nomeCompleto,
         utilizador.perfil,
@@ -167,6 +168,7 @@ export default function ExamViewerScreen() {
       await corrigirMetricasIA(
         estudo.resultado.id,
         estudo.id,
+        estudo.pacienteId,
         utilizador.id,
         utilizador.nomeCompleto,
         utilizador.perfil,

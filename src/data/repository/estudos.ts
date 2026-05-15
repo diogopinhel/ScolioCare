@@ -451,13 +451,36 @@ async function inserirHistoricoEstado(
 
 // ─── Acções de validação do médico ────────────────────────────────────────
 
+// ─── Helper interno: notificar paciente ───────────────────────────────────────
+
+async function notificarPaciente(
+  pacienteId: string,
+  tipo: string,
+  titulo: string,
+  mensagem: string,
+  referenciaEntidade: string,
+  referenciaId: string,
+): Promise<void> {
+  // fire-and-forget — não bloqueia nem propaga erros para o chamador
+  supabase.from('notificacoes').insert({
+    destinatario_id: pacienteId,
+    tipo,
+    titulo,
+    mensagem,
+    referencia_entidade: referenciaEntidade,
+    referencia_id: referenciaId,
+  }).then(() => {/* silencioso */});
+}
+
 /**
  * Médico aceita as métricas calculadas pelo modelo ML sem alterações.
  * Transiciona o estudo para VALIDATED e regista em historico_estado.
+ * Notifica o paciente via tabela `notificacoes`.
  */
 export async function confirmarMetricasIA(
   resultadoId: string,
   estudoId: string,
+  pacienteId: string,
   utilizadorId: string,
   utilizadorNome: string,
   utilizadorPerfil: string,
@@ -483,15 +506,24 @@ export async function confirmarMetricasIA(
     estudoId, utilizadorId, utilizadorNome, utilizadorPerfil,
     estadoAtual, 'VALIDATED', 'Métricas IA aceites',
   );
+
+  notificarPaciente(
+    pacienteId, 'EXAME',
+    'Exame analisado',
+    'O seu exame foi analisado e validado pelo médico responsável. Consulte os detalhes na aplicação.',
+    'estudos', estudoId,
+  );
 }
 
 /**
  * Médico corrige o ângulo (e opcionalmente a vértebra) calculados pelo modelo.
  * Transiciona o estudo para VALIDATED e regista em historico_estado.
+ * Notifica o paciente via tabela `notificacoes`.
  */
 export async function corrigirMetricasIA(
   resultadoId: string,
   estudoId: string,
+  pacienteId: string,
   utilizadorId: string,
   utilizadorNome: string,
   utilizadorPerfil: string,
@@ -524,6 +556,13 @@ export async function corrigirMetricasIA(
     estadoAtual, 'VALIDATED',
     `Métricas corrigidas: ângulo ${anguloCorrigido}°${vertebraCorrigida ? `, vértebra ${vertebraCorrigida}` : ''}`,
   );
+
+  notificarPaciente(
+    pacienteId, 'EXAME',
+    'Exame analisado',
+    'O seu exame foi analisado e validado pelo médico responsável. Consulte os detalhes na aplicação.',
+    'estudos', estudoId,
+  );
 }
 
 /**
@@ -538,14 +577,25 @@ export async function guardarObservacoesMedico(resultadoId: string, observacoes:
 }
 
 /**
- * Guarda o path do PDF no Storage em estudos.ficheiro_pdf.
+ * Guarda o path do PDF no Storage em estudos.ficheiro_pdf e notifica o paciente.
  */
-export async function guardarFicheiroPdf(estudoId: string, path: string): Promise<void> {
+export async function guardarFicheiroPdf(
+  estudoId: string,
+  path: string,
+  pacienteId: string,
+): Promise<void> {
   const { error } = await supabase
     .from('estudos')
     .update({ ficheiro_pdf: path })
     .eq('id', estudoId);
   if (error) throw error;
+
+  notificarPaciente(
+    pacienteId, 'RELATORIO',
+    'Novo relatório de exame disponível',
+    'O relatório do seu exame foi gerado pelo médico responsável e está disponível para consulta na aplicação.',
+    'estudos', estudoId,
+  );
 }
 
 /**
@@ -592,12 +642,22 @@ export async function guardarNotasClinicas(estudoId: string, notas: string): Pro
   if (error) throw error;
 }
 
-export async function enviarEstudoAoPaciente(estudoId: string): Promise<void> {
+export async function enviarEstudoAoPaciente(estudoId: string, pacienteId: string): Promise<void> {
   const { error } = await supabase
     .from('estudos')
     .update({ estado: 'SENT' })
     .eq('id', estudoId);
   if (error) throw error;
+
+  // Notificar o paciente que o relatório está disponível (fire-and-forget)
+  notificarPaciente(
+    pacienteId,
+    'RELATORIO',
+    'Relatório clínico disponível',
+    'O seu relatório clínico foi assinado e enviado pelo seu médico.',
+    'estudos',
+    estudoId,
+  );
 }
 
 /**

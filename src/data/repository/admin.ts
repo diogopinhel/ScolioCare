@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import type { AuditLogEntry, UtilizadorAdmin, MetricasDashboardAdmin } from '../types';
+import type { AuditLogEntry, UtilizadorAdmin, UtilizadorAdminCompleto, MetricasDashboardAdmin, SystemSettings, RgpdPedido, EstadoRgpdPedido } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════
 // Dashboard Admin
@@ -51,13 +51,13 @@ export async function getAuditLog(
 ): Promise<AuditLogEntry[]> {
   let query = supabase
     .from('audit_log')
-    .select('id, utilizador_snapshot, tipo_acao, entidade_afetada, entidade_id, ip_origem, data_hora')
+    .select('id, utilizador_snapshot, tipo_acao, entidade_afetada, entidade_id, data_hora')
     .order('data_hora', { ascending: false })
     .limit(limite);
 
   if (pesquisa) {
     query = query.or(
-      `tipo_acao.ilike.%${pesquisa}%,entidade_afetada.ilike.%${pesquisa}%,ip_origem.ilike.%${pesquisa}%`,
+      `tipo_acao.ilike.%${pesquisa}%,entidade_afetada.ilike.%${pesquisa}%`,
     );
   }
 
@@ -71,7 +71,6 @@ export async function getAuditLog(
     tipoAcao: row.tipo_acao as string,
     entidadeAfetada: row.entidade_afetada as string,
     entidadeId: row.entidade_id as string | null,
-    ipOrigem: row.ip_origem as string | null,
     dataHora: row.data_hora as string,
   }));
 }
@@ -111,12 +110,111 @@ export async function toggleAtivoUtilizador(id: string, ativo: boolean): Promise
   if (error) throw error;
 }
 
+export async function getUtilizadorCompleto(id: string): Promise<UtilizadorAdminCompleto | null> {
+  const { data, error } = await supabase
+    .from('utilizadores')
+    .select(`id, nome_completo, perfil, ativo, conta_bloqueada, two_factor_ativo, ultimo_login,
+             data_criacao, cedula_profissional, especialidade, codigo_funcionario, departamento,
+             data_nascimento, genero, numero_utente, contacto, morada, cartao_cidadao`)
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = data as any;
+  return {
+    id: r.id,
+    nomeCompleto: r.nome_completo,
+    perfil: r.perfil,
+    ativo: r.ativo,
+    contaBloqueada: r.conta_bloqueada,
+    twoFactorAtivo: r.two_factor_ativo,
+    ultimoLogin: r.ultimo_login,
+    dataCriacao: r.data_criacao,
+    cedulaProfissional: r.cedula_profissional,
+    especialidade: r.especialidade,
+    codigoFuncionario: r.codigo_funcionario,
+    departamento: r.departamento,
+    dataNascimento: r.data_nascimento,
+    genero: r.genero,
+    numeroUtente: r.numero_utente,
+    contacto: r.contacto,
+    morada: r.morada,
+    cartaoCidadao: r.cartao_cidadao,
+  };
+}
+
+export interface CamposEdicaoUtilizador {
+  nomeCompleto: string;
+  // MEDICO
+  cedulaProfissional?: string;
+  especialidade?: string;
+  // TECNICO
+  codigoFuncionario?: string;
+  departamento?: string;
+  // PACIENTE
+  dataNascimento?: string;
+  genero?: string;
+  numeroUtente?: string;
+  contacto?: string;
+  morada?: string;
+  cartaoCidadao?: string;
+}
+
+export async function editarUtilizadorAdmin(id: string, perfil: string, campos: CamposEdicaoUtilizador): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dados: Record<string, any> = {
+    nome_completo: campos.nomeCompleto.trim(),
+  };
+
+  if (perfil === 'MEDICO') {
+    dados.cedula_profissional = campos.cedulaProfissional?.trim() ?? null;
+    dados.especialidade       = campos.especialidade?.trim() ?? null;
+  } else if (perfil === 'TECNICO') {
+    dados.codigo_funcionario = campos.codigoFuncionario?.trim() ?? null;
+    dados.departamento       = campos.departamento?.trim() ?? null;
+  } else if (perfil === 'PACIENTE') {
+    dados.data_nascimento = campos.dataNascimento ?? null;
+    dados.genero          = campos.genero ?? null;
+    dados.numero_utente   = campos.numeroUtente?.trim() ?? null;
+    dados.contacto        = campos.contacto?.trim() ?? null;
+    dados.morada          = campos.morada?.trim() ?? null;
+    dados.cartao_cidadao  = campos.cartaoCidadao?.trim() ?? null;
+  }
+
+  const { error } = await supabase.from('utilizadores').update(dados).eq('id', id);
+  if (error) throw error;
+}
+
 export async function toggleBloqueioUtilizador(id: string, contaBloqueada: boolean): Promise<void> {
   const { error } = await supabase
     .from('utilizadores')
     .update({ conta_bloqueada: contaBloqueada })
     .eq('id', id);
   if (error) throw error;
+}
+
+export interface UsoSemanalDia {
+  dia: string;   // 'Seg', 'Ter', …
+  medico: number;
+  tecnico: number;
+  admin: number;
+}
+
+const DIAS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+export async function getUsoPorPerfil(): Promise<UsoSemanalDia[]> {
+  const { data } = await supabase.rpc('get_uso_semanal');
+  if (!data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((row) => ({
+    dia: DIAS_PT[new Date(row.data + 'T00:00:00').getDay()],
+    medico: Number(row.medico),
+    tecnico: Number(row.tecnico),
+    admin: Number(row.admin_count),
+  }));
 }
 
 export interface DadosCriarUtilizador {
@@ -138,4 +236,115 @@ export async function criarUtilizador(dados: DadosCriarUtilizador): Promise<{ id
   if (error) throw new Error(error.message);
   if (data?.erro) throw new Error(data.erro);
   return data as { id: string };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// System Settings
+// ═══════════════════════════════════════════════════════════════════
+
+const DEFAULTS: SystemSettings = {
+  instituicao: '', nif: '', rgpdContact: '',
+  timeoutSessao: 30, tentativasLogin: 5, minPasswordLength: 12, validadePassword: 90,
+  force2faMedico: true, force2faTecnico: true, force2faAdmin: true,
+  modoManutencao: false, backupSchedule: '0 3 * * *', backupRetencao: 30,
+};
+
+function rowsToSettings(rows: { chave: string; valor: string | null }[]): SystemSettings {
+  const m = Object.fromEntries(rows.map((r) => [r.chave, r.valor ?? '']));
+  return {
+    instituicao:        m.instituicao        ?? DEFAULTS.instituicao,
+    nif:                m.nif               ?? DEFAULTS.nif,
+    rgpdContact:        m.rgpd_contact      ?? DEFAULTS.rgpdContact,
+    timeoutSessao:      Number(m.timeout_sessao)      || DEFAULTS.timeoutSessao,
+    tentativasLogin:    Number(m.tentativas_login)    || DEFAULTS.tentativasLogin,
+    minPasswordLength:  Number(m.min_password_length) || DEFAULTS.minPasswordLength,
+    validadePassword:   Number(m.validade_password)   || DEFAULTS.validadePassword,
+    force2faMedico:     m.force_2fa_medico  !== 'false',
+    force2faTecnico:    m.force_2fa_tecnico !== 'false',
+    force2faAdmin:      m.force_2fa_admin   !== 'false',
+    modoManutencao:     m.modo_manutencao   === 'true',
+    backupSchedule:     m.backup_schedule   ?? DEFAULTS.backupSchedule,
+    backupRetencao:     Number(m.backup_retencao)     || DEFAULTS.backupRetencao,
+  };
+}
+
+export async function getSystemSettings(): Promise<SystemSettings> {
+  const { data, error } = await supabase
+    .from('system_settings')
+    .select('chave, valor');
+  if (error || !data) return { ...DEFAULTS };
+  return rowsToSettings(data as { chave: string; valor: string | null }[]);
+}
+
+export async function saveSystemSettings(s: SystemSettings): Promise<void> {
+  const rows = [
+    { chave: 'instituicao',         valor: s.instituicao },
+    { chave: 'nif',                 valor: s.nif },
+    { chave: 'rgpd_contact',        valor: s.rgpdContact },
+    { chave: 'timeout_sessao',      valor: String(s.timeoutSessao) },
+    { chave: 'tentativas_login',    valor: String(s.tentativasLogin) },
+    { chave: 'min_password_length', valor: String(s.minPasswordLength) },
+    { chave: 'validade_password',   valor: String(s.validadePassword) },
+    { chave: 'force_2fa_medico',    valor: String(s.force2faMedico) },
+    { chave: 'force_2fa_tecnico',   valor: String(s.force2faTecnico) },
+    { chave: 'force_2fa_admin',     valor: String(s.force2faAdmin) },
+    { chave: 'modo_manutencao',     valor: String(s.modoManutencao) },
+    { chave: 'backup_schedule',     valor: s.backupSchedule },
+    { chave: 'backup_retencao',     valor: String(s.backupRetencao) },
+  ];
+  const { error } = await supabase
+    .from('system_settings')
+    .upsert(rows, { onConflict: 'chave' });
+  if (error) throw error;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RGPD Pedidos
+// ═══════════════════════════════════════════════════════════════════
+
+export async function getRgpdPedidos(estado?: EstadoRgpdPedido): Promise<RgpdPedido[]> {
+  let query = supabase
+    .from('rgpd_pedidos')
+    .select(`id, paciente_id, tipo, estado, descricao, notas_admin, tratado_por,
+             data_pedido, data_resolucao,
+             utilizadores!rgpd_pedidos_paciente_id_fkey(nome_completo)`)
+    .order('data_pedido', { ascending: false });
+
+  if (estado) query = query.eq('estado', estado);
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((r) => ({
+    id: r.id as string,
+    pacienteId: r.paciente_id as string,
+    pacienteNome: (r.utilizadores?.nome_completo ?? '—') as string,
+    tipo: r.tipo as RgpdPedido['tipo'],
+    estado: r.estado as RgpdPedido['estado'],
+    descricao: r.descricao as string | null,
+    notasAdmin: r.notas_admin as string | null,
+    tratadoPor: r.tratado_por as string | null,
+    dataPedido: r.data_pedido as string,
+    dataResolucao: r.data_resolucao as string | null,
+    prazo: new Date(new Date(r.data_pedido).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  }));
+}
+
+export async function atualizarRgpdPedido(
+  id: string,
+  estado: EstadoRgpdPedido,
+  notasAdmin?: string,
+): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const update: Record<string, unknown> = {
+    estado,
+    tratado_por: user?.id ?? null,
+    notas_admin: notasAdmin ?? null,
+  };
+  if (estado === 'CONCLUIDO' || estado === 'REJEITADO') {
+    update.data_resolucao = new Date().toISOString();
+  }
+  const { error } = await supabase.from('rgpd_pedidos').update(update).eq('id', id);
+  if (error) throw error;
 }

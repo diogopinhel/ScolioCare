@@ -10,6 +10,7 @@ import {
   criarEstudo,
   uploadImagemEstudo,
 } from '../../../data/repository/tecnico';
+import { registarAcao } from '../../../data/repository/audit';
 import type { PacienteTecnico } from '../../../data/types';
 
 export default function ExamUploadScreen() {
@@ -77,6 +78,7 @@ export default function ExamUploadScreen() {
       // 3. Fazer upload da imagem e registar metadados
       await uploadImagemEstudo(estudoId, pacienteSelecionado.id, ficheiro!);
 
+      registarAcao('CRIAR_ESTUDO', 'estudos', estudoId);
       setFase('done');
       mostrarToast(t('upload.successToast'));
 

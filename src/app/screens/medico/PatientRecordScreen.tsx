@@ -31,14 +31,14 @@ function estadoParaBadge(estado: EstadoEstudo): BadgeStatus {
   }
 }
 
-function calcularIdade(dataNascimento: string | null): string {
+function calcularIdade(dataNascimento: string | null, ageLabel: (age: number) => string): string {
   if (!dataNascimento) return '—';
   const nascimento = new Date(dataNascimento);
   const hoje = new Date();
   let idade = hoje.getFullYear() - nascimento.getFullYear();
   const m = hoje.getMonth() - nascimento.getMonth();
   if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) idade--;
-  return `${idade} anos`;
+  return ageLabel(idade);
 }
 
 function iniciaisDe(nome: string): string {
@@ -450,7 +450,7 @@ export default function PatientRecordScreen() {
                   <span className="font-medium">{t('patientRecord.utente')} {paciente.numeroUtente}</span>
                 )}
                 {paciente.genero && <span>{paciente.genero}</span>}
-                <span>{calcularIdade(paciente.dataNascimento)}</span>
+                <span>{calcularIdade(paciente.dataNascimento, (age) => t('patients.yearsOld', { age }))}</span>
                 <StatusBadge status={badgeStatus} />
               </div>
             </div>
@@ -819,7 +819,7 @@ export default function PatientRecordScreen() {
                     />
                     <ReferenceLine y={10} stroke="var(--scolio-warning-amber)" strokeDasharray="5 5" strokeWidth={2}>
                       <text x="50%" y={10} dy={-10} textAnchor="middle" fill="var(--scolio-warning-amber)" fontSize={13} fontWeight={500}>
-                        Limiar de escoliose
+                        {t('patientRecord.scoliosisThreshold')}
                       </text>
                     </ReferenceLine>
                     <Line

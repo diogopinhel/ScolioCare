@@ -1,14 +1,17 @@
 import React from 'react';
-import { Power, CheckCircle, XCircle, Filter, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { Power, CheckCircle, XCircle, Filter, UserPlus, Eye, EyeOff, Pencil, Loader2 } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
 import {
   getUtilizadoresAdmin,
   toggleAtivoUtilizador,
   toggleBloqueioUtilizador,
   criarUtilizador,
+  getUtilizadorCompleto,
+  editarUtilizadorAdmin,
 } from '../../../data/repository/admin';
-import type { DadosCriarUtilizador } from '../../../data/repository/admin';
-import type { UtilizadorAdmin } from '../../../data/types';
+import { getMedicos, reatribuirMedico } from '../../../data/repository/pacientes';
+import type { DadosCriarUtilizador, CamposEdicaoUtilizador } from '../../../data/repository/admin';
+import type { UtilizadorAdmin, UtilizadorAdminCompleto, MedicoResumo } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
 
 function perfilStyle(perfil: string, t: (key: string) => string) {
@@ -48,6 +51,82 @@ export default function AdminUsersScreen() {
   // Modal de confirmação (toggle ativo/bloqueio)
   const [confirm, setConfirm] = React.useState<ConfirmAction | null>(null);
   const [aConfirmar, setAConfirmar] = React.useState(false);
+
+  // Modal de edição
+  const [utilizadorEditar, setUtilizadorEditar] = React.useState<UtilizadorAdminCompleto | null>(null);
+  const [aCarregarEditar, setACarregarEditar] = React.useState(false);
+  const [aGuardar, setAGuardar] = React.useState(false);
+  const [formEditar, setFormEditar] = React.useState<CamposEdicaoUtilizador>({ nomeCompleto: '' });
+  // Reatribuição de médico (só para PACIENTE)
+  const [medicos, setMedicos] = React.useState<MedicoResumo[]>([]);
+  const [medicoIdOriginal, setMedicoIdOriginal] = React.useState<string>('');
+  const [medicoIdSelecionado, setMedicoIdSelecionado] = React.useState<string>('');
+
+  const abrirEditar = async (u: UtilizadorAdmin) => {
+    setACarregarEditar(true);
+    try {
+      const [completo, listaMedicos] = await Promise.all([
+        getUtilizadorCompleto(u.id),
+        u.perfil === 'PACIENTE' ? getMedicos() : Promise.resolve([] as MedicoResumo[]),
+      ]);
+      if (completo) {
+        setUtilizadorEditar(completo);
+        setFormEditar({
+          nomeCompleto:      completo.nomeCompleto ?? '',
+          cedulaProfissional: completo.cedulaProfissional ?? '',
+          especialidade:      completo.especialidade ?? '',
+          codigoFuncionario:  completo.codigoFuncionario ?? '',
+          departamento:       completo.departamento ?? '',
+          dataNascimento:     completo.dataNascimento ?? '',
+          genero:             completo.genero ?? '',
+          numeroUtente:       completo.numeroUtente ?? '',
+          contacto:           completo.contacto ?? '',
+          morada:             completo.morada ?? '',
+          cartaoCidadao:      completo.cartaoCidadao ?? '',
+        });
+        if (u.perfil === 'PACIENTE') {
+          setMedicos(listaMedicos);
+          // Carregar médico actual
+          const { data } = await (await import('../../../lib/supabase')).supabase
+            .rpc('get_medico_responsavel', { p_paciente_id: u.id });
+          const medicoAtual = (data as string | null) ?? '';
+          setMedicoIdOriginal(medicoAtual);
+          setMedicoIdSelecionado(medicoAtual);
+        }
+      }
+    } finally {
+      setACarregarEditar(false);
+    }
+  };
+
+  const fecharEditar = () => {
+    setUtilizadorEditar(null);
+    setFormEditar({ nomeCompleto: '' });
+    setMedicoIdOriginal('');
+    setMedicoIdSelecionado('');
+  };
+
+  const submeterEdicao = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!utilizadorEditar) return;
+    setAGuardar(true);
+    try {
+      await editarUtilizadorAdmin(utilizadorEditar.id, utilizadorEditar.perfil, formEditar);
+      // Reatribuir médico se mudou (só para PACIENTE)
+      if (utilizadorEditar.perfil === 'PACIENTE' && medicoIdSelecionado && medicoIdSelecionado !== medicoIdOriginal) {
+        await reatribuirMedico(utilizadorEditar.id, medicoIdSelecionado);
+      }
+      setUtilizadores((prev) =>
+        prev.map((u) => u.id === utilizadorEditar.id ? { ...u, nomeCompleto: formEditar.nomeCompleto } : u),
+      );
+      mostrarToast(t('admin.editSuccess'));
+      fecharEditar();
+    } catch {
+      mostrarToast(t('admin.editError'), 'error');
+    } finally {
+      setAGuardar(false);
+    }
+  };
 
   // Modal de criação de utilizador
   const [modalAberto, setModalAberto] = React.useState(false);
@@ -293,17 +372,26 @@ export default function AdminUsersScreen() {
                     </td>
                     {/* Ações */}
                     <td className="px-4 py-3">
-                      <button
-                        title={u.contaBloqueada ? t('admin.clickUnblock') : t('admin.clickBlock')}
-                        onClick={() => setConfirm({ kind: 'toggle_bloqueio', user: u })}
-                        className={`p-2 rounded transition-colors ${
-                          u.contaBloqueada
-                            ? 'text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)]'
-                            : 'text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)]'
-                        }`}
-                      >
-                        <Power className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          title={t('admin.editUser')}
+                          onClick={() => abrirEditar(u)}
+                          className="p-2 rounded text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-primary-blue)] hover:bg-[var(--scolio-light-blue-surface)] transition-colors"
+                        >
+                          {aCarregarEditar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+                        </button>
+                        <button
+                          title={u.contaBloqueada ? t('admin.clickUnblock') : t('admin.clickBlock')}
+                          onClick={() => setConfirm({ kind: 'toggle_bloqueio', user: u })}
+                          className={`p-2 rounded transition-colors ${
+                            u.contaBloqueada
+                              ? 'text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)]'
+                              : 'text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)]'
+                          }`}
+                        >
+                          <Power className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -347,6 +435,176 @@ export default function AdminUsersScreen() {
                 {aConfirmar ? t('common.confirming') : t('common.confirm')}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal editar utilizador */}
+      {utilizadorEditar && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-[var(--radius-modal)] w-full max-w-lg overflow-hidden">
+            <div className="p-6 border-b border-[var(--scolio-border-light)]">
+              <h2 className="text-[var(--scolio-text-primary)]">{t('admin.editUserTitle')}</h2>
+              <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
+                {utilizadorEditar.nomeCompleto}
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                  style={{ backgroundColor: 'var(--scolio-light-blue-surface)', color: 'var(--scolio-primary-blue)' }}>
+                  {utilizadorEditar.perfil}
+                </span>
+              </p>
+            </div>
+
+            <form onSubmit={submeterEdicao}>
+              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                {/* Nome completo — todos os perfis */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                    {t('admin.fieldName')}
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={formEditar.nomeCompleto}
+                    onChange={(e) => setFormEditar((f) => ({ ...f, nomeCompleto: e.target.value }))}
+                    className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                  />
+                </div>
+
+                {/* MEDICO */}
+                {utilizadorEditar.perfil === 'MEDICO' && (
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--scolio-border-light)]">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('admin.fieldCedula')}
+                      </label>
+                      <input type="text" value={formEditar.cedulaProfissional ?? ''}
+                        onChange={(e) => setFormEditar((f) => ({ ...f, cedulaProfissional: e.target.value }))}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('admin.fieldEspecialidade')}
+                      </label>
+                      <input type="text" value={formEditar.especialidade ?? ''}
+                        onChange={(e) => setFormEditar((f) => ({ ...f, especialidade: e.target.value }))}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
+                    </div>
+                  </div>
+                )}
+
+                {/* TECNICO */}
+                {utilizadorEditar.perfil === 'TECNICO' && (
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--scolio-border-light)]">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('admin.fieldCodigoFuncionario')}
+                      </label>
+                      <input type="text" value={formEditar.codigoFuncionario ?? ''}
+                        onChange={(e) => setFormEditar((f) => ({ ...f, codigoFuncionario: e.target.value }))}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('admin.fieldDepartamento')}
+                      </label>
+                      <input type="text" value={formEditar.departamento ?? ''}
+                        onChange={(e) => setFormEditar((f) => ({ ...f, departamento: e.target.value }))}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
+                    </div>
+                  </div>
+                )}
+
+                {/* PACIENTE */}
+                {utilizadorEditar.perfil === 'PACIENTE' && (
+                  <div className="space-y-4 pt-2 border-t border-[var(--scolio-border-light)]">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                          {t('patientEdit.dob')}
+                        </label>
+                        <input type="date" value={formEditar.dataNascimento ?? ''}
+                          onChange={(e) => setFormEditar((f) => ({ ...f, dataNascimento: e.target.value }))}
+                          className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                          {t('patientEdit.gender')}
+                        </label>
+                        <select value={formEditar.genero ?? ''}
+                          onChange={(e) => setFormEditar((f) => ({ ...f, genero: e.target.value }))}
+                          className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]">
+                          <option value="">{t('patientEdit.genderUnspecified')}</option>
+                          <option value="female">{t('patientEdit.genderFemale')}</option>
+                          <option value="male">{t('patientEdit.genderMale')}</option>
+                          <option value="other">{t('patientEdit.genderOther')}</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                          {t('patientEdit.clinicalId')}
+                        </label>
+                        <input type="text" value={formEditar.numeroUtente ?? ''}
+                          onChange={(e) => setFormEditar((f) => ({ ...f, numeroUtente: e.target.value }))}
+                          className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                          {t('patientEdit.citizenCard')}
+                        </label>
+                        <input type="text" value={formEditar.cartaoCidadao ?? ''}
+                          onChange={(e) => setFormEditar((f) => ({ ...f, cartaoCidadao: e.target.value }))}
+                          className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('patientEdit.phone')}
+                      </label>
+                      <input type="tel" value={formEditar.contacto ?? ''}
+                        onChange={(e) => setFormEditar((f) => ({ ...f, contacto: e.target.value }))}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('patientEdit.address')}
+                      </label>
+                      <input type="text" value={formEditar.morada ?? ''}
+                        onChange={(e) => setFormEditar((f) => ({ ...f, morada: e.target.value }))}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
+                    </div>
+                    {/* Médico responsável */}
+                    <div className="flex flex-col gap-1.5 pt-2 border-t border-[var(--scolio-border-light)]">
+                      <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                        {t('patients.responsibleDoctor')}
+                      </label>
+                      <select
+                        value={medicoIdSelecionado}
+                        onChange={(e) => setMedicoIdSelecionado(e.target.value)}
+                        className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                      >
+                        <option value="">{t('newPatient.selectDoctor')}</option>
+                        {medicos.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.nomeCompleto}{m.especialidade ? ` — ${m.especialidade}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
+                <Button type="button" variant="secondary" onClick={fecharEditar} disabled={aGuardar}>
+                  {t('common.cancel')}
+                </Button>
+                <Button type="submit" variant="primary" disabled={aGuardar}>
+                  {aGuardar ? t('common.saving') : t('common.save')}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

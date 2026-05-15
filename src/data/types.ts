@@ -34,7 +34,6 @@ export interface Utilizador {
 
 export interface Administrador extends Utilizador {
   perfil: 'ADMIN';
-  nivelAdmin: number;           // default 1
 }
 
 export interface MedicoEspecialista extends Utilizador {
@@ -238,7 +237,6 @@ export interface AuditLogEntry {
   tipoAcao: string;
   entidadeAfetada: string;
   entidadeId: string | null;
-  ipOrigem: string | null;
   dataHora: string;
 }
 
@@ -253,6 +251,23 @@ export interface UtilizadorAdmin {
   twoFactorAtivo: boolean;
   ultimoLogin: string | null;
   dataCriacao: string;
+}
+
+/** Extensão com campos editáveis específicos por perfil */
+export interface UtilizadorAdminCompleto extends UtilizadorAdmin {
+  // MEDICO
+  cedulaProfissional?: string | null;
+  especialidade?: string | null;
+  // TECNICO
+  codigoFuncionario?: string | null;
+  departamento?: string | null;
+  // PACIENTE
+  dataNascimento?: string | null;
+  genero?: string | null;
+  numeroUtente?: string | null;
+  contacto?: string | null;
+  morada?: string | null;
+  cartaoCidadao?: string | null;
 }
 
 export interface MetricasDashboardAdmin {
@@ -340,6 +355,43 @@ export interface PacienteTecnico {
   ultimoExame: string | null;
   medicoId: string | null;
   medicoNome: string | null;
+}
+
+// ─── System Settings ────────────────────────────────────────────────────────
+
+export interface SystemSettings {
+  instituicao: string;
+  nif: string;
+  rgpdContact: string;
+  timeoutSessao: number;
+  tentativasLogin: number;
+  minPasswordLength: number;
+  validadePassword: number;
+  force2faMedico: boolean;
+  force2faTecnico: boolean;
+  force2faAdmin: boolean;
+  modoManutencao: boolean;
+  backupSchedule: string;
+  backupRetencao: number;
+}
+
+// ─── RGPD Pedidos ────────────────────────────────────────────────────────────
+
+export type TipoRgpdPedido = 'ACESSO' | 'APAGAMENTO' | 'PORTABILIDADE' | 'RETIFICACAO';
+export type EstadoRgpdPedido = 'PENDENTE' | 'EM_ANALISE' | 'CONCLUIDO' | 'REJEITADO';
+
+export interface RgpdPedido {
+  id: string;
+  pacienteId: string;
+  pacienteNome: string;
+  tipo: TipoRgpdPedido;
+  estado: EstadoRgpdPedido;
+  descricao: string | null;
+  notasAdmin: string | null;
+  tratadoPor: string | null;
+  dataPedido: string;
+  dataResolucao: string | null;
+  prazo: string; // dataPedido + 30 dias (calculado)
 }
 
 /** Estudo com todas as relações necessárias para o ExamViewerScreen */

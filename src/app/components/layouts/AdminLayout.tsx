@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { NotificationDropdown } from '../NotificationDropdown';
 import LanguageSwitcher from '../LanguageSwitcher';
 
 function obterIniciais(nomeCompleto: string): string {
@@ -23,7 +24,6 @@ function obterIniciais(nomeCompleto: string): string {
 }
 
 export default function AdminLayout() {
-  const [notificationCount] = React.useState(4);
   const location = useLocation();
   const navigate = useNavigate();
   const { utilizador, logout } = useAuth();
@@ -198,18 +198,7 @@ export default function AdminLayout() {
 
               <LanguageSwitcher />
 
-              <button
-                type="button"
-                className="relative p-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors"
-                aria-label={t('common.notifications')}
-              >
-                <Bell className="w-5 h-5" />
-                {notificationCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-[var(--scolio-danger-coral)] text-white rounded-full flex items-center justify-center text-xs font-medium">
-                    {notificationCount}
-                  </span>
-                )}
-              </button>
+              <NotificationDropdown />
 
               <div className="w-9 h-9 rounded-full bg-[var(--scolio-primary-blue)] flex items-center justify-center text-white font-medium">
                 {iniciais}
