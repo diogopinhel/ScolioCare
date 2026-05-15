@@ -357,6 +357,28 @@ export interface PacienteTecnico {
   medicoNome: string | null;
 }
 
+// ─── ML API ──────────────────────────────────────────────────────────────────
+
+export interface InfoModelo {
+  nome: string;
+  versao: string;
+  formatosInput: string[];
+  outputsDisponiveis: string[];
+}
+
+export interface ResultadoAnaliseIA {
+  analysisId: string;
+  status: 'completed' | 'failed' | 'processing';
+  cobbAngleDegrees: number;
+  cobbAngles: Record<string, number> | null;   // ângulos por região (thoracic, lumbar, etc.)
+  severity: string;                             // normal | mild | moderate | severe
+  confidence: number;                          // 0.0 – 1.0
+  centerlinePoints: { x: number; y: number }[];
+  artifacts: { overlay: string | null; mask: string | null } | null;
+  warnings: string[];
+  processingTimeMs: number;
+}
+
 // ─── System Settings ────────────────────────────────────────────────────────
 
 export interface SystemSettings {
