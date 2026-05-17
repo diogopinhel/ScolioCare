@@ -239,6 +239,69 @@ export async function criarUtilizador(dados: DadosCriarUtilizador): Promise<{ id
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// Métricas IA
+// ═══════════════════════════════════════════════════════════════════
+
+export interface MetricasIA {
+  totalAnalises: number;
+  analisesValidadas: number;   // decisao IS NOT NULL
+  analisesAceites: number;     // decisao = 'ACEITE'
+  analisesCorrigidas: number;  // decisao = 'CORRIGIDO'
+  confiancaMedia: number;      // avg confianca_modelo (0–1)
+  tempoMedioMs: number;        // avg tempo_processamento_ms
+  versaoAtiva: string;         // versao_modelo da análise mais recente
+  distribuicaoGrau: { grau: string; contagem: number }[];
+}
+
+export async function getMetricasIA(): Promise<MetricasIA> {
+  const { data } = await supabase
+    .from('resultados')
+    .select('versao_modelo, grau_curvatura, decisao, confianca_modelo, tempo_processamento_ms')
+    .order('data_processamento', { ascending: false });
+
+  if (!data || data.length === 0) {
+    return {
+      totalAnalises: 0,
+      analisesValidadas: 0,
+      analisesAceites: 0,
+      analisesCorrigidas: 0,
+      confiancaMedia: 0,
+      tempoMedioMs: 0,
+      versaoAtiva: '—',
+      distribuicaoGrau: [],
+    };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = data as any[];
+  const analisesValidadas  = rows.filter((r) => r.decisao != null).length;
+  const analisesAceites    = rows.filter((r) => r.decisao === 'ACEITE').length;
+  const analisesCorrigidas = rows.filter((r) => r.decisao === 'CORRIGIDO').length;
+
+  const confiancaMedia = rows.reduce((s, r) => s + Number(r.confianca_modelo ?? 0), 0) / rows.length;
+  const tempoMedioMs   = rows.reduce((s, r) => s + Number(r.tempo_processamento_ms ?? 0), 0) / rows.length;
+  const versaoAtiva    = rows[0]?.versao_modelo ?? '—';
+
+  const grauMap: Record<string, number> = {};
+  for (const r of rows) {
+    const g = r.grau_curvatura ?? 'DESCONHECIDO';
+    grauMap[g] = (grauMap[g] ?? 0) + 1;
+  }
+  const distribuicaoGrau = Object.entries(grauMap).map(([grau, contagem]) => ({ grau, contagem }));
+
+  return {
+    totalAnalises: rows.length,
+    analisesValidadas,
+    analisesAceites,
+    analisesCorrigidas,
+    confiancaMedia,
+    tempoMedioMs,
+    versaoAtiva,
+    distribuicaoGrau,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // System Settings
 // ═══════════════════════════════════════════════════════════════════
 

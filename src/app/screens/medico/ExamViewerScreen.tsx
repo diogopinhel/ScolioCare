@@ -786,7 +786,7 @@ export default function ExamViewerScreen() {
             <Button
               variant="secondary"
               className="w-full"
-              onClick={() => navigate('/exam-comparison')}
+              onClick={() => navigate(`/exam-comparison/${estudo.pacienteId}`)}
             >
               <GitCompare className="w-4 h-4 mr-2" />
               {t('examViewer.compareExam')}
