@@ -9,6 +9,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { registarAcao } from '../../../data/repository/audit';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 
 const EMERGENCY_REASON_IDS = ['r1', 'r2', 'r3', 'r4', 'r5'] as const;
 
@@ -26,6 +27,7 @@ export default function GlassBreakScreen() {
   const { pacienteId } = useParams<{ pacienteId: string }>();
   const { utilizador } = useAuth();
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
 
   const EMERGENCY_REASONS = EMERGENCY_REASON_IDS.map((id) => ({
     id,
@@ -296,7 +298,7 @@ export default function GlassBreakScreen() {
                   </p>
                   {[
                     { label: t('glassBreak.auditDoctor'), value: utilizador?.nomeCompleto ?? '—' },
-                    { label: t('glassBreak.auditDateTime'), value: new Date().toLocaleString('pt-PT') },
+                    { label: t('glassBreak.auditDateTime'), value: new Date().toLocaleString(dateLocale) },
                     { label: t('glassBreak.auditReason'), value: EMERGENCY_REASONS.find((r) => r.id === selectedReason)?.label ?? '' },
                     { label: t('glassBreak.auditJustification'), value: justification },
                     { label: t('glassBreak.auditMaxDuration'), value: t('glassBreak.duration15min') },
@@ -348,7 +350,7 @@ export default function GlassBreakScreen() {
                     {t('glassBreak.accessGrantedTitle')}
                   </p>
                   <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                    {t('glassBreak.accessGrantedDesc', { time: accessGrantedAt.toLocaleTimeString('pt-PT') })}{' '}
+                    {t('glassBreak.accessGrantedDesc', { time: accessGrantedAt.toLocaleTimeString(dateLocale) })}{' '}
                     <span className="font-semibold text-[var(--scolio-danger-coral)]">{formatTime(timeRemaining)}</span>
                   </p>
                 </div>
@@ -412,7 +414,7 @@ export default function GlassBreakScreen() {
                     <div key={i} className="flex items-center gap-3 py-2 border-b border-[var(--scolio-border-light)] last:border-0">
                       <div className="w-2 h-2 rounded-full bg-[var(--scolio-danger-coral)] flex-shrink-0" />
                       <span className="text-[var(--scolio-text-secondary)] w-20 flex-shrink-0" style={{ fontSize: 'var(--text-caption)' }}>
-                        {entry.time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        {entry.time.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                       </span>
                       <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-caption)' }}>{entry.action}</span>
                     </div>

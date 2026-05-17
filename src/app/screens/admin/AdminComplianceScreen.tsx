@@ -2,6 +2,7 @@ import React from 'react';
 import { FileSearch, Trash2, FileText, ShieldCheck, AlertTriangle, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
 import { Button, Modal, Toast } from '../../components/scolio';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 import { getRgpdPedidos, atualizarRgpdPedido } from '../../../data/repository/admin';
 import type { RgpdPedido, EstadoRgpdPedido } from '../../../data/types';
 
@@ -25,6 +26,7 @@ function diasRestantes(prazo: string): number {
 
 export default function AdminComplianceScreen() {
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
   const [pedidos, setPedidos] = React.useState<RgpdPedido[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
   const [filtroEstado, setFiltroEstado] = React.useState<EstadoRgpdPedido | 'TODOS'>('TODOS');
@@ -151,7 +153,7 @@ export default function AdminComplianceScreen() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      {new Date(p.dataPedido).toLocaleDateString('pt-PT')}
+                      {new Date(p.dataPedido).toLocaleDateString(dateLocale)}
                     </td>
                     <td className="px-6 py-4" style={{ fontSize: 'var(--text-body)', color: prazoUrgente ? 'var(--scolio-danger-coral)' : 'var(--scolio-text-secondary)', fontWeight: prazoUrgente ? 'var(--weight-semibold)' : undefined }}>
                       {['CONCLUIDO', 'REJEITADO'].includes(p.estado) ? '—' : `${dias}d`}
@@ -233,7 +235,7 @@ export default function AdminComplianceScreen() {
               </div>
               <div>
                 <p className="text-[var(--scolio-text-secondary)] mb-1" style={{ fontSize: 'var(--text-caption)' }}>Data do pedido</p>
-                <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>{new Date(modal.pedido.dataPedido).toLocaleDateString('pt-PT')}</p>
+                <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>{new Date(modal.pedido.dataPedido).toLocaleDateString(dateLocale)}</p>
               </div>
             </div>
             {modal.pedido.descricao && (

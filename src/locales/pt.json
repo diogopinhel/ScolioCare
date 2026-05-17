@@ -1,4 +1,21 @@
 {
+  "severity": {
+    "none": "Sem escoliose",
+    "mild": "Leve",
+    "moderate": "Moderada",
+    "severe": "Grave"
+  },
+  "models": {
+    "spinalAi2024": {
+      "description": "Deteção de vértebras + cálculo de ângulo de Cobb com correção MLP residual. MAE 2.39°, 91% accuracy a ±5°."
+    },
+    "maskRcnn": {
+      "description": "Deteção e segmentação por instância das vértebras; cálculo de Cobb em desenvolvimento."
+    },
+    "unetBaseline": {
+      "description": "Máscara binária da coluna (256×256). Aguarda pré/pós-processamento do colega."
+    }
+  },
   "common": {
     "search": "Pesquisar",
     "cancel": "Cancelar",
@@ -336,6 +353,16 @@
     "processing": "Modelo IA a processar imagem...",
     "awaitingUpload": "A aguardar upload de imagem",
     "noImage": "Sem imagem disponível",
+    "aiAnalysis": "Análise por IA",
+    "selectModel": "Modelo",
+    "analyze": "Analisar",
+    "analyzing": "A analisar…",
+    "analysisDone": "Análise concluída com sucesso.",
+    "analysisError": "Erro ao executar análise. Verifique o servidor do modelo.",
+    "noModels": "Nenhum modelo de IA disponível neste momento.",
+    "serverOnline": "Servidor online",
+    "serverOffline": "Servidor offline",
+    "serverChecking": "A verificar…",
     "aiMetrics": "Métricas IA",
     "cobbAngle": "Ângulo de Cobb",
     "correctedByDoctor": " (corrigido pelo médico)",

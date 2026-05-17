@@ -1,4 +1,21 @@
 {
+  "severity": {
+    "none": "No scoliosis",
+    "mild": "Mild",
+    "moderate": "Moderate",
+    "severe": "Severe"
+  },
+  "models": {
+    "spinalAi2024": {
+      "description": "Vertebra detection + Cobb angle calculation with residual MLP correction. MAE 2.39°, 91% accuracy at ±5°."
+    },
+    "maskRcnn": {
+      "description": "Instance-level vertebra detection and segmentation; Cobb calculation in development."
+    },
+    "unetBaseline": {
+      "description": "Binary spine mask (256×256). Awaiting pre/post-processing from teammate."
+    }
+  },
   "common": {
     "search": "Search",
     "cancel": "Cancel",
@@ -336,6 +353,16 @@
     "processing": "AI model processing image...",
     "awaitingUpload": "Awaiting image upload",
     "noImage": "No image available",
+    "aiAnalysis": "AI Analysis",
+    "selectModel": "Model",
+    "analyze": "Analyze",
+    "analyzing": "Analyzing…",
+    "analysisDone": "Analysis completed successfully.",
+    "analysisError": "Error running analysis. Check the model server.",
+    "noModels": "No AI model available at the moment.",
+    "serverOnline": "Server online",
+    "serverOffline": "Server offline",
+    "serverChecking": "Checking…",
     "aiMetrics": "AI Metrics",
     "cobbAngle": "Cobb angle",
     "correctedByDoctor": " (corrected by doctor)",

@@ -4,6 +4,7 @@ import { Button, Toast } from '../../components/scolio';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 import { getFilaEstudos, arquivarEstudoTecnico } from '../../../data/repository/tecnico';
 import type { EstudoFilaItem, EstadoEstudo } from '../../../data/types';
 
@@ -30,8 +31,8 @@ function estadoBadge(estado: EstadoEstudo, t: (key: string) => string) {
   );
 }
 
-function formatarData(iso: string): string {
-  return new Date(iso).toLocaleString('pt-PT', {
+function formatarData(iso: string, locale: string): string {
+  return new Date(iso).toLocaleString(locale, {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -45,6 +46,7 @@ export default function ExamQueueScreen() {
   const navigate = useNavigate();
   const { utilizador } = useAuth();
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
 
   const ESTADOS_OPCOES = [
     { label: t('queue.statusAll'), value: 'all' },
@@ -195,10 +197,10 @@ export default function ExamQueueScreen() {
                     <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>{ex.pacienteNome}</p>
                   </td>
                   <td className="px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                    {new Date(ex.dataEstudo).toLocaleDateString('pt-PT')}
+                    {new Date(ex.dataEstudo).toLocaleDateString(dateLocale)}
                   </td>
                   <td className="px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                    {formatarData(ex.dataSubmissao)}
+                    {formatarData(ex.dataSubmissao, dateLocale)}
                   </td>
                   <td className="px-4 py-3">{estadoBadge(ex.estado, t)}</td>
                   <td className="px-4 py-3">

@@ -200,6 +200,11 @@ export interface ResultadoCompleto {
   confiancaModelo: number;       // 0.0 – 1.0
   versaoModelo: string;
   overlayJson: unknown | null;   // coordenadas/anotações do modelo para o overlay SVG
+  /** Lista de vértebras detetadas (formato VertebraDetetada). Pode ser null. */
+  pontosAnatomicos: VertebraDetetada[] | null;
+  /** Estrutura com main/upper/lower + measurement (índices das vértebras usadas no Cobb) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cobbAnglesData: any | null;
   // ── Validação médica ─────────────────────────────────────────────────
   decisao: DecisaoResultado | null;
   anguloCobbCorrigido: number | null;
@@ -355,6 +360,98 @@ export interface PacienteTecnico {
   ultimoExame: string | null;
   medicoId: string | null;
   medicoNome: string | null;
+}
+
+// ─── ML API ──────────────────────────────────────────────────────────────────
+
+/**
+ * Configuração de um modelo ML disponível no sistema.
+ * Cada modelo corre num servidor local diferente (porta diferente) e tem o
+ * seu próprio formato de resposta. O parser converte essa resposta para
+ * ResultadoAnaliseIA (formato unificado interno).
+ */
+export interface ModeloIA {
+  id: string;                  // identificador interno (ex: 'maskrcnn-seg')
+  nome: string;                // nome legível (ex: 'Mask R-CNN — Segmentação')
+  descricao: string;           // o que o modelo faz
+  urlBase: string;             // URL do servidor local (ex: 'http://localhost:8000')
+  endpointAnalyse: string;     // path do endpoint de análise (ex: '/analyze')
+  endpointHealth: string | null; // path do endpoint de health-check (null = não verificar)
+  versaoEsperada: string;      // versão atual conhecida (informativo)
+  capacidades: string[];       // ex: ['segmentação', 'Cobb', 'classificação']
+  ativo: boolean;              // se está habilitado para uso
+}
+
+export interface InfoModelo {
+  nome: string;
+  versao: string;
+  formatosInput: string[];
+  outputsDisponiveis: string[];
+}
+
+/**
+ * Detalhe de uma vértebra detetada pelo modelo de segmentação.
+ * Nem todos os campos são preenchidos por todos os modelos.
+ */
+export interface VertebraDetetada {
+  id: number;
+  label: string;
+  score: number;                            // 0.0 – 1.0
+  bbox: [number, number, number, number] | null;       // [x1, y1, x2, y2]
+  polygon: [number, number][] | null;                  // quadrilátero aproximado
+  center: [number, number] | null;                     // centro [cx, cy]
+  angleDeg: number | null;                             // inclinação estimada (pós-processamento)
+}
+
+/**
+ * Resultado unificado de uma análise de IA (formato interno do frontend).
+ * Cada modelo tem o seu formato próprio; o parser de cada modelo converte
+ * para esta estrutura. Campos opcionais quando o modelo não os produz.
+ */
+export interface ResultadoAnaliseIA {
+  // ── Metadados ────────────────────────────────────────────────────────────
+  modeloId: string;                // id do modelo que produziu este resultado
+  versaoModelo: string;            // versão específica (ex: 'maskrcnn_full_epoch4_best')
+  status: 'success' | 'failed' | 'processing';
+  tempoProcessamentoMs: number;
+
+  // ── Ângulos de Cobb (qualquer subset pode estar preenchido) ──────────────
+  anguloCobbPrincipal: number | null;        // ângulo principal (graus)
+  cobbAngles: {
+    upper: number | null;
+    main: number | null;
+    lower: number | null;
+  } | null;
+
+  // ── Classificação clínica ─────────────────────────────────────────────────
+  grauCurvatura: 'LEVE' | 'MODERADA' | 'GRAVE' | null;
+  confianca: number;                          // 0.0 – 1.0
+
+  // ── Estruturas detetadas (depende do modelo) ─────────────────────────────
+  vertebrae: VertebraDetetada[] | null;
+  centerlinePoints: { x: number; y: number }[] | null;
+
+  // ── Overlay (radiografia com marcações) ──────────────────────────────────
+  overlayUrl: string | null;                  // URL servida pelo modelo (ex: localhost:8000/.../overlay)
+  overlayBase64: string | null;               // PNG inline em base64 (alternativa)
+
+  // ── Avisos do modelo ─────────────────────────────────────────────────────
+  warnings: string[];
+
+  // ── Campos opcionais específicos de alguns modelos ───────────────────────
+  /** Detalhe das vértebras usadas no cálculo do Cobb (Spinal-AI 2024) */
+  cobbMeasurement?: {
+    upperVertebraIndex: number;
+    lowerVertebraIndex: number;
+    upperVertebraLabel: string;
+    lowerVertebraLabel: string;
+    upperPlateAngleDeg: number;
+    lowerPlateAngleDeg: number;
+  } | null;
+  /** Ângulo de Cobb antes de correção residual (Spinal-AI 2024) */
+  rawGeometricCobbAngleDeg?: number | null;
+  /** Correção aplicada pelo MLP residual (Spinal-AI 2024) */
+  appliedCorrectionDeg?: number | null;
 }
 
 // ─── System Settings ────────────────────────────────────────────────────────

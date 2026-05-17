@@ -4,6 +4,7 @@ import { Upload, Loader2, CheckCircle2, Archive, Activity } from 'lucide-react';
 import { Button } from '../../components/scolio';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 import {
   getMetricasDashboardTecnico,
   getFilaEstudos,
@@ -44,6 +45,7 @@ export default function TecnicoDashboardScreen() {
   const navigate = useNavigate();
   const { utilizador } = useAuth();
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
 
   const tempoRelativo = (dataISO: string): string => {
     const diff = Date.now() - new Date(dataISO).getTime();
@@ -62,7 +64,7 @@ export default function TecnicoDashboardScreen() {
   const [fila, setFila] = React.useState<EstudoFilaItem[]>([]);
   const [atividade, setAtividade] = React.useState<AtividadeResumo[]>([]);
 
-  const hoje = new Date().toLocaleDateString('pt-PT', {
+  const hoje = new Date().toLocaleDateString(dateLocale, {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
   const nomeTecnico = utilizador?.nomeCompleto ?? 'Técnico';
@@ -188,7 +190,7 @@ export default function TecnicoDashboardScreen() {
                       {item.pacienteNome}
                     </td>
                     <td className="px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      {new Date(item.dataEstudo).toLocaleDateString('pt-PT')}
+                      {new Date(item.dataEstudo).toLocaleDateString(dateLocale)}
                     </td>
                     <td className="px-6 py-3">{estadoBadge(item.estado, t)}</td>
                     <td className="px-6 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
