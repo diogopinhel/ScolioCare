@@ -7,6 +7,7 @@ import {
 import { Button, Textarea } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 import { getEstudosParaComparacao, guardarAvaliacaoComparacao, getAvaliacaoComparacao } from '../../../data/repository/estudos';
 import { getPaciente } from '../../../data/repository/pacientes';
 import { useAuth } from '../../auth/AuthContext';
@@ -16,6 +17,7 @@ export default function ExamComparisonScreen() {
   const navigate = useNavigate();
   const { pacienteId } = useParams<{ pacienteId: string }>();
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
   const { utilizador } = useAuth();
 
   const [exames, setExames] = React.useState<EstudoComparacao[]>([]);
@@ -242,7 +244,7 @@ export default function ExamComparisonScreen() {
                   <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
                     {t('examComparison.assessmentSavedBy', {
                       nome: avaliacao.medicoNome,
-                      date: new Date(avaliacao.dataCriacao).toLocaleString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                      date: new Date(avaliacao.dataCriacao).toLocaleString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
                     })}
                   </p>
                   {avaliacao.texto && (
@@ -380,7 +382,8 @@ interface ExamViewerProps {
 
 function ExamViewer({ label, exam, examsList, onExamChange, aiOverlay, onAiOverlayToggle, zoom, onZoomChange, onReset }: ExamViewerProps) {
   const { t } = useTranslation();
-  const dataFormatada = new Date(exam.dataEstudo).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
+  const dateLocale = useDateLocale();
+  const dataFormatada = new Date(exam.dataEstudo).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
     <div className="flex flex-col h-full">
@@ -398,7 +401,7 @@ function ExamViewer({ label, exam, examsList, onExamChange, aiOverlay, onAiOverl
           >
             {examsList.map((ex) => (
               <option key={ex.id} value={ex.id}>
-                {new Date(ex.dataEstudo).toLocaleDateString('pt-PT')} — {ex.anguloCobb.toFixed(1)}°
+                {new Date(ex.dataEstudo).toLocaleDateString(dateLocale)} — {ex.anguloCobb.toFixed(1)}°
               </option>
             ))}
           </select>

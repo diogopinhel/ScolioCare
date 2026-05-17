@@ -4,9 +4,10 @@ import { Button, Toast } from '../../components/scolio';
 import { getAuditLog } from '../../../data/repository/admin';
 import type { AuditLogEntry } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 
-function formatarDataHora(iso: string): string {
-  return new Date(iso).toLocaleString('pt-PT', {
+function formatarDataHora(iso: string, locale: string): string {
+  return new Date(iso).toLocaleString(locale, {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
@@ -34,6 +35,7 @@ function categoriaStyle(cat: string, t: (key: string) => string) {
 
 export default function AdminAuditScreen() {
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
   const [eventos, setEventos] = React.useState<AuditLogEntry[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
   const [pesquisa, setPesquisa] = React.useState('');
@@ -81,7 +83,7 @@ export default function AdminAuditScreen() {
       ['ID', 'Data/Hora', 'Utilizador', 'Perfil', 'Tipo de ação', 'Entidade', 'Entidade ID'].join(','),
       ...filtrados.map((e) => [
         e.id,
-        formatarDataHora(e.dataHora),
+        formatarDataHora(e.dataHora, dateLocale),
         e.utilizadorSnapshot?.nome ?? '—',
         e.utilizadorSnapshot?.perfil ?? '—',
         e.tipoAcao,
@@ -180,7 +182,7 @@ export default function AdminAuditScreen() {
                 return (
                   <tr key={e.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
                     <td className="px-4 py-3 text-[var(--scolio-text-secondary)] font-mono" style={{ fontSize: 'var(--text-caption)' }}>
-                      {formatarDataHora(e.dataHora)}
+                      {formatarDataHora(e.dataHora, dateLocale)}
                     </td>
                     <td className="px-4 py-3 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
                       {e.utilizadorSnapshot?.nome ?? '—'}

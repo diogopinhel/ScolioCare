@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 import { getPaciente, getNotasDoPaciente, criarNotaPaciente, apagarNotaPaciente } from '../../../data/repository/pacientes';
 import { getEstudosDoPaciente, getHistoricoEstadoDoPaciente } from '../../../data/repository/estudos';
 import { supabase } from '../../../lib/supabase';
@@ -51,13 +52,13 @@ function iniciaisDe(nome: string): string {
     .toUpperCase();
 }
 
-function formatarDataPT(isoDate: string | null): string {
+function formatarData(isoDate: string | null, locale: string): string {
   if (!isoDate) return '—';
-  return new Date(isoDate).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(isoDate).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function formatarDataHoraPT(isoDateTime: string): string {
-  return new Date(isoDateTime).toLocaleString('pt-PT', {
+function formatarDataHora(isoDateTime: string, locale: string): string {
+  return new Date(isoDateTime).toLocaleString(locale, {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
@@ -90,6 +91,7 @@ export default function PatientRecordScreen() {
   const { id } = useParams<{ id: string }>();
   const { utilizador } = useAuth();
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
 
   const [activeTab, setActiveTab] = React.useState<TabKey>('overview');
   const [showToast, setShowToast] = React.useState(false);
@@ -352,7 +354,7 @@ export default function PatientRecordScreen() {
     .map((e) => ({
       estudoId: e.id,
       rawDate: e.dataEstudo,
-      date: new Date(e.dataEstudo).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }),
+      date: new Date(e.dataEstudo).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short' }),
       angle: e.resultado!.anguloCobbCorrigido ?? e.resultado!.anguloCobb,
     }))
     .reverse();
@@ -369,7 +371,7 @@ export default function PatientRecordScreen() {
     : null;
 
   const dataInicioTratamento =
-    estudos.length > 0 ? formatarDataPT(estudos[estudos.length - 1].dataEstudo) : null;
+    estudos.length > 0 ? formatarData(estudos[estudos.length - 1].dataEstudo, dateLocale) : null;
 
   const handleChartClick = (data: any) => {
     const estudoId = data?.activePayload?.[0]?.payload?.estudoId as string | undefined;
@@ -502,7 +504,7 @@ export default function PatientRecordScreen() {
                   <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-5 space-y-4">
                     <DataRow icon={MapPin} label={t('patientRecord.address')} value={paciente.morada || '—'} />
                     <DataRow icon={Phone} label={t('patientRecord.contact')} value={paciente.contacto || '—'} />
-                    <DataRow icon={Calendar} label={t('patientRecord.dob')} value={formatarDataPT(paciente.dataNascimento)} />
+                    <DataRow icon={Calendar} label={t('patientRecord.dob')} value={formatarData(paciente.dataNascimento, dateLocale)} />
                   </div>
                 </section>
 
@@ -575,7 +577,7 @@ export default function PatientRecordScreen() {
                             {t('patientRecord.examDate')}
                           </span>
                           <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-                            {new Date(ultimoExame.dataEstudo).toLocaleDateString('pt-PT')}
+                            {new Date(ultimoExame.dataEstudo).toLocaleDateString(dateLocale)}
                           </span>
                         </div>
                         {ultimoExame.resultado && (
@@ -629,7 +631,7 @@ export default function PatientRecordScreen() {
                       <div className="flex items-center justify-between">
                         <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('patientRecord.lastRecord')}</span>
                         <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                          {new Date(ultimoWellness.dataRegisto).toLocaleDateString('pt-PT')}
+                          {new Date(ultimoWellness.dataRegisto).toLocaleDateString(dateLocale)}
                         </span>
                       </div>
                       <div className="space-y-2">
@@ -679,7 +681,7 @@ export default function PatientRecordScreen() {
                 {estudos.map((exame) => (
                   <ExamCard
                     key={exame.id}
-                    date={new Date(exame.dataEstudo).toLocaleDateString('pt-PT')}
+                    date={new Date(exame.dataEstudo).toLocaleDateString(dateLocale)}
                     cobbAngle={exame.resultado ? (exame.resultado.anguloCobbCorrigido ?? exame.resultado.anguloCobb) : 0}
                     apicalVertebra={exame.resultado?.nivelVertebras ?? undefined}
                     status={estadoParaBadge(exame.estado)}
@@ -716,7 +718,7 @@ export default function PatientRecordScreen() {
                     {estudos.map((exame) => (
                       <tr key={exame.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
                         <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          {new Date(exame.dataEstudo).toLocaleDateString('pt-PT')}
+                          {new Date(exame.dataEstudo).toLocaleDateString(dateLocale)}
                         </td>
                         <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
                           {t('patientRecord.reportType')}
@@ -884,7 +886,7 @@ export default function PatientRecordScreen() {
                           {nota.eMinhaAutoria ? nomeMedico : nota.medicoNome}
                         </p>
                         <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                          {new Date(nota.dataCriacao).toLocaleString('pt-PT', {
+                          {new Date(nota.dataCriacao).toLocaleString(dateLocale, {
                             day: 'numeric', month: 'long', year: 'numeric',
                             hour: '2-digit', minute: '2-digit',
                           })}
@@ -929,7 +931,7 @@ export default function PatientRecordScreen() {
                     <div key={exame.id} className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                          {t('patientRecord.examOf', { date: new Date(exame.dataEstudo).toLocaleDateString('pt-PT') })}
+                          {t('patientRecord.examOf', { date: new Date(exame.dataEstudo).toLocaleDateString(dateLocale) })}
                         </p>
                         <button
                           onClick={() => navigate(`/exam-viewer/${exame.id}`)}
@@ -959,7 +961,7 @@ export default function PatientRecordScreen() {
                 <div key={fb.id} className="bg-white rounded-[var(--radius-card)] border border-[var(--scolio-border-light)] p-5">
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                      {new Date(fb.dataRegisto).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {new Date(fb.dataRegisto).toLocaleDateString(dateLocale, { day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-4 mb-4">
@@ -1022,7 +1024,7 @@ export default function PatientRecordScreen() {
                     {historico.map((entrada) => (
                       <tr key={entrada.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
                         <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          {formatarDataHoraPT(entrada.dataTransicao)}
+                          {formatarDataHora(entrada.dataTransicao, dateLocale)}
                         </td>
                         <td className="p-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
                           {entrada.utilizadorNome}

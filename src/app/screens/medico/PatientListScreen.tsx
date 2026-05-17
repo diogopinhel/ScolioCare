@@ -5,6 +5,7 @@ import type { BadgeStatus } from '../../components/scolio';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 import { getPacientesListagem, pesquisarPacientesGlobal } from '../../../data/repository/pacientes';
 import type { PacienteListagem, EstadoEstudo } from '../../../data/types';
 import type { PacienteResultadoGlobal } from '../../../data/repository/pacientes';
@@ -33,9 +34,9 @@ function badgeStatusPorEstado(estado: EstadoEstudo | null): BadgeStatus {
   }
 }
 
-function formatarData(iso: string | null): string {
+function formatarData(iso: string | null, locale: string): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('pt-PT', {
+  return new Date(iso).toLocaleDateString(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -60,6 +61,7 @@ export default function PatientListScreen() {
   const { utilizador } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
 
   const [aCarregar, setACarregar] = useState(true);
   const [todosPacientes, setTodosPacientes] = useState<PacienteListagem[]>([]);
@@ -323,7 +325,7 @@ export default function PatientListScreen() {
                       {patient.numeroUtente}
                     </td>
                     <td className="px-6 py-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      {formatarData(patient.dataNascimento)}
+                      {formatarData(patient.dataNascimento, dateLocale)}
                     </td>
                     <td className="px-6 py-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                       {exibirGenero(patient.genero, t)}
@@ -335,7 +337,7 @@ export default function PatientListScreen() {
                       {patient.totalExames}
                     </td>
                     <td className="px-6 py-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      {formatarData(patient.ultimoExame)}
+                      {formatarData(patient.ultimoExame, dateLocale)}
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={badgeStatusPorEstado(patient.estadoUltimoExame)} />

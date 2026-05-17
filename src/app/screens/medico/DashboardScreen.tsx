@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 import {
   getMetricasDashboard,
   getEstudosPendentesValidacao,
@@ -40,11 +41,11 @@ function tempoRelativo(dataISO: string, t: (key: string, opts?: Record<string, u
   return t('dashboard.timeDays', { count: dias });
 }
 
-function formatarDataHora(iso: string): { data: string; hora: string } {
+function formatarDataHora(iso: string, locale: string): { data: string; hora: string } {
   const d = new Date(iso);
   return {
-    data: d.toLocaleDateString('pt-PT'),
-    hora: d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+    data: d.toLocaleDateString(locale),
+    hora: d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
   };
 }
 
@@ -93,6 +94,7 @@ export default function DashboardScreen() {
   const { utilizador } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
 
   const [aCarregar, setACarregar] = useState(true);
   const [metricas, setMetricas] = useState<MetricasDashboardMedico | null>(null);
@@ -132,7 +134,7 @@ export default function DashboardScreen() {
     return () => { cancelado = true; };
   }, []);
 
-  const currentDate = new Date().toLocaleDateString('pt-PT', {
+  const currentDate = new Date().toLocaleDateString(dateLocale, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -231,7 +233,7 @@ export default function DashboardScreen() {
           ) : (
             <div className="space-y-3 max-h-[300px] overflow-y-auto">
               {pendentes.map((exam) => {
-                const { data, hora } = formatarDataHora(exam.dataSubmissao);
+                const { data, hora } = formatarDataHora(exam.dataSubmissao, dateLocale);
                 return (
                   <div
                     key={exam.id}

@@ -13,6 +13,7 @@ import { getMedicos, reatribuirMedico } from '../../../data/repository/pacientes
 import type { DadosCriarUtilizador, CamposEdicaoUtilizador } from '../../../data/repository/admin';
 import type { UtilizadorAdmin, UtilizadorAdminCompleto, MedicoResumo } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 
 function perfilStyle(perfil: string, t: (key: string) => string) {
   const map: Record<string, { bg: string; fg: string; label: string }> = {
@@ -28,9 +29,9 @@ function iniciais(nome: string): string {
   return nome.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function formatarData(iso: string | null): string {
+function formatarData(iso: string | null, locale: string): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleString('pt-PT', {
+  return new Date(iso).toLocaleString(locale, {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -40,6 +41,7 @@ type ConfirmAction = { kind: 'toggle_ativo' | 'toggle_bloqueio'; user: Utilizado
 
 export default function AdminUsersScreen() {
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
   const [utilizadores, setUtilizadores] = React.useState<UtilizadorAdmin[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
 
@@ -364,11 +366,11 @@ export default function AdminUsersScreen() {
                     </td>
                     {/* Último acesso */}
                     <td className="px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      {formatarData(u.ultimoLogin)}
+                      {formatarData(u.ultimoLogin, dateLocale)}
                     </td>
                     {/* Criado em */}
                     <td className="px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                      {formatarData(u.dataCriacao)}
+                      {formatarData(u.dataCriacao, dateLocale)}
                     </td>
                     {/* Ações */}
                     <td className="px-4 py-3">

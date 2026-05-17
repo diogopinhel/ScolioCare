@@ -13,6 +13,7 @@ import {
 import type { BadgeStatus } from '../../components/scolio';
 import { CobbAngleGauge } from '../../components/scolio';
 import { useAuth } from '../../auth/AuthContext';
+import { useDateLocale } from '../../../lib/dateLocale';
 import type { EstudoCompleto, EstadoEstudo, ModeloIA, VertebraDetetada } from '../../../data/types';
 import {
   getEstudoCompleto,
@@ -62,8 +63,8 @@ export default function ExamViewerScreen() {
   const { estudoId } = useParams<{ estudoId: string }>();
   const navigate = useNavigate();
   const { utilizador } = useAuth();
-  const { t, i18n } = useTranslation();
-  const dateLocale = i18n.language === 'en' ? 'en-US' : 'pt-PT';
+  const { t } = useTranslation();
+  const dateLocale = useDateLocale();
 
   // ── Dados ──────────────────────────────────────────────────────────────────
   const [estudo, setEstudo] = React.useState<EstudoCompleto | null>(null);
@@ -595,19 +596,8 @@ export default function ExamViewerScreen() {
                     {t('examViewer.cobbAngle')}
                     {resultado.decisao === 'CORRIGIDO' ? t('examViewer.correctedByDoctor') : ''}
                   </p>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p
-                        className="text-[var(--scolio-text-primary)] font-semibold mb-1"
-                        style={{ fontSize: '48px', lineHeight: '1' }}
-                      >
-                        {anguloFinal!.toFixed(1)}°
-                      </p>
-                      <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                        {grauCurvaturaLabel(t, resultado.grauCurvatura)}
-                      </p>
-                    </div>
-                    <CobbAngleGauge angle={anguloFinal!} size={120} />
+                  <div className="flex items-center justify-start">
+                    <CobbAngleGauge angle={anguloFinal!} size={160} />
                   </div>
                   {resultado.decisao === 'CORRIGIDO' && (
                     <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>

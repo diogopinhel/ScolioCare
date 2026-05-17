@@ -4,6 +4,7 @@ import { Button, Modal, Toast, Textarea } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { getDateLocale } from '../../../lib/dateLocale';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getEstudoCompleto, getUrlImagemEstudo, guardarObservacoesMedico, guardarAssinaturaDocumento, enviarEstudoAoPaciente } from '../../../data/repository/estudos';
@@ -22,9 +23,9 @@ async function calcularHashSHA256(blob: Blob): Promise<string> {
     .join('');
 }
 
-function formatarDataPT(isoDate: string | null): string {
+function formatarData(isoDate: string | null, locale: string): string {
   if (!isoDate) return '—';
-  return new Date(isoDate).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(isoDate).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 // ── Traduções PT / EN do documento (usadas no PDF e na prévia) ────────────────
@@ -93,6 +94,7 @@ export default function ReportGenerationScreen() {
   });
   const [idioma, setIdioma] = React.useState('pt');
   const ps = REPORT_TR[idioma as 'pt' | 'en'] ?? REPORT_TR.pt;
+  const dateLocale = getDateLocale(idioma);
   const [observacoesMedico, setObservacoesMedico] = React.useState('');
   const [hashDocumento, setHashDocumento] = React.useState<string | null>(null);
   const [dataAssinatura, setDataAssinatura] = React.useState<string | null>(null);
@@ -135,8 +137,8 @@ export default function ReportGenerationScreen() {
     if (!estudo) return;
 
     const s = REPORT_TR[idioma as 'pt' | 'en'] ?? REPORT_TR.pt;
-    const agora = new Date().toLocaleString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const dataExameStr = formatarDataPT(estudo.dataEstudo);
+    const agora = new Date().toLocaleString(dateLocale, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const dataExameStr = formatarData(estudo.dataEstudo, dateLocale);
     const r = estudo.resultado;
     const idadePaciente = computeAge(paciente?.dataNascimento ?? null);
 
@@ -145,7 +147,7 @@ export default function ReportGenerationScreen() {
       <div class="grid">
         <div class="field"><label>${s.fullName}</label><span>${estudo.pacienteNome}</span></div>
         ${paciente?.numeroUtente ? `<div class="field"><label>${s.utente}</label><span>${paciente.numeroUtente}</span></div>` : ''}
-        ${paciente?.dataNascimento ? `<div class="field"><label>${s.dob}</label><span>${formatarDataPT(paciente.dataNascimento)}${idadePaciente !== null ? ` (${idadePaciente} ${s.yearsUnit})` : ''}</span></div>` : ''}
+        ${paciente?.dataNascimento ? `<div class="field"><label>${s.dob}</label><span>${formatarData(paciente.dataNascimento, dateLocale)}${idadePaciente !== null ? ` (${idadePaciente} ${s.yearsUnit})` : ''}</span></div>` : ''}
         ${paciente?.genero ? `<div class="field"><label>${s.gender}</label><span>${paciente.genero}</span></div>` : ''}
       </div>` : '';
 
@@ -194,7 +196,7 @@ export default function ReportGenerationScreen() {
         ${medico?.cedulaProfissional ? `<div class="field"><label>${s.license}</label><span>${medico.cedulaProfissional}</span></div>` : ''}
         ${medico?.especialidade ? `<div class="field"><label>${s.specialty}</label><span>${medico.especialidade}</span></div>` : ''}
         ${hashDocumento && dataAssinatura
-          ? `<div class="field" style="margin-top:8px"><label>Data</label><span>${new Date(dataAssinatura).toLocaleString('pt-PT')}</span></div>
+          ? `<div class="field" style="margin-top:8px"><label>Data</label><span>${new Date(dataAssinatura).toLocaleString(dateLocale)}</span></div>
              <p style="font-size:10px;color:#666;margin-top:6px;font-family:monospace;word-break:break-all">SHA-256: ${hashDocumento}</p>`
           : `<p style="font-size:11px;color:#999;margin-top:8px">${s.pending}</p>`
         }
@@ -369,8 +371,8 @@ export default function ReportGenerationScreen() {
 
   const medico = utilizador?.perfil === 'MEDICO' ? (utilizador as MedicoEspecialista) : null;
   const nomeMedico = medico ? `Dr. ${medico.nomeCompleto}` : (utilizador?.nomeCompleto ?? '—');
-  const dataRelatorio = formatarDataPT(new Date().toISOString());
-  const dataExame = formatarDataPT(estudo.dataEstudo);
+  const dataRelatorio = formatarData(new Date().toISOString(), dateLocale);
+  const dataExame = formatarData(estudo.dataEstudo, dateLocale);
   const resultado = estudo.resultado;
 
   return (
@@ -491,7 +493,7 @@ export default function ReportGenerationScreen() {
                         <DataLine label={ps.fullName} value={estudo.pacienteNome} />
                         {paciente?.numeroUtente && <DataLine label={ps.utente} value={paciente.numeroUtente} />}
                         {paciente?.dataNascimento && (
-                          <DataLine label={ps.dob} value={`${formatarDataPT(paciente.dataNascimento)}${computeAge(paciente.dataNascimento) !== null ? ` (${computeAge(paciente.dataNascimento)} ${ps.yearsUnit})` : ''}`} />
+                          <DataLine label={ps.dob} value={`${formatarData(paciente.dataNascimento, dateLocale)}${computeAge(paciente.dataNascimento) !== null ? ` (${computeAge(paciente.dataNascimento)} ${ps.yearsUnit})` : ''}`} />
                         )}
                         {paciente?.genero && <DataLine label={ps.gender} value={paciente.genero} />}
                       </div>
@@ -607,7 +609,7 @@ export default function ReportGenerationScreen() {
                             )}
                             {dataAssinatura && (
                               <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                                <strong>Data:</strong> {new Date(dataAssinatura).toLocaleString('pt-PT')}
+                                <strong>Data:</strong> {new Date(dataAssinatura).toLocaleString(dateLocale)}
                               </p>
                             )}
                             <p className="text-[var(--scolio-text-secondary)] break-all font-mono" style={{ fontSize: '10px', marginTop: '6px' }}>
@@ -662,7 +664,7 @@ export default function ReportGenerationScreen() {
                 <p className="text-[var(--scolio-success-green)] font-medium mb-1" style={{ fontSize: 'var(--text-body)' }}>{t('report.signedDigitally')}</p>
                 {dataAssinatura && (
                   <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                    {t('report.signedAt')} {new Date(dataAssinatura).toLocaleString('pt-PT')}
+                    {t('report.signedAt')} {new Date(dataAssinatura).toLocaleString(dateLocale)}
                   </p>
                 )}
                 <p className="text-[var(--scolio-text-secondary)] break-all font-mono mt-2" style={{ fontSize: '10px' }}>

@@ -6,10 +6,11 @@ import { getPacientesTecnico, alterarMedicoPaciente } from '../../../data/reposi
 import { getMedicos } from '../../../data/repository/pacientes';
 import type { PacienteTecnico, MedicoResumo } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
+import { useDateLocale } from '../../../lib/dateLocale';
 
-function formatarData(iso: string | null): string {
+function formatarData(iso: string | null, locale: string): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('pt-PT');
+  return new Date(iso).toLocaleDateString(locale);
 }
 
 function exibirGenero(genero: string | null): string {
@@ -37,6 +38,7 @@ interface EstadoModal {
 export default function TecnicoPatientsScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const dateLocale = useDateLocale();
   const [pacientes, setPacientes] = React.useState<PacienteTecnico[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
   const [search, setSearch] = React.useState('');
@@ -213,7 +215,7 @@ export default function TecnicoPatientsScreen() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                    {formatarData(p.ultimoExame)}
+                    {formatarData(p.ultimoExame, dateLocale)}
                   </td>
                   <td className="px-4 py-3 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
                     {p.totalExames}

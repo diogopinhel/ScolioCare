@@ -72,8 +72,8 @@ export function CobbAngleGauge({ angle, size = 200, className = '' }: CobbAngleG
       </svg>
 
       {/* Texto por baixo do arco (próximo, sem sobreposição) */}
-      <div className="flex flex-col items-center" style={{ marginTop: '-6px' }}>
-        <p style={{ fontSize: `${size * 0.22}px`, fontWeight: 'var(--weight-semibold)', lineHeight: '1', color }}>
+      <div className="flex flex-col items-center" style={{ marginTop: '-12px' }}>
+        <p style={{ fontSize: `${size * 0.18}px`, fontWeight: 'var(--weight-semibold)', lineHeight: '1', color }}>
           {angle}°
         </p>
         <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', marginTop: '2px' }}>
