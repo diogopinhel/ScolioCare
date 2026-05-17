@@ -41,7 +41,7 @@ export const MODELOS_DISPONIVEIS: ModeloIA[] = [
     descricao: 'Deteção de vértebras + cálculo de ângulo de Cobb com correção MLP residual. MAE 2.39°, 91% accuracy a ±5°.',
     urlBase: ML_BASE_URL_DEFAULT,        // http://localhost:8000
     endpointAnalyse: '/analyze',
-    endpointHealth: null,                 // não tem endpoint /health; assume online
+    endpointHealth: '/health',
     versaoEsperada: 'phase5_radius_hardmining_v1+phase9_cobb_residual_mlp_v2',
     capacidades: ['Cobb', 'classificação', 'vértebras', 'overlay'],
     ativo: true,
