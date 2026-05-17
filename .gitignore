@@ -82,3 +82,11 @@ CLAUDE.md
 schema.sql
 seed_utilizadores.ts
 
+# Modelos ML (binários pesados — ficam locais, partilhados fora do Git)
+models/
+*.keras
+*.pt
+*.pth
+*.h5
+*.onnx
+

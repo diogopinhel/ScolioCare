@@ -353,7 +353,7 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
         id, angulo_cobb, grau_curvatura, localizacao_curva,
         nivel_vertebras, confianca_modelo, versao_modelo, overlay_json,
         decisao, angulo_cobb_corrigido, justificacao_validacao,
-        data_validacao, concluido, observacoes_medico
+        data_validacao, concluido, observacoes_medico, data_processamento
       ),
       imagens_estudo(id, caminho_armazenamento, projecao, formato)
     `)
@@ -364,7 +364,14 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const row = data as any;
-  const resultados = Array.isArray(row.resultados) ? row.resultados : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const resultados: any[] = Array.isArray(row.resultados) ? row.resultados : [];
+  // Ordenar por data_processamento DESC para que o mais recente apareça (vários modelos podem produzir resultados)
+  resultados.sort((a, b) => {
+    const da = new Date(a.data_processamento ?? 0).getTime();
+    const db = new Date(b.data_processamento ?? 0).getTime();
+    return db - da;
+  });
   const r = resultados[0] ?? null;
   const imagens = Array.isArray(row.imagens_estudo) ? row.imagens_estudo : [];
 

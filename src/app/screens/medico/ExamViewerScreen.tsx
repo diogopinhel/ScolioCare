@@ -3,17 +3,17 @@ import { useParams, useNavigate } from 'react-router';
 import {
   ZoomIn, ZoomOut, Move, RotateCcw, Sun,
   Eye, EyeOff, FileText, Download, GitCompare,
-  Archive, Check, Edit3, ArrowLeft,
+  Archive, Check, Edit3, ArrowLeft, Cpu, Play, AlertCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Button, StatusBadge, Textarea, ProgressBar,
-  Toast, Input, SkeletonBlock,
+  Toast, Input, SkeletonBlock, Select,
 } from '../../components/scolio';
 import type { BadgeStatus } from '../../components/scolio';
 import { CobbAngleGauge } from '../../components/scolio';
 import { useAuth } from '../../auth/AuthContext';
-import type { EstudoCompleto, EstadoEstudo } from '../../../data/types';
+import type { EstudoCompleto, EstadoEstudo, ModeloIA } from '../../../data/types';
 import {
   getEstudoCompleto,
   getUrlImagemEstudo,
@@ -22,6 +22,12 @@ import {
   guardarNotasClinicas,
   arquivarEstudoMedico,
 } from '../../../data/repository/estudos';
+import {
+  getModelosDisponiveis,
+  analisarExame,
+  guardarResultadoIA,
+  verificarSaudeApi,
+} from '../../../data/repository/ia';
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
@@ -77,6 +83,14 @@ export default function ExamViewerScreen() {
   // ── Confirmação IA ─────────────────────────────────────────────────────────
   const [aConfirmar, setAConfirmar] = React.useState(false);
 
+  // ── Análise de IA (multi-modelo) ───────────────────────────────────────────
+  const modelosDisponiveis = React.useMemo<ModeloIA[]>(() => getModelosDisponiveis(), []);
+  const [modeloSelecionadoId, setModeloSelecionadoId] = React.useState<string>(
+    modelosDisponiveis[0]?.id ?? '',
+  );
+  const [aAnalisar, setAAnalisar] = React.useState(false);
+  const [saudeApi, setSaudeApi] = React.useState<'desconhecido' | 'online' | 'offline'>('desconhecido');
+
   // ── Toast ──────────────────────────────────────────────────────────────────
   const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
@@ -85,49 +99,53 @@ export default function ExamViewerScreen() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Carregar dados ─────────────────────────────────────────────────────────
+  // ── Carregar dados (refatorado em função reutilizável) ─────────────────────
+  const recarregarEstudo = React.useCallback(async (): Promise<void> => {
+    if (!estudoId) return;
+    try {
+      const dados = await getEstudoCompleto(estudoId);
+      if (!dados) { setErroDados(true); return; }
+
+      setEstudo(dados);
+      setClinicalNotes(dados.notasClinicas ?? '');
+
+      if (dados.resultado) {
+        const r = dados.resultado;
+        setCorrectedAngle(String(r.anguloCobbCorrigido ?? r.anguloCobb));
+        setCorrectedVertebra(r.nivelVertebras ?? '');
+      }
+
+      if (dados.imagens.length > 0) {
+        const urls = await Promise.all(
+          dados.imagens.map((img) => getUrlImagemEstudo(img.caminhoArmazenamento)),
+        );
+        setImageUrls(urls.filter(Boolean) as string[]);
+      }
+    } catch {
+      setErroDados(true);
+    }
+  }, [estudoId]);
+
   React.useEffect(() => {
     if (!estudoId) {
       setErroDados(true);
       setACarregar(false);
       return;
     }
-
-    let cancelado = false;
     setACarregar(true);
+    recarregarEstudo().finally(() => setACarregar(false));
+  }, [estudoId, recarregarEstudo]);
 
-    async function carregar() {
-      try {
-        const dados = await getEstudoCompleto(estudoId!);
-        if (cancelado) return;
-        if (!dados) { setErroDados(true); return; }
-
-        setEstudo(dados);
-        setClinicalNotes(dados.notasClinicas ?? '');
-
-        if (dados.resultado) {
-          const r = dados.resultado;
-          setCorrectedAngle(String(r.anguloCobbCorrigido ?? r.anguloCobb));
-          setCorrectedVertebra(r.nivelVertebras ?? '');
-        }
-
-        // Gerar URLs assinadas para as imagens
-        if (dados.imagens.length > 0) {
-          const urls = await Promise.all(
-            dados.imagens.map((img) => getUrlImagemEstudo(img.caminhoArmazenamento)),
-          );
-          if (!cancelado) setImageUrls(urls.filter(Boolean) as string[]);
-        }
-      } catch {
-        if (!cancelado) setErroDados(true);
-      } finally {
-        if (!cancelado) setACarregar(false);
-      }
-    }
-
-    carregar();
+  // ── Health-check ao servidor ML do modelo selecionado ──────────────────────
+  React.useEffect(() => {
+    if (!modeloSelecionadoId) return;
+    let cancelado = false;
+    setSaudeApi('desconhecido');
+    verificarSaudeApi(modeloSelecionadoId).then((ok) => {
+      if (!cancelado) setSaudeApi(ok ? 'online' : 'offline');
+    });
     return () => { cancelado = true; };
-  }, [estudoId]);
+  }, [modeloSelecionadoId]);
 
   // ── Acções ─────────────────────────────────────────────────────────────────
 
@@ -210,6 +228,22 @@ export default function ExamViewerScreen() {
       mostrarToast(t('examViewer.notesError'), 'error');
     } finally {
       setAGuardarNotas(false);
+    }
+  };
+
+  const handleAnalisar = async () => {
+    if (!estudo || !modeloSelecionadoId || imageUrls.length === 0) return;
+    setAAnalisar(true);
+    try {
+      const resultado = await analisarExame(modeloSelecionadoId, estudo.id, imageUrls[selectedImage]);
+      await guardarResultadoIA(estudo.id, resultado);
+      await recarregarEstudo();
+      mostrarToast(t('examViewer.analysisDone'));
+    } catch (err) {
+      console.error('Erro ao analisar:', err);
+      mostrarToast(t('examViewer.analysisError'), 'error');
+    } finally {
+      setAAnalisar(false);
     }
   };
 
@@ -478,6 +512,68 @@ export default function ExamViewerScreen() {
               </span>
             )}
           </div>
+
+          {/* AI Analysis — selecionar modelo e correr */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Cpu className="w-5 h-5 text-[var(--scolio-primary-blue)]" />
+              <h3 className="text-[var(--scolio-text-primary)]">{t('examViewer.aiAnalysis')}</h3>
+            </div>
+            <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-card)] p-5 space-y-3">
+              {modelosDisponiveis.length === 0 ? (
+                <div className="flex items-start gap-2 text-[var(--scolio-text-secondary)]">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <p style={{ fontSize: 'var(--text-caption)' }}>{t('examViewer.noModels')}</p>
+                </div>
+              ) : (
+                <>
+                  <Select
+                    label={t('examViewer.selectModel')}
+                    value={modeloSelecionadoId}
+                    onChange={(e) => setModeloSelecionadoId(e.target.value)}
+                    options={modelosDisponiveis.map((m) => ({ value: m.id, label: m.nome }))}
+                    disabled={aAnalisar}
+                  />
+
+                  {/* Descrição + estado do servidor */}
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                      {modelosDisponiveis.find((m) => m.id === modeloSelecionadoId)?.descricao}
+                    </p>
+                    <span
+                      className="inline-flex items-center gap-1 flex-shrink-0"
+                      style={{ fontSize: 'var(--text-caption)' }}
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{
+                          backgroundColor:
+                            saudeApi === 'online'  ? 'var(--scolio-success-green)' :
+                            saudeApi === 'offline' ? 'var(--scolio-danger-coral)'  :
+                                                     'var(--scolio-neutral-gray)',
+                        }}
+                      />
+                      <span className="text-[var(--scolio-text-secondary)]">
+                        {saudeApi === 'online'  ? t('examViewer.serverOnline')
+                       : saudeApi === 'offline' ? t('examViewer.serverOffline')
+                                                : t('examViewer.serverChecking')}
+                      </span>
+                    </span>
+                  </div>
+
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    onClick={handleAnalisar}
+                    disabled={aAnalisar || saudeApi !== 'online' || imageUrls.length === 0}
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    {aAnalisar ? t('examViewer.analyzing') : t('examViewer.analyze')}
+                  </Button>
+                </>
+              )}
+            </div>
+          </section>
 
           {/* Métricas IA */}
           <section>
