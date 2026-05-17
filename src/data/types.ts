@@ -200,6 +200,11 @@ export interface ResultadoCompleto {
   confiancaModelo: number;       // 0.0 – 1.0
   versaoModelo: string;
   overlayJson: unknown | null;   // coordenadas/anotações do modelo para o overlay SVG
+  /** Lista de vértebras detetadas (formato VertebraDetetada). Pode ser null. */
+  pontosAnatomicos: VertebraDetetada[] | null;
+  /** Estrutura com main/upper/lower + measurement (índices das vértebras usadas no Cobb) */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cobbAnglesData: any | null;
   // ── Validação médica ─────────────────────────────────────────────────
   decisao: DecisaoResultado | null;
   anguloCobbCorrigido: number | null;

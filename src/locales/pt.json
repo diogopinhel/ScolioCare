@@ -1,4 +1,21 @@
 {
+  "severity": {
+    "none": "Sem escoliose",
+    "mild": "Leve",
+    "moderate": "Moderada",
+    "severe": "Grave"
+  },
+  "models": {
+    "spinalAi2024": {
+      "description": "Deteção de vértebras + cálculo de ângulo de Cobb com correção MLP residual. MAE 2.39°, 91% accuracy a ±5°."
+    },
+    "maskRcnn": {
+      "description": "Deteção e segmentação por instância das vértebras; cálculo de Cobb em desenvolvimento."
+    },
+    "unetBaseline": {
+      "description": "Máscara binária da coluna (256×256). Aguarda pré/pós-processamento do colega."
+    }
+  },
   "common": {
     "search": "Pesquisar",
     "cancel": "Cancelar",

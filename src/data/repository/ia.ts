@@ -37,8 +37,8 @@ const ML_BASE_URL_DEFAULT = import.meta.env.VITE_ML_API_URL ?? 'http://localhost
 export const MODELOS_DISPONIVEIS: ModeloIA[] = [
   {
     id: 'spinal-ai-2024',
-    nome: 'Spinal-AI 2024 — Cobb angle completo',
-    descricao: 'Deteção de vértebras + cálculo de ângulo de Cobb com correção MLP residual. MAE 2.39°, 91% accuracy a ±5°.',
+    nome: 'Spinal-AI 2024 — Cobb angle',
+    descricao: 'models.spinalAi2024.description',  // chave i18n
     urlBase: ML_BASE_URL_DEFAULT,        // http://localhost:8000
     endpointAnalyse: '/analyze',
     endpointHealth: '/health',
@@ -48,8 +48,8 @@ export const MODELOS_DISPONIVEIS: ModeloIA[] = [
   },
   {
     id: 'maskrcnn-seg',
-    nome: 'Mask R-CNN — Segmentação de Vértebras',
-    descricao: 'Deteção e segmentação por instância das vértebras; cálculo de Cobb em desenvolvimento.',
+    nome: 'Mask R-CNN — Vertebra Segmentation',
+    descricao: 'models.maskRcnn.description',
     urlBase: 'http://localhost:8001',
     endpointAnalyse: '/api/v1/exams/analyse',
     endpointHealth: '/api/v1/health',
@@ -59,8 +59,8 @@ export const MODELOS_DISPONIVEIS: ModeloIA[] = [
   },
   {
     id: 'unet-baseline',
-    nome: 'U-Net — Segmentação binária',
-    descricao: 'Máscara binária da coluna (256×256). Aguarda pré/pós-processamento do colega.',
+    nome: 'U-Net — Binary Segmentation',
+    descricao: 'models.unetBaseline.description',
     urlBase: 'http://localhost:8002',
     endpointAnalyse: '/analyze',
     endpointHealth: '/health',

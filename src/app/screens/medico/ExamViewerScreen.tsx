@@ -13,7 +13,7 @@ import {
 import type { BadgeStatus } from '../../components/scolio';
 import { CobbAngleGauge } from '../../components/scolio';
 import { useAuth } from '../../auth/AuthContext';
-import type { EstudoCompleto, EstadoEstudo, ModeloIA } from '../../../data/types';
+import type { EstudoCompleto, EstadoEstudo, ModeloIA, VertebraDetetada } from '../../../data/types';
 import {
   getEstudoCompleto,
   getUrlImagemEstudo,
@@ -29,7 +29,19 @@ import {
   verificarSaudeApi,
 } from '../../../data/repository/ia';
 
-// ─── Helper ─────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Traduz o valor de grauCurvatura guardado em BD (LEVE/MODERADA/GRAVE) para a língua actual. */
+function grauCurvaturaLabel(t: (k: string) => string, grau: string | null | undefined): string {
+  if (!grau) return '—';
+  switch (grau.toUpperCase()) {
+    case 'NORMAL':   return t('severity.none');
+    case 'LEVE':     return t('severity.mild');
+    case 'MODERADA': return t('severity.moderate');
+    case 'GRAVE':    return t('severity.severe');
+    default:         return grau;
+  }
+}
 
 function estadoParaBadge(estado: EstadoEstudo): BadgeStatus {
   switch (estado) {
@@ -50,7 +62,8 @@ export default function ExamViewerScreen() {
   const { estudoId } = useParams<{ estudoId: string }>();
   const navigate = useNavigate();
   const { utilizador } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === 'en' ? 'en-US' : 'pt-PT';
 
   // ── Dados ──────────────────────────────────────────────────────────────────
   const [estudo, setEstudo] = React.useState<EstudoCompleto | null>(null);
@@ -64,6 +77,7 @@ export default function ExamViewerScreen() {
   const [zoom, setZoom] = React.useState(100);
   const [brightness, setBrightness] = React.useState(100);
   const [contrast, setContrast] = React.useState(100);
+  const [imgNaturalSize, setImgNaturalSize] = React.useState<{ w: number; h: number } | null>(null);
 
   // ── Notas clínicas ─────────────────────────────────────────────────────────
   const [clinicalNotes, setClinicalNotes] = React.useState('');
@@ -420,30 +434,21 @@ export default function ExamViewerScreen() {
                 src={imageUrls[selectedImage]}
                 alt="Radiografia da coluna"
                 className="max-w-full max-h-full object-contain"
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  setImgNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+                }}
               />
 
-              {/* Overlay SVG gerado com coordenadas do modelo (overlay_json) */}
-              {aiOverlay && resultado && anguloFinal !== null && (
-                <svg
-                  className="absolute inset-0 w-full h-full pointer-events-none"
-                  style={{ mixBlendMode: 'screen' }}
-                >
-                  {/* Linhas do ângulo de Cobb — coordenadas base até overlay_json do ML ser parseado */}
-                  <line x1="30%" y1="25%" x2="70%" y2="25%" stroke="#1A6FAF" strokeWidth="2" strokeDasharray="5,5" />
-                  <line x1="25%" y1="65%" x2="75%" y2="65%" stroke="#1A6FAF" strokeWidth="2" strokeDasharray="5,5" />
-                  <line x1="50%" y1="25%" x2="50%" y2="65%" stroke="#1A6FAF" strokeWidth="3" />
-                  {resultado.nivelVertebras && (
-                    <>
-                      <circle cx="50%" cy="45%" r="6" fill="#BA7517" opacity="0.8" />
-                      <text x="50%" y="45%" fill="white" fontSize="10" textAnchor="middle" dy="3">
-                        {resultado.nivelVertebras}
-                      </text>
-                    </>
-                  )}
-                  <text x="55%" y="42%" fill="#1A6FAF" fontSize="16" fontWeight="600">
-                    {anguloFinal.toFixed(1)}°
-                  </text>
-                </svg>
+              {/* Overlay SVG com coordenadas reais do modelo */}
+              {aiOverlay && resultado && imgNaturalSize && (
+                <OverlayCobb
+                  natural={imgNaturalSize}
+                  vertebrae={resultado.pontosAnatomicos}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  measurement={(resultado.cobbAnglesData as any)?.measurement ?? null}
+                  anguloCobb={anguloFinal}
+                />
               )}
             </div>
           ) : (
@@ -499,7 +504,7 @@ export default function ExamViewerScreen() {
             <h2 className="text-[var(--scolio-text-primary)] mb-1">{estudo.pacienteNome}</h2>
             <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
               {t('examViewer.examDate')}{' '}
-              {new Date(estudo.dataEstudo).toLocaleDateString('pt-PT', {
+              {new Date(estudo.dataEstudo).toLocaleDateString(dateLocale, {
                 day: 'numeric', month: 'long', year: 'numeric',
               })}
             </p>
@@ -538,7 +543,10 @@ export default function ExamViewerScreen() {
                   {/* Descrição + estado do servidor */}
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                      {modelosDisponiveis.find((m) => m.id === modeloSelecionadoId)?.descricao}
+                      {(() => {
+                        const desc = modelosDisponiveis.find((m) => m.id === modeloSelecionadoId)?.descricao;
+                        return desc ? t(desc) : '';
+                      })()}
                     </p>
                     <span
                       className="inline-flex items-center gap-1 flex-shrink-0"
@@ -596,7 +604,7 @@ export default function ExamViewerScreen() {
                         {anguloFinal!.toFixed(1)}°
                       </p>
                       <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                        {resultado.grauCurvatura}
+                        {grauCurvaturaLabel(t, resultado.grauCurvatura)}
                       </p>
                     </div>
                     <CobbAngleGauge angle={anguloFinal!} size={120} />
@@ -686,7 +694,7 @@ export default function ExamViewerScreen() {
                         ? t('examViewer.metricsCorrected')
                         : t('examViewer.metricsRejected')}
                       {resultado.dataValidacao && (
-                        <> · {new Date(resultado.dataValidacao).toLocaleDateString('pt-PT')}</>
+                        <> · {new Date(resultado.dataValidacao).toLocaleDateString(dateLocale)}</>
                       )}
                     </p>
                   </div>
@@ -909,5 +917,136 @@ export default function ExamViewerScreen() {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── OverlayCobb ─────────────────────────────────────────────────────────────
+// Desenha as vértebras detetadas pelo modelo + as linhas que definem o ângulo
+// de Cobb. Usa viewBox no espaço de pixels da imagem original; preserveAspectRatio
+// "xMidYMid meet" alinha com o `object-contain` do <img>.
+
+interface CobbMeasurementData {
+  upperVertebraIndex: number;
+  lowerVertebraIndex: number;
+  upperVertebraLabel?: string;
+  lowerVertebraLabel?: string;
+  upperPlateAngleDeg?: number;
+  lowerPlateAngleDeg?: number;
+}
+
+interface OverlayCobbProps {
+  natural: { w: number; h: number };
+  vertebrae: VertebraDetetada[] | null;
+  measurement: CobbMeasurementData | null;
+  anguloCobb: number | null;
+}
+
+function OverlayCobb({ natural, vertebrae, measurement, anguloCobb }: OverlayCobbProps) {
+  const { w, h } = natural;
+  // Espessura proporcional ao tamanho da imagem
+  const strokeBase = Math.max(2, Math.round(w * 0.002));
+  const fontSize = Math.max(18, Math.round(w * 0.025));
+
+  const upperV = vertebrae && measurement
+    ? vertebrae.find((v) => v.id === measurement.upperVertebraIndex)
+    : null;
+  const lowerV = vertebrae && measurement
+    ? vertebrae.find((v) => v.id === measurement.lowerVertebraIndex)
+    : null;
+
+  // Calcular linhas de plate (topo da vértebra superior, base da vértebra inferior)
+  // O polygon segue a ordem: upperLeft, upperRight, lowerRight, lowerLeft
+  function extendLine(x1: number, y1: number, x2: number, y2: number, factor = 0.4) {
+    const dx = x2 - x1, dy = y2 - y1;
+    return {
+      x1: x1 - dx * factor,
+      y1: y1 - dy * factor,
+      x2: x2 + dx * factor,
+      y2: y2 + dy * factor,
+    };
+  }
+
+  const upperLine = upperV?.polygon
+    ? extendLine(upperV.polygon[0][0], upperV.polygon[0][1], upperV.polygon[1][0], upperV.polygon[1][1])
+    : null;
+  const lowerLine = lowerV?.polygon
+    ? extendLine(lowerV.polygon[3][0], lowerV.polygon[3][1], lowerV.polygon[2][0], lowerV.polygon[2][1])
+    : null;
+
+  // Posicionar o label do ângulo entre as duas vértebras, do lado direito
+  const labelX = w * 0.78;
+  const labelY = upperV?.center && lowerV?.center
+    ? (upperV.center[1] + lowerV.center[1]) / 2
+    : h / 2;
+
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ mixBlendMode: 'screen' }}
+    >
+      {/* Polígonos das vértebras */}
+      {vertebrae?.map((v) => {
+        if (!v.polygon || v.polygon.length < 4) return null;
+        const isUpper = measurement?.upperVertebraIndex === v.id;
+        const isLower = measurement?.lowerVertebraIndex === v.id;
+        const isCobb = isUpper || isLower;
+        const stroke = isCobb ? '#F59E0B' : '#1A6FAF';
+        const fill = isCobb ? 'rgba(245, 158, 11, 0.18)' : 'rgba(26, 111, 175, 0.08)';
+        const points = v.polygon.map(([x, y]) => `${x},${y}`).join(' ');
+        return (
+          <polygon
+            key={v.id}
+            points={points}
+            stroke={stroke}
+            strokeWidth={isCobb ? strokeBase * 1.8 : strokeBase}
+            fill={fill}
+          />
+        );
+      })}
+
+      {/* Linhas do Cobb — plates extrapoladas */}
+      {upperLine && (
+        <line
+          x1={upperLine.x1} y1={upperLine.y1}
+          x2={upperLine.x2} y2={upperLine.y2}
+          stroke="#EF4444" strokeWidth={strokeBase * 1.6}
+          strokeDasharray={`${strokeBase * 3} ${strokeBase * 2}`}
+        />
+      )}
+      {lowerLine && (
+        <line
+          x1={lowerLine.x1} y1={lowerLine.y1}
+          x2={lowerLine.x2} y2={lowerLine.y2}
+          stroke="#EF4444" strokeWidth={strokeBase * 1.6}
+          strokeDasharray={`${strokeBase * 3} ${strokeBase * 2}`}
+        />
+      )}
+
+      {/* Etiqueta do ângulo de Cobb */}
+      {anguloCobb !== null && (
+        <g>
+          <rect
+            x={labelX - fontSize * 1.6}
+            y={labelY - fontSize * 0.9}
+            width={fontSize * 3.2}
+            height={fontSize * 1.4}
+            rx={fontSize * 0.2}
+            fill="rgba(15, 23, 42, 0.85)"
+          />
+          <text
+            x={labelX} y={labelY + fontSize * 0.1}
+            fill="#FBBF24"
+            fontSize={fontSize}
+            fontWeight={700}
+            textAnchor="middle"
+            dominantBaseline="middle"
+          >
+            {anguloCobb.toFixed(1)}°
+          </text>
+        </g>
+      )}
+    </svg>
   );
 }

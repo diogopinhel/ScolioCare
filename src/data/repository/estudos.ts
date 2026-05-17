@@ -352,6 +352,7 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
       resultados(
         id, angulo_cobb, grau_curvatura, localizacao_curva,
         nivel_vertebras, confianca_modelo, versao_modelo, overlay_json,
+        pontos_anatomicos, cobb_angles,
         decisao, angulo_cobb_corrigido, justificacao_validacao,
         data_validacao, concluido, observacoes_medico, data_processamento
       ),
@@ -385,6 +386,8 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
         confiancaModelo: r.confianca_modelo as number,
         versaoModelo: r.versao_modelo as string,
         overlayJson: r.overlay_json,
+        pontosAnatomicos: Array.isArray(r.pontos_anatomicos) ? r.pontos_anatomicos : null,
+        cobbAnglesData: r.cobb_angles ?? null,
         decisao: r.decisao as ResultadoCompleto['decisao'],
         anguloCobbCorrigido: r.angulo_cobb_corrigido as number | null,
         justificacaoValidacao: r.justificacao_validacao as string | null,
