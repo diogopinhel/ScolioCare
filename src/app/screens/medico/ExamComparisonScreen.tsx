@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  ZoomIn, ZoomOut, Move, RotateCcw, Eye, EyeOff,
+  ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff,
   ChevronDown, ArrowDown, ArrowUp, Bot, Check, X,
   Link as LinkIcon, Unlink, Loader2, ArrowLeft,
 } from 'lucide-react';
@@ -455,9 +455,6 @@ function ExamViewer({ label, exam, examsList, onExamChange, aiOverlay, onAiOverl
             </button>
           </div>
           <div className="flex items-center gap-1">
-            <button className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-primary-blue)] hover:bg-white rounded transition-colors">
-              <Move className="w-4 h-4" />
-            </button>
             <button onClick={onReset} className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-primary-blue)] hover:bg-white rounded transition-colors">
               <RotateCcw className="w-4 h-4" />
             </button>

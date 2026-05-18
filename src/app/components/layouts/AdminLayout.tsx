@@ -187,13 +187,21 @@ export default function AdminLayout() {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="relative w-72">
+              <form
+                className="relative w-72"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const q = (e.currentTarget.elements.namedItem('q') as HTMLInputElement).value.trim();
+                  if (q) navigate(`/admin-panel/users?q=${encodeURIComponent(q)}`);
+                }}
+              >
                 <input
+                  name="q"
                   type="search"
                   placeholder={t('nav.searchUsersEvents')}
                   className="pl-10 pr-3 py-2 w-full border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)] focus:border-transparent"
                 />
-              </div>
+              </form>
 
               <LanguageSwitcher />
 

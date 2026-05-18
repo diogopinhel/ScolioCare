@@ -134,13 +134,21 @@ export default function Layout() {
         {/* Cabeçalho */}
         <header className="bg-white border-b border-[var(--scolio-border-light)] px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="relative w-96">
+            <form
+              className="relative w-96"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = (e.currentTarget.elements.namedItem('q') as HTMLInputElement).value.trim();
+                if (q) navigate(`/patients?q=${encodeURIComponent(q)}`);
+              }}
+            >
               <input
+                name="q"
                 type="search"
                 placeholder={t('nav.searchPatientsReports')}
                 className="pl-10 pr-3 py-2 w-full border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)] focus:border-transparent"
               />
-            </div>
+            </form>
 
             <div className="flex items-center gap-4">
               <LanguageSwitcher />

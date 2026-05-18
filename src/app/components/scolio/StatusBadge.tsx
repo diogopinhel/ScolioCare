@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 export type BadgeStatus = 'pending' | 'analyzed' | 'in-analysis' | 'archived' | 'rejected';
 
@@ -7,43 +8,24 @@ export interface StatusBadgeProps {
   className?: string;
 }
 
-export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
-  const statusConfig = {
-    pending: {
-      label: 'Pendente',
-      bgColor: 'bg-[var(--scolio-warning-surface)]',
-      textColor: 'text-[var(--scolio-warning-amber)]'
-    },
-    analyzed: {
-      label: 'Analisado',
-      bgColor: 'bg-[var(--scolio-success-surface)]',
-      textColor: 'text-[var(--scolio-success-green)]'
-    },
-    'in-analysis': {
-      label: 'Em análise',
-      bgColor: 'bg-[var(--scolio-light-blue-surface)]',
-      textColor: 'text-[var(--scolio-primary-blue)]'
-    },
-    archived: {
-      label: 'Arquivado',
-      bgColor: 'bg-[var(--scolio-neutral-surface)]',
-      textColor: 'text-[var(--scolio-neutral-gray)]'
-    },
-    rejected: {
-      label: 'Rejeitado',
-      bgColor: 'bg-[var(--scolio-danger-surface)]',
-      textColor: 'text-[var(--scolio-danger-coral)]'
-    }
-  };
+const STATUS_STYLES: Record<BadgeStatus, { i18nKey: string; bgColor: string; textColor: string }> = {
+  'pending':     { i18nKey: 'status.pending',    bgColor: 'bg-[var(--scolio-warning-surface)]',    textColor: 'text-[var(--scolio-warning-amber)]'  },
+  'analyzed':    { i18nKey: 'status.analyzed',   bgColor: 'bg-[var(--scolio-success-surface)]',    textColor: 'text-[var(--scolio-success-green)]'  },
+  'in-analysis': { i18nKey: 'status.inAnalysis', bgColor: 'bg-[var(--scolio-light-blue-surface)]', textColor: 'text-[var(--scolio-primary-blue)]'   },
+  'archived':    { i18nKey: 'status.archived',   bgColor: 'bg-[var(--scolio-neutral-surface)]',    textColor: 'text-[var(--scolio-neutral-gray)]'   },
+  'rejected':    { i18nKey: 'status.rejected',   bgColor: 'bg-[var(--scolio-danger-surface)]',     textColor: 'text-[var(--scolio-danger-coral)]'   },
+};
 
-  const config = statusConfig[status] || statusConfig['pending']; // Default to pending if status is invalid
+export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
+  const { t } = useTranslation();
+  const config = STATUS_STYLES[status] ?? STATUS_STYLES['pending'];
 
   return (
     <span
       className={`inline-flex items-center px-2.5 py-1 rounded-full ${config.bgColor} ${config.textColor} ${className}`}
       style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}
     >
-      {config.label}
+      {t(config.i18nKey)}
     </span>
   );
 }

@@ -14,14 +14,14 @@ import {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function tempoRelativo(dataISO: string): string {
+function tempoRelativo(dataISO: string, t: (k: string, opts?: Record<string, unknown>) => string): string {
   const diff = Date.now() - new Date(dataISO).getTime();
   const min = Math.floor(diff / 60000);
-  if (min < 1) return 'agora mesmo';
-  if (min < 60) return `há ${min} min`;
+  if (min < 1) return t('common.timeJustNow');
+  if (min < 60) return t('common.timeMinutes', { count: min });
   const h = Math.floor(min / 60);
-  if (h < 24) return `há ${h}h`;
-  return `há ${Math.floor(h / 24)} dias`;
+  if (h < 24) return t('common.timeHours', { count: h });
+  return t('common.timeDays', { count: Math.floor(h / 24) });
 }
 
 function iconePorTipo(tipo: TipoNotificacao) {
@@ -146,7 +146,7 @@ export function NotificationDropdown({
                   className="px-2 py-0.5 bg-[var(--scolio-danger-surface)] text-[var(--scolio-danger-coral)] rounded-full font-semibold"
                   style={{ fontSize: '10px' }}
                 >
-                  {naoLidas.length} não lidas
+                  {t('common.unreadCount', { count: naoLidas.length })}
                 </span>
               )}
             </div>
@@ -175,7 +175,7 @@ export function NotificationDropdown({
               <div className="p-8 text-center space-y-2">
                 <Bell className="w-8 h-8 text-[var(--scolio-neutral-gray)] mx-auto" />
                 <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                  Sem notificações
+                  {t('common.noNotifications')}
                 </p>
               </div>
             ) : (
@@ -219,7 +219,7 @@ export function NotificationDropdown({
                     className="text-[var(--scolio-text-secondary)] flex-shrink-0 mt-0.5"
                     style={{ fontSize: 'var(--text-caption)' }}
                   >
-                    {tempoRelativo(n.dataEnvio)}
+                    {tempoRelativo(n.dataEnvio, t)}
                   </span>
                 </button>
               ))

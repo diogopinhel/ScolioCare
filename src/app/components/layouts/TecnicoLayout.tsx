@@ -133,13 +133,21 @@ export default function TecnicoLayout() {
         <header className="bg-white border-b border-[var(--scolio-border-light)] px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <div className="relative w-80">
+              <form
+                className="relative w-80"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const q = (e.currentTarget.elements.namedItem('q') as HTMLInputElement).value.trim();
+                  if (q) navigate(`/tecnico/patients?q=${encodeURIComponent(q)}`);
+                }}
+              >
                 <input
+                  name="q"
                   type="search"
                   placeholder={t('nav.searchPatientsExams')}
                   className="pl-10 pr-3 py-2 w-full border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)] focus:border-transparent"
                 />
-              </div>
+              </form>
 
             </div>
 

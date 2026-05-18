@@ -1,4 +1,11 @@
 {
+  "status": {
+    "pending":    "Pendente",
+    "analyzed":   "Analisado",
+    "inAnalysis": "Em análise",
+    "archived":   "Arquivado",
+    "rejected":   "Rejeitado"
+  },
   "severity": {
     "none": "Sem escoliose",
     "mild": "Leve",
@@ -53,7 +60,13 @@
     "homeDash": "Voltar ao dashboard",
     "copyright": "© 2026 ScolioScan. Todos os direitos reservados.",
     "errorCode": "Código de erro: 404-NOT-FOUND · ScolioScan v2.1",
-    "contactAdmin": "Contactar administrador do sistema"
+    "contactAdmin": "Contactar administrador do sistema",
+    "timeJustNow": "agora mesmo",
+    "timeMinutes": "há {{count}} min",
+    "timeHours": "há {{count}}h",
+    "timeDays": "há {{count}} dias",
+    "noNotifications": "Sem notificações",
+    "unreadCount": "{{count}} não lidas"
   },
   "nav": {
     "dashboard": "Painel",
@@ -346,6 +359,11 @@
     "saving": "A guardar...",
     "successMessage": "Dados do paciente actualizados com sucesso.",
     "errorMessage": "Erro ao actualizar dados. Tente novamente."
+  },
+  "examCard": {
+    "noPreview":       "Sem pré-visualização",
+    "cobbAngle":       "Ângulo de Cobb",
+    "apicalVertebra":  "Vértebra apical"
   },
   "examViewer": {
     "notFoundTitle": "Exame não encontrado",

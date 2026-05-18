@@ -1,4 +1,11 @@
 {
+  "status": {
+    "pending":    "Pending",
+    "analyzed":   "Analyzed",
+    "inAnalysis": "In analysis",
+    "archived":   "Archived",
+    "rejected":   "Rejected"
+  },
   "severity": {
     "none": "No scoliosis",
     "mild": "Mild",
@@ -53,7 +60,13 @@
     "homeDash": "Back to dashboard",
     "copyright": "© 2026 ScolioScan. All rights reserved.",
     "errorCode": "Error code: 404-NOT-FOUND · ScolioScan v2.1",
-    "contactAdmin": "Contact system administrator"
+    "contactAdmin": "Contact system administrator",
+    "timeJustNow": "just now",
+    "timeMinutes": "{{count}} min ago",
+    "timeHours": "{{count}}h ago",
+    "timeDays": "{{count}} days ago",
+    "noNotifications": "No notifications",
+    "unreadCount": "{{count}} unread"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -346,6 +359,11 @@
     "saving": "Saving...",
     "successMessage": "Patient data updated successfully.",
     "errorMessage": "Error updating data. Please try again."
+  },
+  "examCard": {
+    "noPreview":       "No preview",
+    "cobbAngle":       "Cobb angle",
+    "apicalVertebra":  "Apical vertebra"
   },
   "examViewer": {
     "notFoundTitle": "Exam not found",
