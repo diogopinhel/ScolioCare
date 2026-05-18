@@ -5,7 +5,6 @@ import {
   Upload,
   ListChecks,
   Users,
-  Bell,
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';

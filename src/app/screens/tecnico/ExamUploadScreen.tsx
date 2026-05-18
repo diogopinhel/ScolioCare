@@ -11,6 +11,7 @@ import {
   uploadImagemEstudo,
 } from '../../../data/repository/tecnico';
 import { registarAcao } from '../../../data/repository/audit';
+import { criarNotificacao } from '../../../data/repository/notificacoes';
 import type { PacienteTecnico } from '../../../data/types';
 
 export default function ExamUploadScreen() {
@@ -79,6 +80,17 @@ export default function ExamUploadScreen() {
       await uploadImagemEstudo(estudoId, pacienteSelecionado.id, ficheiro!);
 
       registarAcao('CRIAR_ESTUDO', 'estudos', estudoId);
+
+      // Notificar o médico responsável que há um novo exame para validar
+      criarNotificacao({
+        destinatarioId:    medicoId,
+        tipo:              'EXAME',
+        titulo:            'Novo exame para validação',
+        mensagem:          `O técnico ${utilizador.nomeCompleto} carregou um exame de ${pacienteSelecionado.nomeCompleto} para validação.`,
+        referenciaEntidade: 'estudos',
+        referenciaId:      estudoId,
+      });
+
       setFase('done');
       mostrarToast(t('upload.successToast'));
 

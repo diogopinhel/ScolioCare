@@ -7,7 +7,6 @@ import {
   Settings,
   Cpu,
   ShieldCheck,
-  Bell,
   ChevronRight,
   LogOut,
 } from 'lucide-react';

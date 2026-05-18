@@ -3,7 +3,11 @@
     "none": "Sem escoliose",
     "mild": "Leve",
     "moderate": "Moderada",
-    "severe": "Grave"
+    "severe": "Grave",
+    "noneDesc": "Curvatura dentro dos limites normais",
+    "mildDesc": "Vigilância periódica recomendada",
+    "moderateDesc": "Acompanhamento médico necessário",
+    "severeDesc": "Intervenção terapêutica indicada"
   },
   "models": {
     "spinalAi2024": {

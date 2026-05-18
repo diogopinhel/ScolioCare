@@ -141,7 +141,8 @@ export async function getEstudosDoPaciente(pacienteId: string): Promise<EstudoCo
     .from('estudos')
     .select(`
       id, data_estudo, estado, notas_clinicas, ficheiro_pdf,
-      resultados(id, angulo_cobb, angulo_cobb_corrigido, grau_curvatura, localizacao_curva, nivel_vertebras)
+      resultados(id, angulo_cobb, angulo_cobb_corrigido, grau_curvatura, localizacao_curva, nivel_vertebras),
+      imagens_estudo(caminho_armazenamento)
     `)
     .eq('paciente_id', pacienteId)
     .eq('arquivado', false)
@@ -153,12 +154,14 @@ export async function getEstudosDoPaciente(pacienteId: string): Promise<EstudoCo
   return (data as any[]).map((row) => {
     const resultados = Array.isArray(row.resultados) ? row.resultados : [];
     const r = resultados[0] ?? null;
+    const imagens = Array.isArray(row.imagens_estudo) ? row.imagens_estudo : [];
     return {
       id: row.id as string,
       dataEstudo: row.data_estudo as string,
       estado: row.estado as EstadoEstudo,
       notasClinicas: row.notas_clinicas as string | null,
       ficheiroPdf: row.ficheiro_pdf as string | null,
+      thumbnailPath: (imagens[0]?.caminho_armazenamento as string | undefined) ?? null,
       resultado: r ? {
         id: r.id as string,
         anguloCobb: r.angulo_cobb as number,
@@ -299,7 +302,7 @@ export async function getEstudosParaComparacao(pacienteId: string): Promise<Estu
     .from('estudos')
     .select(`
       id, data_estudo,
-      resultados(angulo_cobb, angulo_cobb_corrigido, nivel_vertebras),
+      resultados(angulo_cobb, angulo_cobb_corrigido, nivel_vertebras, pontos_anatomicos, cobb_angles),
       imagens_estudo(caminho_armazenamento)
     `)
     .eq('paciente_id', pacienteId)
@@ -326,6 +329,10 @@ export async function getEstudosParaComparacao(pacienteId: string): Promise<Estu
         anguloCobb: ((r.angulo_cobb_corrigido ?? r.angulo_cobb) as number),
         nivelVertebras: (r.nivel_vertebras as string | null) ?? null,
         urlImagem,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        vertebrae: Array.isArray(r.pontos_anatomicos) ? (r.pontos_anatomicos as any[]) : null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        cobbMeasurement: (r.cobb_angles as any)?.measurement ?? null,
       } satisfies EstudoComparacao;
     }),
   );
@@ -347,7 +354,7 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
     .select(`
       id, data_estudo, tipo_estudo, estado, notas_clinicas, ficheiro_pdf,
       hash_documento, assinatura_digital, data_assinatura,
-      arquivado, gerado_por_ia,
+      arquivado, gerado_por_ia, tecnico_id,
       utilizadores!estudos_paciente_id_fkey(id, nome_completo),
       resultados(
         id, angulo_cobb, grau_curvatura, localizacao_curva,
@@ -409,6 +416,7 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
     id: row.id as string,
     pacienteId: (row.utilizadores?.id ?? '') as string,
     pacienteNome: (row.utilizadores?.nome_completo ?? '—') as string,
+    tecnicoId: (row.tecnico_id ?? null) as string | null,
     dataEstudo: row.data_estudo as string,
     tipoEstudo: row.tipo_estudo as string,
     estado: row.estado as EstadoEstudo,

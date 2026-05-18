@@ -157,6 +157,7 @@ export interface EstudoComResultado {
   notasClinicas: string | null;
   ficheiroPdf: string | null;
   resultado: ResultadoEstudo | null;
+  thumbnailPath: string | null; // caminho da primeira imagem em Storage (sem URL assinada)
 }
 
 export interface WellnessLogEntry {
@@ -326,6 +327,8 @@ export interface EstudoComparacao {
   anguloCobb: number;          // valor corrigido se existir, senão o da IA
   nivelVertebras: string | null;
   urlImagem: string | null;    // URL assinada da primeira imagem (ou null)
+  vertebrae: VertebraDetetada[] | null;
+  cobbMeasurement: CobbMeasurementData | null;
 }
 
 // ─── Criação de paciente ──────────────────────────────────────────────────
@@ -387,6 +390,16 @@ export interface InfoModelo {
   versao: string;
   formatosInput: string[];
   outputsDisponiveis: string[];
+}
+
+/** Dados da medição de Cobb: quais vértebras foram usadas + ângulos das plates. */
+export interface CobbMeasurementData {
+  upperVertebraIndex: number;
+  lowerVertebraIndex: number;
+  upperVertebraLabel?: string;
+  lowerVertebraLabel?: string;
+  upperPlateAngleDeg?: number;
+  lowerPlateAngleDeg?: number;
 }
 
 /**
@@ -496,6 +509,7 @@ export interface EstudoCompleto {
   id: string;
   pacienteId: string;
   pacienteNome: string;
+  tecnicoId: string | null;      // quem submeteu o exame
   dataEstudo: string;            // ISO date
   tipoEstudo: string;
   estado: EstadoEstudo;

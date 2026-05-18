@@ -3,7 +3,11 @@
     "none": "No scoliosis",
     "mild": "Mild",
     "moderate": "Moderate",
-    "severe": "Severe"
+    "severe": "Severe",
+    "noneDesc": "Curvature within normal limits",
+    "mildDesc": "Periodic monitoring recommended",
+    "moderateDesc": "Medical follow-up required",
+    "severeDesc": "Therapeutic intervention indicated"
   },
   "models": {
     "spinalAi2024": {

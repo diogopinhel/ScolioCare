@@ -7,7 +7,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
 import { getPaciente, getNotasDoPaciente, criarNotaPaciente, apagarNotaPaciente } from '../../../data/repository/pacientes';
-import { getEstudosDoPaciente, getHistoricoEstadoDoPaciente } from '../../../data/repository/estudos';
+import { getEstudosDoPaciente, getHistoricoEstadoDoPaciente, getUrlImagemEstudo } from '../../../data/repository/estudos';
 import { supabase } from '../../../lib/supabase';
 import { getWellnessLogDoPaciente } from '../../../data/repository/wellness';
 import type { PacienteDetalhe, EstudoComResultado, WellnessLogEntry, HistoricoEstadoEntry, EstadoEstudo, NotaPaciente } from '../../../data/types';
@@ -101,6 +101,7 @@ export default function PatientRecordScreen() {
 
   const [paciente, setPaciente] = React.useState<PacienteDetalhe | null>(null);
   const [estudos, setEstudos] = React.useState<EstudoComResultado[]>([]);
+  const [thumbnailUrls, setThumbnailUrls] = React.useState<Record<string, string>>({});
   const [wellnessLog, setWellnessLog] = React.useState<WellnessLogEntry[]>([]);
   const [historico, setHistorico] = React.useState<HistoricoEstadoEntry[]>([]);
   const [notas, setNotas] = React.useState<NotaPaciente[]>([]);
@@ -147,6 +148,18 @@ export default function PatientRecordScreen() {
         setNotas(n);
         setEstaAssociado((assoc.count ?? 0) > 0);
         setACarregar(false);
+
+        // Gerar URLs assinadas para thumbnails dos exames (em paralelo, best-effort)
+        const comImagem = e.filter((ex) => ex.thumbnailPath);
+        if (comImagem.length > 0) {
+          Promise.all(comImagem.map((ex) => getUrlImagemEstudo(ex.thumbnailPath!))).then((urls) => {
+            if (!cancelado) {
+              const mapa: Record<string, string> = {};
+              comImagem.forEach((ex, i) => { if (urls[i]) mapa[ex.id] = urls[i]!; });
+              setThumbnailUrls(mapa);
+            }
+          });
+        }
       }
     }).catch(() => {
       if (!cancelado) {
@@ -681,6 +694,7 @@ export default function PatientRecordScreen() {
                 {estudos.map((exame) => (
                   <ExamCard
                     key={exame.id}
+                    imageSrc={thumbnailUrls[exame.id]}
                     date={new Date(exame.dataEstudo).toLocaleDateString(dateLocale)}
                     cobbAngle={exame.resultado ? (exame.resultado.anguloCobbCorrigido ?? exame.resultado.anguloCobb) : 0}
                     apicalVertebra={exame.resultado?.nivelVertebras ?? undefined}

@@ -4,7 +4,7 @@ import {
   ChevronDown, ArrowDown, ArrowUp, Bot, Check, X,
   Link as LinkIcon, Unlink, Loader2, ArrowLeft,
 } from 'lucide-react';
-import { Button, Textarea } from '../../components/scolio';
+import { Button, Textarea, OverlayCobb } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
@@ -110,6 +110,28 @@ export default function ExamComparisonScreen() {
   const handleZoomA = (v: number) => { setZoomA(v); if (syncViewers) setZoomB(v); };
   const handleZoomB = (v: number) => { setZoomB(v); if (syncViewers) setZoomA(v); };
 
+  const handleToggleSync = () => {
+    const novoSync = !syncViewers;
+    setSyncViewers(novoSync);
+    if (novoSync) {
+      // Ao ativar: igualar zoom e overlay ao estado do painel A
+      setZoomB(zoomA);
+      setAiOverlayB(aiOverlayA);
+    }
+  };
+
+  const handleToggleOverlayA = () => {
+    const novo = !aiOverlayA;
+    setAiOverlayA(novo);
+    if (syncViewers) setAiOverlayB(novo);
+  };
+
+  const handleToggleOverlayB = () => {
+    const novo = !aiOverlayB;
+    setAiOverlayB(novo);
+    if (syncViewers) setAiOverlayA(novo);
+  };
+
   // ── Loading ──────────────────────────────────────────────────────────────
   if (aCarregar) {
     return (
@@ -167,7 +189,7 @@ export default function ExamComparisonScreen() {
           </div>
         </div>
         <button
-          onClick={() => setSyncViewers(!syncViewers)}
+          onClick={handleToggleSync}
           className={`flex items-center gap-2 px-4 py-2 rounded-[var(--radius-component)] border transition-colors ${
             syncViewers
               ? 'bg-[var(--scolio-light-blue-surface)] border-[var(--scolio-primary-blue)] text-[var(--scolio-primary-blue)]'
@@ -191,7 +213,7 @@ export default function ExamComparisonScreen() {
             examsList={exames}
             onExamChange={setExamA}
             aiOverlay={aiOverlayA}
-            onAiOverlayToggle={() => setAiOverlayA(!aiOverlayA)}
+            onAiOverlayToggle={handleToggleOverlayA}
             zoom={zoomA}
             onZoomChange={handleZoomA}
             onReset={() => { setZoomA(100); if (syncViewers) setZoomB(100); }}
@@ -355,7 +377,7 @@ export default function ExamComparisonScreen() {
             examsList={exames}
             onExamChange={setExamB}
             aiOverlay={aiOverlayB}
-            onAiOverlayToggle={() => setAiOverlayB(!aiOverlayB)}
+            onAiOverlayToggle={handleToggleOverlayB}
             zoom={zoomB}
             onZoomChange={handleZoomB}
             onReset={() => { setZoomB(100); if (syncViewers) setZoomA(100); }}
@@ -384,6 +406,10 @@ function ExamViewer({ label, exam, examsList, onExamChange, aiOverlay, onAiOverl
   const { t } = useTranslation();
   const dateLocale = useDateLocale();
   const dataFormatada = new Date(exam.dataEstudo).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' });
+  const [imgNaturalSize, setImgNaturalSize] = React.useState<{ w: number; h: number } | null>(null);
+
+  // Reset natural size quando o exame muda
+  React.useEffect(() => { setImgNaturalSize(null); }, [exam.id]);
 
   return (
     <div className="flex flex-col h-full">
@@ -450,13 +476,22 @@ function ExamViewer({ label, exam, examsList, onExamChange, aiOverlay, onAiOverl
       <div className="flex-1 bg-black flex items-center justify-center p-4 min-h-[300px]">
         {exam.urlImagem ? (
           <div className="relative max-w-full max-h-full" style={{ transform: `scale(${zoom / 100})`, transition: 'transform 0.2s' }}>
-            <img src={exam.urlImagem} alt={`Exame ${dataFormatada}`} className="max-w-full max-h-full object-contain" />
-            {aiOverlay && (
-              <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ mixBlendMode: 'screen' }}>
-                <line x1="30%" y1="25%" x2="70%" y2="25%" stroke="#1A6FAF" strokeWidth="2" strokeDasharray="5,5" />
-                <line x1="25%" y1="65%" x2="75%" y2="65%" stroke="#1A6FAF" strokeWidth="2" strokeDasharray="5,5" />
-                <text x="55%" y="45%" fill="#1A6FAF" fontSize="14" fontWeight="600">{exam.anguloCobb.toFixed(1)}°</text>
-              </svg>
+            <img
+              src={exam.urlImagem}
+              alt={`Exame ${dataFormatada}`}
+              className="max-w-full max-h-full object-contain"
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                setImgNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+              }}
+            />
+            {aiOverlay && imgNaturalSize && (
+              <OverlayCobb
+                natural={imgNaturalSize}
+                vertebrae={exam.vertebrae}
+                measurement={exam.cobbMeasurement}
+                anguloCobb={exam.anguloCobb}
+              />
             )}
           </div>
         ) : (

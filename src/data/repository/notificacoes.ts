@@ -19,6 +19,28 @@ export interface NotificacaoItem {
 }
 
 /**
+ * Insere uma notificação para um destinatário específico.
+ * Fire-and-forget — erros são silenciosos para não interromper o fluxo principal.
+ */
+export async function criarNotificacao(params: {
+  destinatarioId: string;
+  tipo: TipoNotificacao;
+  titulo: string;
+  mensagem: string;
+  referenciaEntidade?: string;
+  referenciaId?: string;
+}): Promise<void> {
+  await supabase.from('notificacoes').insert({
+    destinatario_id:    params.destinatarioId,
+    tipo:               params.tipo,
+    titulo:             params.titulo,
+    mensagem:           params.mensagem,
+    referencia_entidade: params.referenciaEntidade ?? null,
+    referencia_id:      params.referenciaId ?? null,
+  });
+}
+
+/**
  * Carrega as notificações do utilizador autenticado.
  * A RLS da tabela `notificacoes` filtra automaticamente por destinatario_id.
  */

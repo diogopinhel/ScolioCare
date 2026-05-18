@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { registarAcao } from '../../../data/repository/audit';
+import { criarNotificacao } from '../../../data/repository/notificacoes';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
 
@@ -118,6 +119,26 @@ export default function GlassBreakScreen() {
       });
       if (error) throw error;
       registarAcao('GLASS_BREAK', 'glassbreak_log', pacienteId);
+
+      // Notificar todos os admins activos (fire-and-forget)
+      supabase
+        .from('utilizadores')
+        .select('id')
+        .eq('perfil', 'ADMIN')
+        .eq('ativo', true)
+        .then(({ data: admins }) => {
+          admins?.forEach((a) => {
+            criarNotificacao({
+              destinatarioId:    a.id as string,
+              tipo:              'GLASS_BREAK',
+              titulo:            'Acesso de emergência activado',
+              mensagem:          `Dr. ${utilizador.nomeCompleto} activou glass-break. Motivo: ${selectedReason}.`,
+              referenciaEntidade: 'glassbreak_log',
+              referenciaId:      pacienteId,
+            });
+          });
+        });
+
       setStep('access');
     } catch (err) {
       console.error('Erro ao registar glass-break:', err);

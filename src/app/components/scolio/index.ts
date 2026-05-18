@@ -24,6 +24,9 @@ export type { ProgressBarProps } from './ProgressBar';
 export { CobbAngleGauge } from './CobbAngleGauge';
 export type { CobbAngleGaugeProps } from './CobbAngleGauge';
 
+export { OverlayCobb } from './OverlayCobb';
+export type { OverlayCobbProps } from './OverlayCobb';
+
 export { Toast } from './Toast';
 export type { ToastProps, ToastType } from './Toast';
 
