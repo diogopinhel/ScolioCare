@@ -509,7 +509,7 @@ export default function PatientListScreen() {
                           const hoje = new Date();
                           let i = hoje.getFullYear() - nasc.getFullYear();
                           if (hoje.getMonth() - nasc.getMonth() < 0) i--;
-                          return `${i} anos`;
+                          return t('patients.yearsOld', { age: i });
                         })()
                       : null;
 
