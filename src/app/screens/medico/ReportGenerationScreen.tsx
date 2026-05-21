@@ -297,7 +297,7 @@ export default function ReportGenerationScreen() {
       const scrollContainer = previewRef.current.closest('.overflow-auto') as HTMLElement | null;
       const prevScroll = scrollContainer?.scrollTop ?? 0;
       if (scrollContainer) scrollContainer.scrollTop = 0;
-      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
       // Capturar prévia e gerar PDF Blob
       const canvas = await html2canvas(previewRef.current, { scale: 2, useCORS: true });
