@@ -10,9 +10,56 @@ import html2canvas from 'html2canvas';
 import { getEstudoCompleto, getUrlImagemEstudo, guardarObservacoesMedico, guardarAssinaturaDocumento, enviarEstudoAoPaciente } from '../../../data/repository/estudos';
 import { supabase } from '../../../lib/supabase';
 import { getPaciente } from '../../../data/repository/pacientes';
-import type { EstudoCompleto, PacienteDetalhe, MedicoEspecialista } from '../../../data/types';
+import type { EstudoCompleto, PacienteDetalhe, MedicoEspecialista, VertebraDetetada, CobbMeasurementData } from '../../../data/types';
+import { OverlayCobb } from '../../components/scolio';
 
 const BUCKET_RELATORIOS = 'relatorios';
+
+// ── Helper: gera SVG string do overlay Cobb para usar no template HTML do PDF ─
+function gerarSvgOverlayCobb(
+  natural: { w: number; h: number },
+  vertebrae: VertebraDetetada[] | null,
+  measurement: CobbMeasurementData | null,
+  anguloCobb: number | null,
+): string {
+  const { w, h } = natural;
+  const strokeBase = Math.max(2, Math.round(w * 0.002));
+  const fontSize   = Math.max(18, Math.round(w * 0.025));
+
+  const upperV = vertebrae && measurement ? vertebrae.find((v) => v.id === measurement.upperVertebraIndex) : null;
+  const lowerV = vertebrae && measurement ? vertebrae.find((v) => v.id === measurement.lowerVertebraIndex) : null;
+
+  function ext(x1: number, y1: number, x2: number, y2: number, f = 0.4) {
+    const dx = x2 - x1, dy = y2 - y1;
+    return { x1: x1 - dx * f, y1: y1 - dy * f, x2: x2 + dx * f, y2: y2 + dy * f };
+  }
+
+  const ul = upperV?.polygon ? ext(upperV.polygon[0][0], upperV.polygon[0][1], upperV.polygon[1][0], upperV.polygon[1][1]) : null;
+  const ll = lowerV?.polygon ? ext(lowerV.polygon[3][0], lowerV.polygon[3][1], lowerV.polygon[2][0], lowerV.polygon[2][1]) : null;
+
+  const labelX = w * 0.78;
+  const labelY = upperV?.center && lowerV?.center ? (upperV.center[1] + lowerV.center[1]) / 2 : h / 2;
+
+  const polys = (vertebrae ?? []).map((v) => {
+    if (!v.polygon || v.polygon.length < 4) return '';
+    const isCobb = measurement?.upperVertebraIndex === v.id || measurement?.lowerVertebraIndex === v.id;
+    const stroke = isCobb ? '#F59E0B' : '#1A6FAF';
+    const fill   = isCobb ? 'rgba(245,158,11,0.18)' : 'rgba(26,111,175,0.08)';
+    const sw     = isCobb ? strokeBase * 1.8 : strokeBase;
+    const pts    = v.polygon.map(([x, y]) => `${x},${y}`).join(' ');
+    return `<polygon points="${pts}" stroke="${stroke}" stroke-width="${sw}" fill="${fill}"/>`;
+  }).join('');
+
+  const upperSvg = ul ? `<line x1="${ul.x1}" y1="${ul.y1}" x2="${ul.x2}" y2="${ul.y2}" stroke="#EF4444" stroke-width="${strokeBase * 1.6}" stroke-dasharray="${strokeBase * 3} ${strokeBase * 2}"/>` : '';
+  const lowerSvg = ll ? `<line x1="${ll.x1}" y1="${ll.y1}" x2="${ll.x2}" y2="${ll.y2}" stroke="#EF4444" stroke-width="${strokeBase * 1.6}" stroke-dasharray="${strokeBase * 3} ${strokeBase * 2}"/>` : '';
+
+  const labelSvg = anguloCobb !== null ? `
+    <rect x="${labelX - fontSize * 1.6}" y="${labelY - fontSize * 0.9}" width="${fontSize * 3.2}" height="${fontSize * 1.4}" rx="${fontSize * 0.2}" fill="rgba(15,23,42,0.85)"/>
+    <text x="${labelX}" y="${labelY + fontSize * 0.1}" fill="#FBBF24" font-size="${fontSize}" font-weight="700" text-anchor="middle" dominant-baseline="middle">${anguloCobb.toFixed(1)}°</text>
+  ` : '';
+
+  return `<svg style="position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:screen;" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">${polys}${upperSvg}${lowerSvg}${labelSvg}</svg>`;
+}
 const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10 MB
 
 async function calcularHashSHA256(blob: Blob): Promise<string> {
@@ -79,6 +126,7 @@ export default function ReportGenerationScreen() {
   const [estudo, setEstudo] = React.useState<EstudoCompleto | null>(null);
   const [paciente, setPaciente] = React.useState<PacienteDetalhe | null>(null);
   const [urlImagem, setUrlImagem] = React.useState<string | null>(null);
+  const [imgNaturalSize, setImgNaturalSize] = React.useState<{ w: number; h: number } | null>(null);
   const [aCarregar, setACarregar] = React.useState(true);
   const [erroCarregamento, setErroCarregamento] = React.useState(false);
 
@@ -171,12 +219,15 @@ export default function ReportGenerationScreen() {
       <div style="background:#000;padding:16px;border-radius:6px;display:flex;justify-content:center;">
         <div style="position:relative;width:192px;height:256px;">
           <img src="${urlImagem}" alt="Exame" style="width:100%;height:100%;object-fit:contain;" />
-          ${includedSections.overlayIA && r ? `
-          <svg style="position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:screen;" xmlns="http://www.w3.org/2000/svg">
-            <line x1="30%" y1="30%" x2="70%" y2="30%" stroke="#1A6FAF" stroke-width="2" stroke-dasharray="3,3"/>
-            <line x1="25%" y1="60%" x2="75%" y2="60%" stroke="#1A6FAF" stroke-width="2" stroke-dasharray="3,3"/>
-            <text x="55%" y="45%" fill="#1A6FAF" font-size="12" font-weight="600">${r.anguloCobb.toFixed(1)}°</text>
-          </svg>` : ''}
+          ${includedSections.overlayIA && r && imgNaturalSize
+            ? gerarSvgOverlayCobb(
+                imgNaturalSize,
+                r.pontosAnatomicos,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (r.cobbAnglesData as any)?.measurement ?? null,
+                r.anguloCobbCorrigido ?? r.anguloCobb,
+              )
+            : ''}
         </div>
       </div>` : '';
 
@@ -558,13 +609,23 @@ export default function ReportGenerationScreen() {
                         <div className="relative w-48 h-64">
                           {urlImagem ? (
                             <>
-                              <img src={urlImagem} alt="Exame" className="w-full h-full object-contain" />
-                              {includedSections.overlayIA && resultado && (
-                                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ mixBlendMode: 'screen' }}>
-                                  <line x1="30%" y1="30%" x2="70%" y2="30%" stroke="#1A6FAF" strokeWidth="2" strokeDasharray="3,3" />
-                                  <line x1="25%" y1="60%" x2="75%" y2="60%" stroke="#1A6FAF" strokeWidth="2" strokeDasharray="3,3" />
-                                  <text x="55%" y="45%" fill="#1A6FAF" fontSize="12" fontWeight="600">{resultado.anguloCobb.toFixed(1)}°</text>
-                                </svg>
+                              <img
+                                src={urlImagem}
+                                alt="Exame"
+                                className="w-full h-full object-contain"
+                                onLoad={(e) => {
+                                  const img = e.currentTarget;
+                                  setImgNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+                                }}
+                              />
+                              {includedSections.overlayIA && resultado && imgNaturalSize && (
+                                <OverlayCobb
+                                  natural={imgNaturalSize}
+                                  vertebrae={resultado.pontosAnatomicos}
+                                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                  measurement={(resultado.cobbAnglesData as any)?.measurement ?? null}
+                                  anguloCobb={resultado.anguloCobbCorrigido ?? resultado.anguloCobb}
+                                />
                               )}
                             </>
                           ) : (
