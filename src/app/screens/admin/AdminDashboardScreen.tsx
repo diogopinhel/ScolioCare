@@ -118,16 +118,16 @@ export default function AdminDashboardScreen() {
                   fontSize: '13px',
                 }}
               />
-              <Bar dataKey="medico" stackId="a" fill="var(--scolio-primary-blue)" name="Médico" />
-              <Bar dataKey="tecnico" stackId="a" fill="var(--scolio-success-green)" name="Técnico" />
-              <Bar dataKey="admin" stackId="a" fill="var(--scolio-warning-amber)" name="Admin" />
+              <Bar dataKey="medico" stackId="a" fill="var(--scolio-primary-blue)" name={t('admin.profileDoctor')} />
+              <Bar dataKey="tecnico" stackId="a" fill="var(--scolio-success-green)" name={t('admin.profileTechnician')} />
+              <Bar dataKey="admin" stackId="a" fill="var(--scolio-warning-amber)" name={t('admin.profileAdmin')} />
             </BarChart>
           </ResponsiveContainer>
           <div className="flex items-center gap-6 mt-4">
             {[
-              { label: 'Médico', color: 'var(--scolio-primary-blue)' },
-              { label: 'Técnico', color: 'var(--scolio-success-green)' },
-              { label: 'Admin', color: 'var(--scolio-warning-amber)' },
+              { label: t('admin.profileDoctor'),      color: 'var(--scolio-primary-blue)' },
+              { label: t('admin.profileTechnician'),  color: 'var(--scolio-success-green)' },
+              { label: t('admin.profileAdmin'),       color: 'var(--scolio-warning-amber)' },
             ].map((l) => (
               <span key={l.label} className="flex items-center gap-2" style={{ fontSize: 'var(--text-caption)' }}>
                 <span className="w-3 h-3 rounded" style={{ backgroundColor: l.color }} />

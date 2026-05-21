@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Eye, Archive, ChevronLeft, ChevronRight, ChevronDown, ShieldAlert, Search, Loader2, Lock, UserCheck } from 'lucide-react';
 import { Button, SearchBar, StatusBadge, TableSkeleton } from '../../components/scolio';
 import type { BadgeStatus } from '../../components/scolio';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
@@ -60,12 +60,13 @@ function calcularPaginasVisiveis(pagAtual: number, totalPags: number): (number |
 export default function PatientListScreen() {
   const { utilizador } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const dateLocale = useDateLocale();
 
   const [aCarregar, setACarregar] = useState(true);
   const [todosPacientes, setTodosPacientes] = useState<PacienteListagem[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') ?? '');
   const [selectedGender, setSelectedGender] = useState('all');
   const [selectedAgeRange, setSelectedAgeRange] = useState('all');
   const [sortBy, setSortBy] = useState('name');

@@ -6,18 +6,18 @@ import { useDateLocale } from '../../../lib/dateLocale';
 import { getRgpdPedidos, atualizarRgpdPedido } from '../../../data/repository/admin';
 import type { RgpdPedido, EstadoRgpdPedido } from '../../../data/types';
 
-const TIPO_LABEL: Record<string, string> = {
-  ACESSO:        'Acesso (Art.º 15)',
-  APAGAMENTO:    'Apagamento (Art.º 17)',
-  PORTABILIDADE: 'Portabilidade (Art.º 20)',
-  RETIFICACAO:   'Retificação (Art.º 16)',
+const TIPO_KEY: Record<string, string> = {
+  ACESSO:        'admin.tipoAcesso',
+  APAGAMENTO:    'admin.tipoApagamento',
+  PORTABILIDADE: 'admin.tipoPortabilidade',
+  RETIFICACAO:   'admin.tipoRetificacao',
 };
 
-const ESTADO_CONFIG: Record<EstadoRgpdPedido, { label: string; color: string; icon: React.ElementType }> = {
-  PENDENTE:    { label: 'Pendente',    color: 'var(--scolio-warning-amber)', icon: Clock },
-  EM_ANALISE:  { label: 'Em análise', color: 'var(--scolio-primary-blue)',  icon: FileSearch },
-  CONCLUIDO:   { label: 'Concluído',  color: 'var(--scolio-success-green)', icon: CheckCircle },
-  REJEITADO:   { label: 'Rejeitado',  color: 'var(--scolio-danger-coral)',  icon: XCircle },
+const ESTADO_CONFIG: Record<EstadoRgpdPedido, { labelKey: string; color: string; icon: React.ElementType }> = {
+  PENDENTE:    { labelKey: 'admin.estadoPendente',   color: 'var(--scolio-warning-amber)', icon: Clock },
+  EM_ANALISE:  { labelKey: 'admin.estadoEmAnalise',  color: 'var(--scolio-primary-blue)',  icon: FileSearch },
+  CONCLUIDO:   { labelKey: 'admin.estadoConcluido',  color: 'var(--scolio-success-green)', icon: CheckCircle },
+  REJEITADO:   { labelKey: 'admin.estadoRejeitado',  color: 'var(--scolio-danger-coral)',  icon: XCircle },
 };
 
 function diasRestantes(prazo: string): number {
@@ -49,6 +49,31 @@ export default function AdminComplianceScreen() {
 
   React.useEffect(() => { carregar(); }, [carregar]);
 
+  const exportarCsv = () => {
+    if (pedidos.length === 0) return;
+    const BOM = '﻿';
+    const cabecalho = ['ID', 'Paciente', 'Tipo', 'Estado', 'Data pedido', 'Prazo', 'Notas admin'].join(';');
+    const linhas = pedidos.map((p) =>
+      [
+        p.id,
+        `"${p.pacienteNome}"`,
+        p.tipo,
+        p.estado,
+        new Date(p.dataPedido).toLocaleDateString('pt-PT'),
+        new Date(p.prazo).toLocaleDateString('pt-PT'),
+        `"${(p.notasAdmin ?? '').replace(/"/g, '""')}"`,
+      ].join(';'),
+    );
+    const csv = BOM + [cabecalho, ...linhas].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `compliance_rgpd_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const pedidosFiltrados = pedidos.filter((p) => {
     if (filtroEstado !== 'TODOS' && p.estado !== filtroEstado) return false;
     const dias = Number(period);
@@ -66,11 +91,11 @@ export default function AdminComplianceScreen() {
     setAAtualizar(true);
     try {
       await atualizarRgpdPedido(modal.pedido.id, estado, modal.notas || undefined);
-      mostrarToast('Estado do pedido atualizado com sucesso.');
+      mostrarToast(t('admin.complianceToastSuccess'));
       setModal(null);
       carregar();
     } catch {
-      mostrarToast('Erro ao atualizar o pedido. Tenta novamente.', 'error');
+      mostrarToast(t('admin.complianceToastError'), 'error');
     } finally {
       setAAtualizar(false);
     }
@@ -83,7 +108,7 @@ export default function AdminComplianceScreen() {
           <h1 className="text-[var(--scolio-text-primary)]">{t('admin.complianceTitle')}</h1>
           <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>{t('admin.complianceSubtitle')}</p>
         </div>
-        <Button variant="primary" onClick={carregar} disabled={aCarregar}>
+        <Button variant="primary" onClick={exportarCsv} disabled={aCarregar || pedidos.length === 0}>
           <FileText className="w-4 h-4 mr-2 inline" />{t('admin.generateReport')}
         </Button>
       </div>
@@ -92,7 +117,7 @@ export default function AdminComplianceScreen() {
       <div className="grid grid-cols-4 gap-6">
         <KPI icon={FileSearch}    color="var(--scolio-primary-blue)"  bg="var(--scolio-light-blue-surface)" label={t('admin.artAccess')}          value={String(pendentes)}    sub={t('admin.inProgress')} />
         <KPI icon={Trash2}        color="var(--scolio-danger-coral)"  bg="var(--scolio-danger-surface)"     label={t('admin.artErasure')}         value={String(emAnalise)}    sub={t('admin.awaitingEval')} />
-        <KPI icon={ShieldCheck}   color="var(--scolio-success-green)" bg="var(--scolio-success-surface)"    label={t('admin.conformity')}         value={conformidade}         sub={pedidos.length === 0 ? t('admin.noSufficientData') : 'pedidos concluídos'} />
+        <KPI icon={ShieldCheck}   color="var(--scolio-success-green)" bg="var(--scolio-success-surface)"    label={t('admin.conformity')}         value={conformidade}         sub={pedidos.length === 0 ? t('admin.noSufficientData') : t('admin.compliancePedidosConcluidos')} />
         <KPI icon={AlertTriangle} color="var(--scolio-warning-amber)" bg="var(--scolio-warning-surface)"   label={t('admin.expiringDeadlines')}  value={String(aExpirar)}     sub={t('admin.next7days')} />
       </div>
 
@@ -112,7 +137,7 @@ export default function AdminComplianceScreen() {
                 className={`px-3 py-1.5 rounded-[var(--radius-component)] transition-colors ${filtroEstado === e ? 'bg-[var(--scolio-primary-blue)] text-white' : 'bg-[var(--scolio-page-surface)] text-[var(--scolio-text-secondary)]'}`}
                 style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}
               >
-                {e === 'TODOS' ? 'Todos' : ESTADO_CONFIG[e as EstadoRgpdPedido].label}
+                {e === 'TODOS' ? t('admin.complianceTodos') : t(ESTADO_CONFIG[e as EstadoRgpdPedido].labelKey)}
               </button>
             ))}
           </div>
@@ -132,8 +157,15 @@ export default function AdminComplianceScreen() {
           <table className="w-full">
             <thead>
               <tr className="border-t border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">
-                {['Paciente', 'Tipo', 'Estado', 'Data pedido', 'Prazo (dias)', ''].map((h) => (
-                  <th key={h} className="px-6 py-3 text-left text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>{h}</th>
+                {[
+                  t('admin.complianceColPaciente'),
+                  t('admin.complianceColTipo'),
+                  t('admin.complianceColEstado'),
+                  t('admin.complianceColData'),
+                  t('admin.complianceColPrazo'),
+                  '',
+                ].map((h, i) => (
+                  <th key={i} className="px-6 py-3 text-left text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-semibold)' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -146,10 +178,10 @@ export default function AdminComplianceScreen() {
                 return (
                   <tr key={p.id} className="border-t border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
                     <td className="px-6 py-4 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>{p.pacienteNome}</td>
-                    <td className="px-6 py-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{TIPO_LABEL[p.tipo] ?? p.tipo}</td>
+                    <td className="px-6 py-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t(TIPO_KEY[p.tipo] ?? p.tipo)}</td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full" style={{ backgroundColor: `${cfg.color}18`, color: cfg.color, fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>
-                        <EstadoIcon className="w-3 h-3" />{cfg.label}
+                        <EstadoIcon className="w-3 h-3" />{t(cfg.labelKey)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
@@ -161,7 +193,7 @@ export default function AdminComplianceScreen() {
                     <td className="px-6 py-4">
                       {!['CONCLUIDO', 'REJEITADO'].includes(p.estado) && (
                         <Button variant="secondary" onClick={() => setModal({ pedido: p, notas: p.notasAdmin ?? '' })}>
-                          Gerir
+                          {t('admin.complianceGerir')}
                         </Button>
                       )}
                     </td>
@@ -179,10 +211,10 @@ export default function AdminComplianceScreen() {
           <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('admin.dataClassification')}</h3>
           <div className="space-y-2">
             {[
-              { label: 'Dados de saúde (Art.º 9 RGPD)', value: 'Categoria especial', color: 'var(--scolio-danger-coral)' },
-              { label: 'Dados de identificação', value: 'Dados pessoais', color: 'var(--scolio-warning-amber)' },
-              { label: 'Dados de auditoria', value: 'Dados internos', color: 'var(--scolio-success-green)' },
-              { label: 'Imagens de exame', value: 'Dados de saúde', color: 'var(--scolio-danger-coral)' },
+              { label: t('admin.dataClassHealth'),  value: t('admin.dataClassHealthValue'),  color: 'var(--scolio-danger-coral)' },
+              { label: t('admin.dataClassId'),       value: t('admin.dataClassIdValue'),       color: 'var(--scolio-warning-amber)' },
+              { label: t('admin.dataClassAudit'),    value: t('admin.dataClassAuditValue'),    color: 'var(--scolio-success-green)' },
+              { label: t('admin.dataClassImages'),   value: t('admin.dataClassImagesValue'),   color: 'var(--scolio-danger-coral)' },
             ].map(({ label, value, color }) => (
               <div key={label} className="flex items-center justify-between p-3 bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)]">
                 <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>{label}</span>
@@ -203,10 +235,10 @@ export default function AdminComplianceScreen() {
           </div>
           <div className="space-y-2">
             {[
-              { label: 'Pedidos recebidos', value: pedidosFiltrados.length },
-              { label: 'Concluídos',        value: pedidosFiltrados.filter((p) => p.estado === 'CONCLUIDO').length },
-              { label: 'Rejeitados',        value: pedidosFiltrados.filter((p) => p.estado === 'REJEITADO').length },
-              { label: 'Pendentes',         value: pedidosFiltrados.filter((p) => p.estado === 'PENDENTE').length },
+              { label: t('admin.complianceStatsRecebidos'),  value: pedidosFiltrados.length },
+              { label: t('admin.complianceStatsConcluidos'), value: pedidosFiltrados.filter((p) => p.estado === 'CONCLUIDO').length },
+              { label: t('admin.complianceStatsRejeitados'), value: pedidosFiltrados.filter((p) => p.estado === 'REJEITADO').length },
+              { label: t('admin.complianceStatsPendentes'),  value: pedidosFiltrados.filter((p) => p.estado === 'PENDENTE').length },
             ].map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between p-3 bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)]">
                 <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>{label}</span>
@@ -222,47 +254,47 @@ export default function AdminComplianceScreen() {
         <Modal
           isOpen
           onClose={() => setModal(null)}
-          title={`Gerir pedido — ${TIPO_LABEL[modal.pedido.tipo] ?? modal.pedido.tipo}`}
-          confirmLabel={aAtualizar ? 'A guardar…' : 'Concluir'}
-          cancelLabel="Fechar"
+          title={`${t('admin.complianceGesteTitle')} — ${t(TIPO_KEY[modal.pedido.tipo] ?? modal.pedido.tipo)}`}
+          confirmLabel={aAtualizar ? t('common.saving') : t('admin.complianceConcluir')}
+          cancelLabel={t('common.close')}
           onConfirm={() => handleAtualizar('CONCLUIDO')}
         >
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[var(--scolio-text-secondary)] mb-1" style={{ fontSize: 'var(--text-caption)' }}>Paciente</p>
+                <p className="text-[var(--scolio-text-secondary)] mb-1" style={{ fontSize: 'var(--text-caption)' }}>{t('admin.complianceColPaciente')}</p>
                 <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>{modal.pedido.pacienteNome}</p>
               </div>
               <div>
-                <p className="text-[var(--scolio-text-secondary)] mb-1" style={{ fontSize: 'var(--text-caption)' }}>Data do pedido</p>
+                <p className="text-[var(--scolio-text-secondary)] mb-1" style={{ fontSize: 'var(--text-caption)' }}>{t('admin.complianceDataPedido')}</p>
                 <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>{new Date(modal.pedido.dataPedido).toLocaleDateString(dateLocale)}</p>
               </div>
             </div>
             {modal.pedido.descricao && (
               <div>
-                <p className="text-[var(--scolio-text-secondary)] mb-1" style={{ fontSize: 'var(--text-caption)' }}>Descrição do pedido</p>
+                <p className="text-[var(--scolio-text-secondary)] mb-1" style={{ fontSize: 'var(--text-caption)' }}>{t('admin.complianceDescricao')}</p>
                 <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>{modal.pedido.descricao}</p>
               </div>
             )}
             <div>
               <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                Notas internas
+                {t('admin.complianceNotasInternas')}
               </label>
               <textarea
                 value={modal.notas}
                 onChange={(e) => setModal({ ...modal, notas: e.target.value })}
                 rows={3}
-                placeholder="Observações sobre o tratamento deste pedido…"
+                placeholder={t('admin.complianceNotasPlaceholder')}
                 className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)] resize-none"
                 style={{ fontSize: 'var(--text-body)' }}
               />
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" className="flex-1" onClick={() => handleAtualizar('EM_ANALISE')} disabled={aAtualizar}>
-                Marcar em análise
+                {t('admin.complianceMarkAnalise')}
               </Button>
               <Button variant="secondary" className="flex-1 !text-[var(--scolio-danger-coral)] !border-[var(--scolio-danger-coral)]" onClick={() => handleAtualizar('REJEITADO')} disabled={aAtualizar}>
-                Rejeitar
+                {t('admin.complianceRejeitar')}
               </Button>
             </div>
           </div>

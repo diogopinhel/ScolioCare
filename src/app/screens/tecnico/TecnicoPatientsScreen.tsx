@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Search, UserPlus, UserCog, Edit } from 'lucide-react';
 import { Button, Modal, Select } from '../../components/scolio';
 import { getPacientesTecnico, alterarMedicoPaciente } from '../../../data/repository/tecnico';
@@ -37,11 +37,12 @@ interface EstadoModal {
 
 export default function TecnicoPatientsScreen() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const dateLocale = useDateLocale();
   const [pacientes, setPacientes] = React.useState<PacienteTecnico[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
-  const [search, setSearch] = React.useState('');
+  const [search, setSearch] = React.useState(() => searchParams.get('q') ?? '');
 
   // Estado do modal de alteração de médico
   const [modal, setModal] = React.useState<EstadoModal | null>(null);

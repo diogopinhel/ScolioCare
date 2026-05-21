@@ -149,13 +149,14 @@ export default function LoginScreen() {
                   {t('auth.rememberMe')}
                 </span>
               </label>
-              <a
-                href="#"
+              <button
+                type="button"
+                onClick={() => alert(t('common.contactAdmin'))}
                 className="text-[var(--scolio-primary-blue)] hover:underline"
-                style={{ fontSize: 'var(--text-body)' }}
+                style={{ fontSize: 'var(--text-body)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
               >
                 {t('auth.forgotPassword')}
-              </a>
+              </button>
             </div>
 
             <Button type="submit" variant="primary" className="w-full" disabled={aSubmeter}>

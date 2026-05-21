@@ -12,6 +12,7 @@ import {
 import { getMedicos, reatribuirMedico } from '../../../data/repository/pacientes';
 import type { DadosCriarUtilizador, CamposEdicaoUtilizador } from '../../../data/repository/admin';
 import type { UtilizadorAdmin, UtilizadorAdminCompleto, MedicoResumo } from '../../../data/types';
+import { useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
 
@@ -41,6 +42,7 @@ type ConfirmAction = { kind: 'toggle_ativo' | 'toggle_bloqueio'; user: Utilizado
 
 export default function AdminUsersScreen() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const dateLocale = useDateLocale();
   const [utilizadores, setUtilizadores] = React.useState<UtilizadorAdmin[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
@@ -48,7 +50,7 @@ export default function AdminUsersScreen() {
   // Filtros
   const [perfilFiltro, setPerfilFiltro] = React.useState('all');
   const [estadoFiltro, setEstadoFiltro] = React.useState('all');
-  const [pesquisa, setPesquisa] = React.useState('');
+  const [pesquisa, setPesquisa] = React.useState(() => searchParams.get('q') ?? '');
 
   // Modal de confirmação (toggle ativo/bloqueio)
   const [confirm, setConfirm] = React.useState<ConfirmAction | null>(null);
