@@ -173,6 +173,10 @@ CSV export uses UTF-8 BOM (`﻿`) for correct rendering of Portuguese characters
 - ML model integration (`resultados` currently populated manually)
 - React Native app for patients (built by team member)
 
+## Git
+
+Quando pedido para fazer commit, criar o commit sem linha `Co-Authored-By`.
+
 ## Language
 
 Domain code, variable names, comments and UI strings are in **Portuguese**. Keep this convention when editing (e.g. `paciente`, `estudo`, `utilizador`, not `patient`, `exam`, `user`).

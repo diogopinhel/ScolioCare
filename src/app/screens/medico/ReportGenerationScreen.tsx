@@ -99,6 +99,15 @@ export default function ReportGenerationScreen() {
   const [hashDocumento, setHashDocumento] = React.useState<string | null>(null);
   const [dataAssinatura, setDataAssinatura] = React.useState<string | null>(null);
   const [aAssinar, setAAssinar] = React.useState(false);
+  const [captureMode, setCaptureMode] = React.useState(false);
+  const pendingCapture = React.useRef<(() => void) | null>(null);
+
+  React.useEffect(() => {
+    if (captureMode && pendingCapture.current) {
+      pendingCapture.current();
+      pendingCapture.current = null;
+    }
+  }, [captureMode]);
   const [aEnviar, setAEnviar] = React.useState(false);
   const [foiEnviado, setFoiEnviado] = React.useState(false);
   const [showSignatureModal, setShowSignatureModal] = React.useState(false);
@@ -277,13 +286,41 @@ export default function ReportGenerationScreen() {
         await guardarObservacoesMedico(estudo.resultado.id, observacoesMedico);
       }
 
+      // Activar captureMode para que o bloco de assinatura apareça no PDF
+      await new Promise<void>((resolve) => {
+        pendingCapture.current = resolve;
+        setCaptureMode(true);
+      });
+
+      // Scroll ao topo do container antes de capturar para garantir que o html2canvas
+      // calcula as coordenadas correctas e não corta secções abaixo do fold
+      const scrollContainer = previewRef.current.closest('.overflow-auto') as HTMLElement | null;
+      const prevScroll = scrollContainer?.scrollTop ?? 0;
+      if (scrollContainer) scrollContainer.scrollTop = 0;
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
       // Capturar prévia e gerar PDF Blob
       const canvas = await html2canvas(previewRef.current, { scale: 2, useCORS: true });
+      if (scrollContainer) scrollContainer.scrollTop = prevScroll;
+      setCaptureMode(false);
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = (canvas.height * pageWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+      const pageHeightA4 = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      let heightLeft = imgHeight - pageHeightA4;
+      let pageNum = 1;
+      while (heightLeft > 0) {
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, -(pageNum * pageHeightA4), imgWidth, imgHeight);
+        heightLeft -= pageHeightA4;
+        pageNum++;
+      }
+
       const blob = pdf.output('blob');
 
       // Validar tamanho e tipo
@@ -320,6 +357,7 @@ export default function ReportGenerationScreen() {
       setDataAssinatura(agora);
       mostrarToast('Documento assinado com sucesso.');
     } catch {
+      setCaptureMode(false);
       mostrarToast('Erro ao assinar o documento. Tenta novamente.', 'error');
     } finally {
       setAAssinar(false);
@@ -592,7 +630,7 @@ export default function ReportGenerationScreen() {
                   {includedSections.assinaturaDigital && medico && (
                     <section className="mt-8 pt-6 border-t-2 border-[var(--scolio-border-light)]">
                       <h3 className="text-[var(--scolio-text-primary)] mb-3">{ps.sig}</h3>
-                      {hashDocumento ? (
+                      {(hashDocumento || captureMode) ? (
                         <div className="bg-[#f0faf5] border border-[var(--scolio-success-green)] rounded-[var(--radius-component)] p-4 space-y-2">
                           <div className="flex items-center gap-2">
                             <Check className="w-5 h-5 text-[var(--scolio-success-green)]" />
@@ -607,14 +645,19 @@ export default function ReportGenerationScreen() {
                                 <strong>Cédula:</strong> {medico.cedulaProfissional}
                               </p>
                             )}
-                            {dataAssinatura && (
+                            {medico.especialidade && (
                               <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                                <strong>Data:</strong> {new Date(dataAssinatura).toLocaleString(dateLocale)}
+                                <strong>{ps.specialty}:</strong> {medico.especialidade}
                               </p>
                             )}
-                            <p className="text-[var(--scolio-text-secondary)] break-all font-mono" style={{ fontSize: '10px', marginTop: '6px' }}>
-                              SHA-256: {hashDocumento}
+                            <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                              <strong>Data:</strong> {new Date(dataAssinatura ?? new Date().toISOString()).toLocaleString(dateLocale)}
                             </p>
+                            {!captureMode && hashDocumento && (
+                              <p className="text-[var(--scolio-text-secondary)] break-all font-mono" style={{ fontSize: '10px', marginTop: '6px' }}>
+                                SHA-256: {hashDocumento}
+                              </p>
+                            )}
                           </div>
                         </div>
                       ) : (
