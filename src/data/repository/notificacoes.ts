@@ -97,10 +97,32 @@ export function resolverLink(
     case 'estudos':
       return perfil === 'TECNICO' ? '/tecnico/queue' : `/exam-viewer/${id}`;
     case 'utilizadores':
+      if (perfil === 'TECNICO') return '/tecnico/patients?tab=pendentes';
+      if (perfil === 'ADMIN') return '/admin-panel/users';
       return `/patients/${id}`;
     case 'glassbreak_log':
       return perfil === 'ADMIN' ? '/admin-panel/audit' : '/patients';
     default:
       return '/';
   }
+}
+
+/**
+ * Marca como lidas todas as notificações do utilizador autenticado que
+ * apontam para um paciente específico. Usado quando o técnico atribui o
+ * médico — a notificação de "Novo paciente pendente" deixa de fazer sentido.
+ *
+ * RLS limita o UPDATE ao destinatario_id do próprio utilizador, por isso
+ * apenas o técnico que atribuiu o médico vê a notificação ser limpa.
+ * Para limpar para todos os técnicos é necessário trigger na BD
+ * (ver supabase/migrations).
+ */
+export async function marcarNotificacoesPacienteComoLidas(pacienteId: string): Promise<void> {
+  await supabase
+    .from('notificacoes')
+    .update({ data_leitura: new Date().toISOString() })
+    .eq('tipo', 'PACIENTE')
+    .eq('referencia_entidade', 'utilizadores')
+    .eq('referencia_id', pacienteId)
+    .is('data_leitura', null);
 }

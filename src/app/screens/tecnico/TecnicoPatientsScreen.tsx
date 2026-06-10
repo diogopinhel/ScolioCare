@@ -4,6 +4,7 @@ import { Search, Edit, Plus } from 'lucide-react';
 import { Modal, Select } from '../../components/scolio';
 import { getPacientesTecnico } from '../../../data/repository/tecnico';
 import { getMedicos, alterarMedicoPaciente } from '../../../data/repository/pacientes';
+import { marcarNotificacoesPacienteComoLidas } from '../../../data/repository/notificacoes';
 import type { PacienteTecnico, MedicoResumo } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
@@ -39,7 +40,9 @@ export default function TecnicoPatientsScreen() {
   const [pacientes, setPacientes] = React.useState<PacienteTecnico[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
   const [search, setSearch] = React.useState(() => searchParams.get('q') ?? '');
-  const [tabAtiva, setTabAtiva] = React.useState<'todos' | 'pendentes'>('todos');
+  const [tabAtiva, setTabAtiva] = React.useState<'todos' | 'pendentes'>(
+    () => searchParams.get('tab') === 'pendentes' ? 'pendentes' : 'todos',
+  );
 
   // Modal de atribuição de médico (apenas para pendentes)
   const [modalPaciente, setModalPaciente] = React.useState<PacienteTecnico | null>(null);
@@ -80,6 +83,9 @@ export default function TecnicoPatientsScreen() {
     setErroModal(null);
     try {
       await alterarMedicoPaciente(modalPaciente.id, medicoSelecionadoId);
+      // Marcar a notificação de "novo paciente pendente" como lida — best-effort,
+      // o trigger na BD trata de propagar para os outros técnicos.
+      marcarNotificacoesPacienteComoLidas(modalPaciente.id).catch(() => {});
       const medicoSelecionado = medicos.find((m) => m.id === medicoSelecionadoId);
       setPacientes((prev) =>
         prev.map((p) =>
