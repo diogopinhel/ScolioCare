@@ -1,5 +1,5 @@
 import React from 'react';
-import { Save, Building2, Lock, Plug, Wrench, Loader2 } from 'lucide-react';
+import { Save, Building2, Lock, Wrench, Loader2 } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
 import { useTranslation } from 'react-i18next';
 import { getSystemSettings, saveSystemSettings } from '../../../data/repository/admin';
@@ -100,16 +100,6 @@ export default function AdminSettingsScreen() {
             ))}
           </div>
         </div>
-      </Section>
-
-      {/* Integrações */}
-      <Section icon={Plug} title={t('admin.integrations')}>
-        <Grid2>
-          <Field label="DICOM server URL" value="dicom://pacs.chuln.pt:11112" disabled />
-          <Field label="HIS endpoint"     value="https://his.chuln.pt/api/v3"  disabled />
-          <Field label="RIS endpoint"     value="https://ris.chuln.pt/api/v2"  disabled />
-          <Field label="Notificações (SMTP)" value="smtp.chuln.pt:587"         disabled />
-        </Grid2>
       </Section>
 
       {/* Manutenção */}
