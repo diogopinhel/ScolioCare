@@ -565,16 +565,10 @@ export default function ExamViewerScreen() {
                     disabled={aAnalisar}
                   />
 
-                  {/* Descrição + estado do servidor */}
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                      {(() => {
-                        const desc = modelosDisponiveis.find((m) => m.id === modeloSelecionadoId)?.descricao;
-                        return desc ? t(desc) : '';
-                      })()}
-                    </p>
+                  {/* Estado do servidor */}
+                  <div className="flex items-center justify-end">
                     <span
-                      className="inline-flex items-center gap-1 flex-shrink-0"
+                      className="inline-flex items-center gap-1"
                       style={{ fontSize: 'var(--text-caption)' }}
                     >
                       <span
@@ -791,9 +785,6 @@ export default function ExamViewerScreen() {
                 </span>
                 <StatusBadge status={estadoParaBadge(estudo.estado)} />
               </div>
-              <p className="text-[var(--scolio-text-secondary)] mt-2" style={{ fontSize: 'var(--text-caption)' }}>
-                {t('examViewer.modelVersion')} {resultado?.versaoModelo ?? '—'}
-              </p>
             </div>
           </section>
 
