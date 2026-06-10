@@ -6,7 +6,6 @@ import {
   ScrollText,
   Settings,
   Cpu,
-  ShieldCheck,
   ChevronRight,
   LogOut,
 } from 'lucide-react';
@@ -34,7 +33,6 @@ export default function AdminLayout() {
     '/admin-panel/audit': t('admin.auditTitle'),
     '/admin-panel/settings': t('admin.settingsTitle'),
     '/admin-panel/ai': t('admin.aiTitle'),
-    '/admin-panel/compliance': t('admin.complianceTitle'),
     '/admin-panel/ui-audit': 'Auditoria UI/UX',
   };
 
@@ -129,7 +127,6 @@ export default function AdminLayout() {
           <ul className="space-y-1 mb-6">
             {navItem('/admin-panel/settings', Settings, t('nav.settings'))}
             {navItem('/admin-panel/ai', Cpu, t('nav.aiData'))}
-            {navItem('/admin-panel/compliance', ShieldCheck, t('nav.compliance'))}
           </ul>
         </nav>
 

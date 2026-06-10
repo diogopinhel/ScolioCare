@@ -144,7 +144,6 @@ export default function AdminDashboardScreen() {
             { label: t('dashboard.shortcutUsers'), path: '/admin-panel/users' },
             { label: t('dashboard.shortcutAudit'), path: '/admin-panel/audit' },
             { label: t('dashboard.shortcutAIConfig'), path: '/admin-panel/ai' },
-            { label: t('dashboard.shortcutRGPD'), path: '/admin-panel/compliance' },
           ].map((s) => (
             <button
               key={s.path}

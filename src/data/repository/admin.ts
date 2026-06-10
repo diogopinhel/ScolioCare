@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { registarAcao } from './audit';
-import type { AuditLogEntry, UtilizadorAdmin, UtilizadorAdminCompleto, MetricasDashboardAdmin, SystemSettings, RgpdPedido, EstadoRgpdPedido } from '../types';
+import type { AuditLogEntry, UtilizadorAdmin, UtilizadorAdminCompleto, MetricasDashboardAdmin, SystemSettings } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════
 // Dashboard Admin
@@ -370,54 +370,3 @@ export async function saveSystemSettings(s: SystemSettings): Promise<void> {
   registarAcao('EDITAR_SETTINGS', 'system_settings', null);
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// RGPD Pedidos
-// ═══════════════════════════════════════════════════════════════════
-
-export async function getRgpdPedidos(estado?: EstadoRgpdPedido): Promise<RgpdPedido[]> {
-  let query = supabase
-    .from('rgpd_pedidos')
-    .select(`id, paciente_id, tipo, estado, descricao, notas_admin, tratado_por,
-             data_pedido, data_resolucao,
-             utilizadores!rgpd_pedidos_paciente_id_fkey(nome_completo)`)
-    .order('data_pedido', { ascending: false });
-
-  if (estado) query = query.eq('estado', estado);
-
-  const { data, error } = await query;
-  if (error || !data) return [];
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data as any[]).map((r) => ({
-    id: r.id as string,
-    pacienteId: r.paciente_id as string,
-    pacienteNome: (r.utilizadores?.nome_completo ?? '—') as string,
-    tipo: r.tipo as RgpdPedido['tipo'],
-    estado: r.estado as RgpdPedido['estado'],
-    descricao: r.descricao as string | null,
-    notasAdmin: r.notas_admin as string | null,
-    tratadoPor: r.tratado_por as string | null,
-    dataPedido: r.data_pedido as string,
-    dataResolucao: r.data_resolucao as string | null,
-    prazo: new Date(new Date(r.data_pedido).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  }));
-}
-
-export async function atualizarRgpdPedido(
-  id: string,
-  estado: EstadoRgpdPedido,
-  notasAdmin?: string,
-): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  const update: Record<string, unknown> = {
-    estado,
-    tratado_por: user?.id ?? null,
-    notas_admin: notasAdmin ?? null,
-  };
-  if (estado === 'CONCLUIDO' || estado === 'REJEITADO') {
-    update.data_resolucao = new Date().toISOString();
-  }
-  const { error } = await supabase.from('rgpd_pedidos').update(update).eq('id', id);
-  if (error) throw error;
-  registarAcao('ATUALIZAR_PEDIDO_RGPD', 'rgpd_pedidos', id);
-}

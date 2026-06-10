@@ -474,25 +474,6 @@ export interface SystemSettings {
   backupRetencao: number;
 }
 
-// ─── RGPD Pedidos ────────────────────────────────────────────────────────────
-
-export type TipoRgpdPedido = 'ACESSO' | 'APAGAMENTO' | 'PORTABILIDADE' | 'RETIFICACAO';
-export type EstadoRgpdPedido = 'PENDENTE' | 'EM_ANALISE' | 'CONCLUIDO' | 'REJEITADO';
-
-export interface RgpdPedido {
-  id: string;
-  pacienteId: string;
-  pacienteNome: string;
-  tipo: TipoRgpdPedido;
-  estado: EstadoRgpdPedido;
-  descricao: string | null;
-  notasAdmin: string | null;
-  tratadoPor: string | null;
-  dataPedido: string;
-  dataResolucao: string | null;
-  prazo: string; // dataPedido + 30 dias (calculado)
-}
-
 /** Estudo com todas as relações necessárias para o ExamViewerScreen */
 export interface EstudoCompleto {
   id: string;

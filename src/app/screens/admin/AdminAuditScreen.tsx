@@ -19,7 +19,7 @@ function categoriaDaTipoAcao(tipoAcao: string): string {
   if (t === 'LOGIN' || t === 'LOGOUT') return 'AUTH';
   if (t.includes('GLASS_BREAK')) return 'GLASSBREAK';
   if (t.startsWith('EXPORTAR')) return 'EXPORT';
-  if (t.includes('SETTINGS') || t.includes('CONFIG') || t.includes('RGPD')) return 'CONFIG';
+  if (t.includes('SETTINGS') || t.includes('CONFIG')) return 'CONFIG';
   if (t.includes('UTILIZADOR') || t.includes('PACIENTE')) return 'USUARIO';
   if (t.includes('ESTUDO') || t.includes('EXAME') || t.includes('RELATORIO')) return 'ESTUDO';
   return 'ESTUDO';

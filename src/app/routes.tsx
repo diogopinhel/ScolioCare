@@ -33,7 +33,6 @@ import AdminUsersScreen from "./screens/admin/AdminUsersScreen";
 import AdminAuditScreen from "./screens/admin/AdminAuditScreen";
 import AdminSettingsScreen from "./screens/admin/AdminSettingsScreen";
 import AdminAIScreen from "./screens/admin/AdminAIScreen";
-import AdminComplianceScreen from "./screens/admin/AdminComplianceScreen";
 
 // Shared
 import UIAuditScreen from "./screens/shared/UIAuditScreen";
@@ -104,7 +103,6 @@ export const router = createBrowserRouter([
       { path: "audit", Component: AdminAuditScreen },
       { path: "settings", Component: AdminSettingsScreen },
       { path: "ai", Component: AdminAIScreen },
-      { path: "compliance", Component: AdminComplianceScreen },
       { path: "ui-audit", Component: UIAuditScreen },
       { path: "*", Component: Error404Screen },
     ],
