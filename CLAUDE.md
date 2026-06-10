@@ -47,10 +47,10 @@ All Supabase queries live in `src/data/repository/`:
 | File | Responsibility |
 |------|---------------|
 | `auth.ts` | login, logout, session subscription, `ultimo_login` update, audit log on login |
-| `estudos.ts` | dashboard KPIs, pending exams, weekly chart, exam history, AI validation, comparison |
-| `pacientes.ts` | patient list, detail, notes, search, `getMedicos` (via RPC), `reatribuirMedico` |
+| `estudos.ts` | dashboard KPIs, pending exams, weekly chart, exam history, AI validation, comparison, audit log on validate/correct/archive/send |
+| `pacientes.ts` | patient list, detail, notes, search, `getMedicos` (via RPC), `alterarMedicoPaciente`, `atualizarPaciente` |
 | `tecnico.ts` | technician queue, exam upload, `criarEstudo`, `uploadImagemEstudo`, `getMedicoResponsavelDoPaciente` (via RPC) |
-| `admin.ts` | admin KPIs, audit log, user management, `getUsoPorPerfil` (via RPC), `getUtilizadorCompleto`, `editarUtilizadorAdmin` |
+| `admin.ts` | admin KPIs, audit log, user management, `getUsoPorPerfil` (via RPC), `getUtilizadorCompleto`, `editarUtilizadorAdmin`, RGPD requests, system settings — all operations audit-logged via `registarAcao` |
 | `audit.ts` | `registarAcao()` fire-and-forget helper — calls `registar_acao` RPC |
 | `wellness.ts` | patient wellness log entries |
 
@@ -60,12 +60,13 @@ Types are in `src/data/types.ts` (snake_case DB → camelCase TS). `UtilizadorAu
 
 | Function | Caller | What it does |
 |----------|--------|--------------|
-| `criar-paciente` | TECNICO, ADMIN | Creates auth user + `utilizadores` row as PACIENTE + `paciente_medico` association. Logs to `audit_log`. |
-| `atualizar-paciente` | MEDICO (associado), ADMIN | Updates editable patient fields. MEDICO restricted to own patients. Logs to `audit_log`. |
+| `atualizar-paciente` | TECNICO, ADMIN | Updates editable patient fields. Logs to `audit_log`. |
 | `criar-utilizador` | ADMIN | Creates auth user + `utilizadores` row as MEDICO, TECNICO or ADMIN. Logs to `audit_log`. |
-| `reatribuir-medico` | TECNICO, ADMIN | Closes current `paciente_medico` association, inserts new one (history preserved). Logs to `audit_log`. |
+| `alterar-medico-paciente` | TECNICO, ADMIN | Closes current `paciente_medico` association, inserts new one (history preserved), sets `conta_ativada=true`. Idempotent if the same doctor is already assigned and the account is inactive. Logs to `audit_log`. |
 
 Deploy: Supabase Dashboard → Edge Functions → Open Editor (paste file contents).
+
+Patient creation: PACIENTE users self-register via the mobile app (React Native) with `conta_ativada=false`. The technician then assigns a doctor (via `alterar-medico-paciente`), which flips `conta_ativada=true` and unlocks access in the mobile app. There is no edge function for creating patients from the web app.
 
 ### Supabase DB functions (SECURITY DEFINER — bypass RLS)
 
@@ -73,10 +74,12 @@ Deploy: Supabase Dashboard → Edge Functions → Open Editor (paste file conten
 |----------|-----------|---------|
 | `get_medicos_ativos()` | client (TECNICO, MEDICO) | Lists active MEDICO users — bypasses RLS that blocks TECNICO from reading other profiles |
 | `get_medico_responsavel(p_paciente_id)` | client (TECNICO, ADMIN) | Returns current `medico_id` from `paciente_medico` — bypasses RLS |
+| `get_medicos_dos_pacientes(p_ids[])` | client (TECNICO) | Bulk version of `get_medico_responsavel` — returns `{paciente_id, medico_id, medico_nome}` for a list of patient IDs. Source in `supabase/migrations/20260610_rpc_get_medicos_dos_pacientes.sql` |
 | `get_meu_perfil()` | RLS policies | Returns `perfil` of current user — used in INSERT policies to avoid recursive RLS |
 | `registar_ultimo_login()` | client | Updates `utilizadores.ultimo_login = NOW()` for current user |
 | `registar_acao(tipo, entidade, entidade_id)` | client | Inserts into `audit_log` with user snapshot from `utilizadores` |
 | `get_uso_semanal()` | client (ADMIN) | Aggregates `audit_log` by day + profile for the last 7 days — powers admin dashboard chart |
+| `notify_tecnicos_new_patient()` | trigger on `utilizadores` insert | Notifies all active TECNICO users when a new PACIENTE row is inserted with `conta_ativada=false`. Source in `supabase/migrations/20260609_trigger_notificacao_novo_paciente.sql` |
 
 ### Design system
 
@@ -112,12 +115,22 @@ Key events recorded in `audit_log`:
 | Event | `tipo_acao` | Origin |
 |-------|-------------|--------|
 | Login | `LOGIN` | `auth.ts` |
-| Create patient | `CRIAR_PACIENTE` | Edge Function |
-| Create user | `CRIAR_UTILIZADOR` | Edge Function |
-| Edit patient | `EDITAR_PACIENTE` | Edge Function |
-| Reassign doctor | `REATRIBUIR_MEDICO` | Edge Function |
+| Create user (med/tec/admin) | `CRIAR_UTILIZADOR` | Edge Function `criar-utilizador` |
+| Edit patient | `EDITAR_PACIENTE` | Edge Function `atualizar-paciente` |
+| Edit other user | `EDITAR_UTILIZADOR` | `admin.ts editarUtilizadorAdmin` |
+| Activate / deactivate account | `ATIVAR_UTILIZADOR` / `DESATIVAR_UTILIZADOR` | `admin.ts toggleAtivoUtilizador` |
+| Block / unblock account | `BLOQUEAR_UTILIZADOR` / `DESBLOQUEAR_UTILIZADOR` | `admin.ts toggleBloqueioUtilizador` |
+| Assign / reassign doctor | `ALTERAR_MEDICO_PACIENTE` | Edge Function `alterar-medico-paciente` |
 | Upload exam (tech) | `CRIAR_ESTUDO` | `ExamUploadScreen` |
 | Upload exam (doctor) | `CRIAR_ESTUDO` | `ExamUploadMedicoScreen` |
+| Validate exam (accept AI) | `VALIDAR_EXAME` | `estudos.ts confirmarMetricasIA` |
+| Correct AI metrics | `CORRIGIR_EXAME` | `estudos.ts corrigirMetricasIA` |
+| Archive exam | `ARQUIVAR_EXAME` | `estudos.ts arquivarEstudoMedico` |
+| Send report to patient | `ENVIAR_RELATORIO` | `estudos.ts enviarEstudoAoPaciente` |
+| Save system settings | `EDITAR_SETTINGS` | `admin.ts saveSystemSettings` |
+| Update RGPD request | `ATUALIZAR_PEDIDO_RGPD` | `admin.ts atualizarRgpdPedido` |
+| Export audit CSV | `EXPORTAR_AUDITORIA` | `AdminAuditScreen` |
+| Export RGPD CSV | `EXPORTAR_RGPD` | `AdminComplianceScreen` |
 | Glass-break | `GLASS_BREAK` | `GlassBreakScreen` |
 
 CSV export uses UTF-8 BOM (`﻿`) for correct rendering of Portuguese characters in Excel.
@@ -143,29 +156,27 @@ CSV export uses UTF-8 BOM (`﻿`) for correct rendering of Portuguese characters
 | TecnicoDashboardScreen | `/tecnico` | ✅ Real KPIs, queue, recent activity |
 | ExamUploadScreen | `/tecnico/upload` | ✅ Real upload to Storage + creates study |
 | ExamQueueScreen | `/tecnico/queue` | ✅ Real data, archive, filters |
-| TecnicoPatientsScreen | `/tecnico/patients` | ✅ Real list, "Mudar médico" modal per patient |
-| TecnicoNewPatientScreen | `/tecnico/patients/new` | ✅ Edge Function `criar-paciente`; all fields incl. contacto, morada, cartao_cidadao |
+| TecnicoPatientsScreen | `/tecnico/patients` | ✅ Real list with Todos/Pendentes tabs; "Atribuir médico" modal for pending |
+| PatientEditScreen | `/tecnico/patients/:id/edit` | ✅ Edit patient data + (re)assign doctor |
 
 ### Admin (`/admin-panel`)
 | Screen | Route | State |
 |--------|-------|-------|
 | AdminDashboardScreen | `/admin-panel` | ✅ Real KPIs + usage chart from `audit_log` |
-| AdminAuditScreen | `/admin-panel/audit` | ✅ Real `audit_log` entries, CSV export (UTF-8 BOM) |
-| AdminUsersScreen | `/admin-panel/users` | ✅ Toggle active/blocked, edit user data, create user, change patient's doctor |
+| AdminAuditScreen | `/admin-panel/audit` | ✅ Real `audit_log` entries (200 latest), categorized, CSV export (UTF-8 BOM). Search is client-side over the loaded 200. |
+| AdminUsersScreen | `/admin-panel/users` | ✅ Toggle active/blocked, edit user data, create user, change patient's doctor — all audited |
 | AdminAIScreen | `/admin-panel/ai` | ⚠️ ML metrics show N/D — requires ML pipeline integration |
-| AdminComplianceScreen | `/admin-panel/compliance` | ⚠️ Empty state — needs `rgpd_pedidos` table |
-| AdminSettingsScreen | `/admin-panel/settings` | ⚠️ Local form only — needs `system_settings` table |
+| AdminComplianceScreen | `/admin-panel/compliance` | Reads from `rgpd_pedidos` (empty by default); KPIs by tipo (Art. 15 / Art. 17) |
+| AdminSettingsScreen | `/admin-panel/settings` | Persists to `system_settings` table via upsert by `chave` |
 
 ## Known remaining work
 
-### Requires new DB tables
-- `AdminSettingsScreen` — persistence needs `system_settings` table
-- `AdminComplianceScreen` — GDPR requests need `rgpd_pedidos` table
-- `AdminAIScreen` — individual consents need `consentimentos_ia` table; ML metrics need external pipeline
+### Requires new DB tables (or external pipelines)
+- `AdminAIScreen` — individual consents need `consentimentos_ia` table; ML metrics depend on `resultados` being populated by an external pipeline
 
 ### Polish
 - `calcularIdade()` in several screens returns `"X anos"` hardcoded in PT — not using i18n
-- `NewPatientScreen` at `/src/app/screens/medico/` is an orphan file (no route) — can be deleted
+- `AdminAuditScreen` search is client-side over the latest 200 events — older entries aren't searchable. `getAuditLog` accepts a `pesquisa` parameter that isn't currently wired to the UI.
 
 ### Future
 - Real push notifications (bell icon exists but badge is decorative — no count shown)

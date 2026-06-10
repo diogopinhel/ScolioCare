@@ -331,19 +331,7 @@ export interface EstudoComparacao {
   cobbMeasurement: CobbMeasurementData | null;
 }
 
-// ─── Criação de paciente ──────────────────────────────────────────────────
-
-export interface DadosCriacaoPaciente {
-  nomeCompleto: string;
-  email: string;
-  dataNascimento: string;
-  genero: string;
-  numeroUtente: string;
-  medicoId: string;
-  contacto?: string;
-  morada?: string;
-  cartaoCidadao?: string;
-}
+// ─── Médicos ──────────────────────────────────────────────────────────────
 
 export interface MedicoResumo {
   id: string;

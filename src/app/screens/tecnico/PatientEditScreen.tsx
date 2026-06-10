@@ -2,8 +2,8 @@ import React from 'react';
 import { ArrowLeft, Loader2, User, Phone, MapPin, Calendar, CreditCard, UserCog } from 'lucide-react';
 import { Button, Input, Select, Toast } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
-import { getPaciente, atualizarPaciente, getMedicos } from '../../../data/repository/pacientes';
-import { getMedicoResponsavelDoPaciente, alterarMedicoPaciente } from '../../../data/repository/tecnico';
+import { getPaciente, atualizarPaciente, getMedicos, alterarMedicoPaciente } from '../../../data/repository/pacientes';
+import { getMedicoResponsavelDoPaciente } from '../../../data/repository/tecnico';
 import type { PacienteDetalhe, MedicoResumo } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
 

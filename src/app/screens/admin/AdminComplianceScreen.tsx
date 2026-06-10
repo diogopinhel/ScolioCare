@@ -4,6 +4,7 @@ import { Button, Modal, Toast } from '../../components/scolio';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
 import { getRgpdPedidos, atualizarRgpdPedido } from '../../../data/repository/admin';
+import { registarAcao } from '../../../data/repository/audit';
 import type { RgpdPedido, EstadoRgpdPedido } from '../../../data/types';
 
 const TIPO_KEY: Record<string, string> = {
@@ -72,6 +73,7 @@ export default function AdminComplianceScreen() {
     a.download = `compliance_rgpd_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    registarAcao('EXPORTAR_RGPD', 'rgpd_pedidos', null);
   };
 
   const pedidosFiltrados = pedidos.filter((p) => {
@@ -81,8 +83,10 @@ export default function AdminComplianceScreen() {
     return p.dataPedido >= limite;
   });
 
-  const pendentes   = pedidos.filter((p) => p.estado === 'PENDENTE').length;
-  const emAnalise   = pedidos.filter((p) => p.estado === 'EM_ANALISE').length;
+  const pedidosAcesso     = pedidos.filter((p) => p.tipo === 'ACESSO').length;
+  const pedidosApagamento = pedidos.filter((p) => p.tipo === 'APAGAMENTO').length;
+  const acessoPendentes     = pedidos.filter((p) => p.tipo === 'ACESSO' && ['PENDENTE', 'EM_ANALISE'].includes(p.estado)).length;
+  const apagamentoPendentes = pedidos.filter((p) => p.tipo === 'APAGAMENTO' && ['PENDENTE', 'EM_ANALISE'].includes(p.estado)).length;
   const aExpirar    = pedidos.filter((p) => ['PENDENTE', 'EM_ANALISE'].includes(p.estado) && diasRestantes(p.prazo) <= 7).length;
   const conformidade = pedidos.length === 0 ? '—' : `${Math.round((pedidos.filter((p) => p.estado === 'CONCLUIDO').length / pedidos.length) * 100)}%`;
 
@@ -115,10 +119,10 @@ export default function AdminComplianceScreen() {
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-6">
-        <KPI icon={FileSearch}    color="var(--scolio-primary-blue)"  bg="var(--scolio-light-blue-surface)" label={t('admin.artAccess')}          value={String(pendentes)}    sub={t('admin.inProgress')} />
-        <KPI icon={Trash2}        color="var(--scolio-danger-coral)"  bg="var(--scolio-danger-surface)"     label={t('admin.artErasure')}         value={String(emAnalise)}    sub={t('admin.awaitingEval')} />
-        <KPI icon={ShieldCheck}   color="var(--scolio-success-green)" bg="var(--scolio-success-surface)"    label={t('admin.conformity')}         value={conformidade}         sub={pedidos.length === 0 ? t('admin.noSufficientData') : t('admin.compliancePedidosConcluidos')} />
-        <KPI icon={AlertTriangle} color="var(--scolio-warning-amber)" bg="var(--scolio-warning-surface)"   label={t('admin.expiringDeadlines')}  value={String(aExpirar)}     sub={t('admin.next7days')} />
+        <KPI icon={FileSearch}    color="var(--scolio-primary-blue)"  bg="var(--scolio-light-blue-surface)" label={t('admin.artAccess')}          value={String(pedidosAcesso)}      sub={t('admin.inProgress', { count: acessoPendentes })} />
+        <KPI icon={Trash2}        color="var(--scolio-danger-coral)"  bg="var(--scolio-danger-surface)"     label={t('admin.artErasure')}         value={String(pedidosApagamento)}  sub={t('admin.awaitingEval', { count: apagamentoPendentes })} />
+        <KPI icon={ShieldCheck}   color="var(--scolio-success-green)" bg="var(--scolio-success-surface)"    label={t('admin.conformity')}         value={conformidade}               sub={pedidos.length === 0 ? t('admin.noSufficientData') : t('admin.compliancePedidosConcluidos')} />
+        <KPI icon={AlertTriangle} color="var(--scolio-warning-amber)" bg="var(--scolio-warning-surface)"   label={t('admin.expiringDeadlines')}  value={String(aExpirar)}           sub={t('admin.next7days')} />
       </div>
 
       {/* Tabela de pedidos */}

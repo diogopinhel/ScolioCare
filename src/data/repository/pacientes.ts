@@ -4,7 +4,6 @@ import type {
   PacienteListagem,
   PacienteDetalhe,
   EstadoEstudo,
-  DadosCriacaoPaciente,
   DadosAtualizacaoPaciente,
   MedicoResumo,
   NotaPaciente,
@@ -244,22 +243,20 @@ export async function atualizarPaciente(dados: DadosAtualizacaoPaciente): Promis
   if (data?.erro) throw new Error(data.erro as string);
 }
 
-export async function reatribuirMedico(pacienteId: string, novoMedicoId: string): Promise<void> {
+/**
+ * Atribui (ou re-atribui) o médico responsável de um paciente.
+ * Invoca a Edge Function `alterar-medico-paciente` que:
+ *  - encerra a associação ativa anterior (se existir)
+ *  - cria nova linha em paciente_medico
+ *  - ativa conta_ativada=true se ainda não estava
+ *  - regista em audit_log
+ */
+export async function alterarMedicoPaciente(pacienteId: string, novoMedicoId: string): Promise<void> {
   const { data, error } = await supabase.functions.invoke('alterar-medico-paciente', {
     body: { pacienteId, novoMedicoId },
   });
-  if (error) throw new Error(error.message);
-  if (data?.erro) throw new Error(data.erro as string);
-}
-
-export async function criarPaciente(dados: DadosCriacaoPaciente): Promise<string> {
-  const { data, error } = await supabase.functions.invoke('criar-paciente', {
-    body: dados,
-  });
-
   if (error) throw new Error(error.message ?? 'Erro ao invocar a Edge Function');
   if (data?.erro) throw new Error(data.erro as string);
-  return data.id as string;
 }
 
 export async function getPacientesAssociados(): Promise<PacienteResumo[]> {

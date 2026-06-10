@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { registarAcao } from './audit';
 import type { AuditLogEntry, UtilizadorAdmin, UtilizadorAdminCompleto, MetricasDashboardAdmin, SystemSettings, RgpdPedido, EstadoRgpdPedido } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -108,6 +109,7 @@ export async function toggleAtivoUtilizador(id: string, ativo: boolean): Promise
     .update({ ativo })
     .eq('id', id);
   if (error) throw error;
+  registarAcao(ativo ? 'ATIVAR_UTILIZADOR' : 'DESATIVAR_UTILIZADOR', 'utilizadores', id);
 }
 
 export async function getUtilizadorCompleto(id: string): Promise<UtilizadorAdminCompleto | null> {
@@ -185,6 +187,11 @@ export async function editarUtilizadorAdmin(id: string, perfil: string, campos: 
 
   const { error } = await supabase.from('utilizadores').update(dados).eq('id', id);
   if (error) throw error;
+  // Edição de PACIENTE já é logada pela Edge Function atualizar-paciente,
+  // por isso só registamos para MEDICO/TECNICO/ADMIN.
+  if (perfil !== 'PACIENTE') {
+    registarAcao('EDITAR_UTILIZADOR', 'utilizadores', id);
+  }
 }
 
 export async function toggleBloqueioUtilizador(id: string, contaBloqueada: boolean): Promise<void> {
@@ -193,6 +200,7 @@ export async function toggleBloqueioUtilizador(id: string, contaBloqueada: boole
     .update({ conta_bloqueada: contaBloqueada })
     .eq('id', id);
   if (error) throw error;
+  registarAcao(contaBloqueada ? 'BLOQUEAR_UTILIZADOR' : 'DESBLOQUEAR_UTILIZADOR', 'utilizadores', id);
 }
 
 export interface UsoSemanalDia {
@@ -359,6 +367,7 @@ export async function saveSystemSettings(s: SystemSettings): Promise<void> {
     .from('system_settings')
     .upsert(rows, { onConflict: 'chave' });
   if (error) throw error;
+  registarAcao('EDITAR_SETTINGS', 'system_settings', null);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -410,4 +419,5 @@ export async function atualizarRgpdPedido(
   }
   const { error } = await supabase.from('rgpd_pedidos').update(update).eq('id', id);
   if (error) throw error;
+  registarAcao('ATUALIZAR_PEDIDO_RGPD', 'rgpd_pedidos', id);
 }

@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { registarAcao } from './audit';
 import type {
   EstudoResumo,
   MetricasDashboardMedico,
@@ -525,6 +526,8 @@ export async function confirmarMetricasIA(
     estadoAtual, 'VALIDATED', 'Métricas IA aceites',
   );
 
+  registarAcao('VALIDAR_EXAME', 'estudos', estudoId);
+
   notificarPaciente(
     pacienteId, 'EXAME',
     'Exame analisado',
@@ -574,6 +577,8 @@ export async function corrigirMetricasIA(
     estadoAtual, 'VALIDATED',
     `Métricas corrigidas: ângulo ${anguloCorrigido}°${vertebraCorrigida ? `, vértebra ${vertebraCorrigida}` : ''}`,
   );
+
+  registarAcao('CORRIGIR_EXAME', 'estudos', estudoId);
 
   notificarPaciente(
     pacienteId, 'EXAME',
@@ -667,6 +672,8 @@ export async function enviarEstudoAoPaciente(estudoId: string, pacienteId: strin
     .eq('id', estudoId);
   if (error) throw error;
 
+  registarAcao('ENVIAR_RELATORIO', 'estudos', estudoId);
+
   // Notificar o paciente que o relatório está disponível (fire-and-forget)
   notificarPaciente(
     pacienteId,
@@ -707,4 +714,6 @@ export async function arquivarEstudoMedico(
     estudoId, utilizadorId, utilizadorNome, utilizadorPerfil,
     estadoAtual, 'ARCHIVED',
   );
+
+  registarAcao('ARQUIVAR_EXAME', 'estudos', estudoId);
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, Download, ChevronDown } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
 import { getAuditLog } from '../../../data/repository/admin';
+import { registarAcao } from '../../../data/repository/audit';
 import type { AuditLogEntry } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
@@ -14,17 +15,20 @@ function formatarDataHora(iso: string, locale: string): string {
 }
 
 function categoriaDaTipoAcao(tipoAcao: string): string {
-  const t = tipoAcao.toLowerCase();
-  if (t.includes('login') || t.includes('logout') || t.includes('auth')) return 'AUTH';
-  if (t.includes('glass') || t.includes('break')) return 'GLASSBREAK';
-  if (t.includes('export')) return 'EXPORT';
-  if (t.includes('config')) return 'CONFIG';
+  const t = tipoAcao.toUpperCase();
+  if (t === 'LOGIN' || t === 'LOGOUT') return 'AUTH';
+  if (t.includes('GLASS_BREAK')) return 'GLASSBREAK';
+  if (t.startsWith('EXPORTAR')) return 'EXPORT';
+  if (t.includes('SETTINGS') || t.includes('CONFIG') || t.includes('RGPD')) return 'CONFIG';
+  if (t.includes('UTILIZADOR') || t.includes('PACIENTE')) return 'USUARIO';
+  if (t.includes('ESTUDO') || t.includes('EXAME') || t.includes('RELATORIO')) return 'ESTUDO';
   return 'ESTUDO';
 }
 
 function categoriaStyle(cat: string, t: (key: string) => string) {
   const map: Record<string, { label: string; bg: string; fg: string }> = {
     AUTH:       { label: t('admin.catAuth'),       bg: 'var(--scolio-light-blue-surface)', fg: 'var(--scolio-primary-blue)' },
+    USUARIO:    { label: t('admin.catUser'),       bg: 'var(--scolio-light-blue-surface)', fg: 'var(--scolio-primary-blue)' },
     ESTUDO:     { label: t('admin.catClinical'),   bg: 'var(--scolio-success-surface)',    fg: 'var(--scolio-success-green)' },
     GLASSBREAK: { label: t('admin.catGlassBreak'), bg: 'var(--scolio-danger-surface)',     fg: 'var(--scolio-danger-coral)' },
     CONFIG:     { label: t('admin.catConfig'),     bg: 'var(--scolio-warning-surface)',    fg: 'var(--scolio-warning-amber)' },
@@ -45,6 +49,7 @@ export default function AdminAuditScreen() {
   const CATEGORIAS = [
     { label: t('admin.filterAll'), value: 'all' },
     { label: t('admin.filterAuth'), value: 'AUTH' },
+    { label: t('admin.filterUser'), value: 'USUARIO' },
     { label: t('admin.filterClinical'), value: 'ESTUDO' },
     { label: t('admin.filterGlassBreak'), value: 'GLASSBREAK' },
     { label: t('admin.filterConfig'), value: 'CONFIG' },
@@ -99,6 +104,7 @@ export default function AdminAuditScreen() {
     a.download = `auditoria-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    registarAcao('EXPORTAR_AUDITORIA', 'audit_log', null);
     mostrarToast(t('admin.exportSuccess'));
   };
 

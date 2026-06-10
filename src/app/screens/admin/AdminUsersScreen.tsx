@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, CheckCircle, XCircle, Filter, UserPlus, Eye, EyeOff, Pencil, Loader2 } from 'lucide-react';
+import { Power, CheckCircle, XCircle, UserPlus, Eye, EyeOff, Pencil, Loader2 } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
 import {
   getUtilizadoresAdmin,
@@ -9,7 +9,8 @@ import {
   getUtilizadorCompleto,
   editarUtilizadorAdmin,
 } from '../../../data/repository/admin';
-import { getMedicos, reatribuirMedico } from '../../../data/repository/pacientes';
+import { getMedicos, alterarMedicoPaciente } from '../../../data/repository/pacientes';
+import { supabase } from '../../../lib/supabase';
 import type { DadosCriarUtilizador, CamposEdicaoUtilizador } from '../../../data/repository/admin';
 import type { UtilizadorAdmin, UtilizadorAdminCompleto, MedicoResumo } from '../../../data/types';
 import { useSearchParams } from 'react-router';
@@ -91,8 +92,7 @@ export default function AdminUsersScreen() {
         if (u.perfil === 'PACIENTE') {
           setMedicos(listaMedicos);
           // Carregar médico actual
-          const { data } = await (await import('../../../lib/supabase')).supabase
-            .rpc('get_medico_responsavel', { p_paciente_id: u.id });
+          const { data } = await supabase.rpc('get_medico_responsavel', { p_paciente_id: u.id });
           const medicoAtual = (data as string | null) ?? '';
           setMedicoIdOriginal(medicoAtual);
           setMedicoIdSelecionado(medicoAtual);
@@ -118,7 +118,7 @@ export default function AdminUsersScreen() {
       await editarUtilizadorAdmin(utilizadorEditar.id, utilizadorEditar.perfil, formEditar);
       // Reatribuir médico se mudou (só para PACIENTE)
       if (utilizadorEditar.perfil === 'PACIENTE' && medicoIdSelecionado && medicoIdSelecionado !== medicoIdOriginal) {
-        await reatribuirMedico(utilizadorEditar.id, medicoIdSelecionado);
+        await alterarMedicoPaciente(utilizadorEditar.id, medicoIdSelecionado);
       }
       setUtilizadores((prev) =>
         prev.map((u) => u.id === utilizadorEditar.id ? { ...u, nomeCompleto: formEditar.nomeCompleto } : u),
@@ -276,9 +276,6 @@ export default function AdminUsersScreen() {
             <option value="ativo">{t('common.active')}</option>
             <option value="inativo">{t('common.inactive')}</option>
           </select>
-          <Button variant="secondary">
-            <Filter className="w-4 h-4 mr-2 inline" />{t('common.apply')}
-          </Button>
         </div>
       </div>
 

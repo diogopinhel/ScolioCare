@@ -223,14 +223,6 @@ export async function getPacientesTecnico(): Promise<PacienteTecnico[]> {
   }));
 }
 
-export async function alterarMedicoPaciente(pacienteId: string, novoMedicoId: string): Promise<void> {
-  const { data, error } = await supabase.functions.invoke('alterar-medico-paciente', {
-    body: { pacienteId, novoMedicoId },
-  });
-  if (error) throw new Error(error.message ?? 'Erro ao invocar a Edge Function');
-  if (data?.erro) throw new Error(data.erro as string);
-}
-
 // ═══════════════════════════════════════════════════════════════════
 // Upload de exame
 // ═══════════════════════════════════════════════════════════════════
