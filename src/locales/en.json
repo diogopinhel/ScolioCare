@@ -243,7 +243,11 @@
     "newDoctorLabel": "New responsible doctor",
     "selectDoctorPlaceholder": "Select a doctor...",
     "changeDoctorSuccess": "Responsible doctor changed successfully.",
-    "changeDoctorError": "Error changing responsible doctor."
+    "changeDoctorError": "Error changing responsible doctor.",
+    "tabAll": "All",
+    "tabPending": "Pending",
+    "assignDoctor": "Assign doctor",
+    "assignDoctorTitle": "Assign responsible doctor"
   },
   "patientRecord": {
     "editData": "Edit data",
@@ -358,7 +362,10 @@
     "emailNote": "The mobile app email is not editable here. To change the email, contact the system administrator.",
     "saving": "Saving...",
     "successMessage": "Patient data updated successfully.",
-    "errorMessage": "Error updating data. Please try again."
+    "errorMessage": "Error updating data. Please try again.",
+    "responsibleDoctorSection": "Responsible doctor",
+    "currentDoctorLabel": "Current doctor",
+    "changeDoctorLabel": "Assign / change doctor"
   },
   "examCard": {
     "noPreview":       "No preview",

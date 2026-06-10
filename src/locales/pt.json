@@ -243,7 +243,11 @@
     "newDoctorLabel": "Novo médico responsável",
     "selectDoctorPlaceholder": "Selecionar médico...",
     "changeDoctorSuccess": "Médico responsável alterado com sucesso.",
-    "changeDoctorError": "Erro ao alterar o médico responsável."
+    "changeDoctorError": "Erro ao alterar o médico responsável.",
+    "tabAll": "Todos",
+    "tabPending": "Pendentes",
+    "assignDoctor": "Atribuir médico",
+    "assignDoctorTitle": "Atribuir médico responsável"
   },
   "patientRecord": {
     "editData": "Editar dados",
@@ -358,7 +362,10 @@
     "emailNote": "O email de acesso à aplicação móvel não é editável aqui. Para alteração de email, contacte o administrador do sistema.",
     "saving": "A guardar...",
     "successMessage": "Dados do paciente actualizados com sucesso.",
-    "errorMessage": "Erro ao actualizar dados. Tente novamente."
+    "errorMessage": "Erro ao actualizar dados. Tente novamente.",
+    "responsibleDoctorSection": "Médico responsável",
+    "currentDoctorLabel": "Médico atual",
+    "changeDoctorLabel": "Atribuir / alterar médico"
   },
   "examCard": {
     "noPreview":       "Sem pré-visualização",

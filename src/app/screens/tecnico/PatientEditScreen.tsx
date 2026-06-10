@@ -1,9 +1,10 @@
 import React from 'react';
-import { ArrowLeft, Loader2, User, Phone, MapPin, Calendar, CreditCard } from 'lucide-react';
-import { Button, Input, Toast } from '../../components/scolio';
+import { ArrowLeft, Loader2, User, Phone, MapPin, Calendar, CreditCard, UserCog } from 'lucide-react';
+import { Button, Input, Select, Toast } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
-import { getPaciente, atualizarPaciente } from '../../../data/repository/pacientes';
-import type { PacienteDetalhe } from '../../../data/types';
+import { getPaciente, atualizarPaciente, getMedicos } from '../../../data/repository/pacientes';
+import { getMedicoResponsavelDoPaciente, alterarMedicoPaciente } from '../../../data/repository/tecnico';
+import type { PacienteDetalhe, MedicoResumo } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
 
 export default function PatientEditScreen() {
@@ -26,28 +27,39 @@ export default function PatientEditScreen() {
     cartaoCidadao: '',
   });
 
+  // Estado do médico responsável
+  const [medicos, setMedicos] = React.useState<MedicoResumo[]>([]);
+  const [medicoAtualId, setMedicoAtualId] = React.useState<string | null>(null);
+  const [medicoSelecionadoId, setMedicoSelecionadoId] = React.useState('');
+
   const mostrarToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 5000);
   };
 
-  // Carregar dados actuais do paciente
   React.useEffect(() => {
     if (!id) { setACarregar(false); return; }
 
-    getPaciente(id).then((p) => {
-      if (p) {
-        setPacienteOriginal(p);
+    Promise.all([
+      getPaciente(id),
+      getMedicoResponsavelDoPaciente(id),
+      getMedicos(),
+    ]).then(([paciente, medicoId, listaMedicos]) => {
+      if (paciente) {
+        setPacienteOriginal(paciente);
         setFormData({
-          nomeCompleto: p.nomeCompleto ?? '',
-          dataNascimento: p.dataNascimento ?? '',
-          genero: p.genero ?? '',
-          numeroUtente: p.numeroUtente ?? '',
-          contacto: p.contacto ?? '',
-          morada: p.morada ?? '',
-          cartaoCidadao: p.cartaoCidadao ?? '',
+          nomeCompleto: paciente.nomeCompleto ?? '',
+          dataNascimento: paciente.dataNascimento ?? '',
+          genero: paciente.genero ?? '',
+          numeroUtente: paciente.numeroUtente ?? '',
+          contacto: paciente.contacto ?? '',
+          morada: paciente.morada ?? '',
+          cartaoCidadao: paciente.cartaoCidadao ?? '',
         });
       }
+      setMedicoAtualId(medicoId);
+      setMedicoSelecionadoId(medicoId ?? '');
+      setMedicos(listaMedicos);
     }).finally(() => setACarregar(false));
   }, [id]);
 
@@ -71,6 +83,12 @@ export default function PatientEditScreen() {
         morada: formData.morada,
         cartaoCidadao: formData.cartaoCidadao,
       });
+
+      // Atribuir/alterar médico apenas se mudou
+      if (medicoSelecionadoId && medicoSelecionadoId !== medicoAtualId) {
+        await alterarMedicoPaciente(id, medicoSelecionadoId);
+      }
+
       mostrarToast(t('patientEdit.successMessage'));
       setTimeout(() => navigate('/tecnico/patients'), 1500);
     } catch (err) {
@@ -81,6 +99,16 @@ export default function PatientEditScreen() {
       setASubmeter(false);
     }
   };
+
+  const opcoesSelect = [
+    { value: '', label: t('patients.selectDoctorPlaceholder') },
+    ...medicos.map((m) => ({
+      value: m.id,
+      label: m.especialidade ? `${m.nomeCompleto} — ${m.especialidade}` : m.nomeCompleto,
+    })),
+  ];
+
+  const medicoAtualNome = medicos.find((m) => m.id === medicoAtualId)?.nomeCompleto ?? null;
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (aCarregar) {
@@ -256,6 +284,36 @@ export default function PatientEditScreen() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Secção: Médico responsável */}
+        <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6 space-y-5">
+          <div className="flex items-center gap-3 pb-4 border-b border-[var(--scolio-border-light)]">
+            <div className="w-8 h-8 rounded-lg bg-[var(--scolio-light-blue-surface)] flex items-center justify-center">
+              <UserCog className="w-4 h-4 text-[var(--scolio-primary-blue)]" />
+            </div>
+            <h3 className="text-[var(--scolio-text-primary)]">{t('patientEdit.responsibleDoctorSection')}</h3>
+          </div>
+
+          {/* Médico atual (só aparece se já houver um) */}
+          {medicoAtualId && (
+            <div>
+              <p className="text-[var(--scolio-text-secondary)] mb-1" style={{ fontSize: 'var(--text-caption)' }}>
+                {t('patientEdit.currentDoctorLabel')}
+              </p>
+              <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                {medicoAtualNome ?? '—'}
+              </p>
+            </div>
+          )}
+
+          <Select
+            label={t('patientEdit.changeDoctorLabel')}
+            value={medicoSelecionadoId}
+            onChange={(e) => setMedicoSelecionadoId(e.target.value)}
+            options={opcoesSelect}
+            disabled={aSubmeter}
+          />
         </div>
 
         {/* Nota sobre campos não editáveis */}

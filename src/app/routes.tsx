@@ -25,7 +25,6 @@ import TecnicoDashboardScreen from "./screens/tecnico/TecnicoDashboardScreen";
 import ExamUploadScreen from "./screens/tecnico/ExamUploadScreen";
 import ExamQueueScreen from "./screens/tecnico/ExamQueueScreen";
 import TecnicoPatientsScreen from "./screens/tecnico/TecnicoPatientsScreen";
-import TecnicoNewPatientScreen from "./screens/tecnico/TecnicoNewPatientScreen";
 import PatientEditScreen from "./screens/tecnico/PatientEditScreen";
 
 // Admin
@@ -86,7 +85,6 @@ export const router = createBrowserRouter([
       { path: "upload", Component: ExamUploadScreen },
       { path: "queue", Component: ExamQueueScreen },
       { path: "patients", Component: TecnicoPatientsScreen },
-      { path: "patients/new", Component: TecnicoNewPatientScreen },
       { path: "patients/:id/edit", Component: PatientEditScreen },
       { path: "*", Component: Error404Screen },
     ],

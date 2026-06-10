@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Search, UserPlus, UserCog, Edit } from 'lucide-react';
-import { Button, Modal, Select } from '../../components/scolio';
+import { Search, Edit, Plus } from 'lucide-react';
+import { Modal, Select } from '../../components/scolio';
 import { getPacientesTecnico, alterarMedicoPaciente } from '../../../data/repository/tecnico';
 import { getMedicos } from '../../../data/repository/pacientes';
 import type { PacienteTecnico, MedicoResumo } from '../../../data/types';
@@ -31,10 +31,6 @@ function calcularIdade(dataNascimento: string | null, ageLabel: (age: number) =>
   return ageLabel(idade);
 }
 
-interface EstadoModal {
-  paciente: PacienteTecnico;
-}
-
 export default function TecnicoPatientsScreen() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -43,14 +39,14 @@ export default function TecnicoPatientsScreen() {
   const [pacientes, setPacientes] = React.useState<PacienteTecnico[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
   const [search, setSearch] = React.useState(() => searchParams.get('q') ?? '');
+  const [tabAtiva, setTabAtiva] = React.useState<'todos' | 'pendentes'>('todos');
 
-  // Estado do modal de alteração de médico
-  const [modal, setModal] = React.useState<EstadoModal | null>(null);
+  // Modal de atribuição de médico (apenas para pendentes)
+  const [modalPaciente, setModalPaciente] = React.useState<PacienteTecnico | null>(null);
   const [medicos, setMedicos] = React.useState<MedicoResumo[]>([]);
-  const [novoMedicoId, setNovoMedicoId] = React.useState('');
+  const [medicoSelecionadoId, setMedicoSelecionadoId] = React.useState('');
   const [aGuardar, setAGuardar] = React.useState(false);
   const [erroModal, setErroModal] = React.useState<string | null>(null);
-  const [sucessoId, setSucessoId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     getPacientesTecnico()
@@ -58,44 +54,40 @@ export default function TecnicoPatientsScreen() {
       .finally(() => setACarregar(false));
   }, []);
 
-  const filtrados = pacientes.filter(
-    (p) =>
-      p.nomeCompleto.toLowerCase().includes(search.toLowerCase()) ||
-      (p.numeroUtente ?? '').toLowerCase().includes(search.toLowerCase()),
-  );
+  const correspondePesquisa = (p: PacienteTecnico) =>
+    p.nomeCompleto.toLowerCase().includes(search.toLowerCase()) ||
+    (p.numeroUtente ?? '').toLowerCase().includes(search.toLowerCase());
 
-  function abrirModal(paciente: PacienteTecnico) {
-    setModal({ paciente });
-    setNovoMedicoId('');
+  const pendentes = pacientes.filter((p) => !p.contaAtivada && correspondePesquisa(p));
+  const ativos = pacientes.filter((p) => p.contaAtivada && correspondePesquisa(p));
+  const filtrados = tabAtiva === 'pendentes' ? pendentes : ativos;
+
+  function abrirModalAtribuir(paciente: PacienteTecnico) {
+    setModalPaciente(paciente);
+    setMedicoSelecionadoId('');
     setErroModal(null);
-    setSucessoId(null);
-    // Carregar lista de médicos apenas uma vez
-    if (medicos.length === 0) {
-      getMedicos().then(setMedicos);
-    }
+    if (medicos.length === 0) getMedicos().then(setMedicos);
   }
 
   function fecharModal() {
-    setModal(null);
+    setModalPaciente(null);
     setErroModal(null);
   }
 
-  async function confirmarAlteracaoMedico() {
-    if (!modal || !novoMedicoId) return;
+  async function confirmarAtribuicao() {
+    if (!modalPaciente || !medicoSelecionadoId) return;
     setAGuardar(true);
     setErroModal(null);
     try {
-      await alterarMedicoPaciente(modal.paciente.id, novoMedicoId);
-      const medicoSelecionado = medicos.find((m) => m.id === novoMedicoId);
-      // Atualizar estado local para refletir a mudança sem recarregar
+      await alterarMedicoPaciente(modalPaciente.id, medicoSelecionadoId);
+      const medicoSelecionado = medicos.find((m) => m.id === medicoSelecionadoId);
       setPacientes((prev) =>
         prev.map((p) =>
-          p.id === modal.paciente.id
-            ? { ...p, medicoId: novoMedicoId, medicoNome: medicoSelecionado?.nomeCompleto ?? null }
+          p.id === modalPaciente.id
+            ? { ...p, medicoId: medicoSelecionadoId, medicoNome: medicoSelecionado?.nomeCompleto ?? null, contaAtivada: true }
             : p,
         ),
       );
-      setSucessoId(modal.paciente.id);
       fecharModal();
     } catch (err) {
       setErroModal(err instanceof Error ? err.message : t('patients.changeDoctorError'));
@@ -125,17 +117,43 @@ export default function TecnicoPatientsScreen() {
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-[var(--scolio-text-primary)]">{t('patients.title')}</h1>
-          <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
-            {t('patients.operationalView')}
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => navigate('/tecnico/patients/new')}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          {t('patients.newPatient')}
-        </Button>
+      <div>
+        <h1 className="text-[var(--scolio-text-primary)]">{t('patients.title')}</h1>
+        <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
+          {t('patients.operationalView')}
+        </p>
+      </div>
+
+      {/* Tabs: Todos / Pendentes */}
+      <div className="flex items-center gap-1 border-b border-[var(--scolio-border-light)]">
+        <button
+          onClick={() => setTabAtiva('todos')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tabAtiva === 'todos'
+              ? 'border-[var(--scolio-success-green)] text-[var(--scolio-success-green)]'
+              : 'border-transparent text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)]'
+          }`}
+        >
+          {t('patients.tabAll')}
+        </button>
+        <button
+          onClick={() => setTabAtiva('pendentes')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 ${
+            tabAtiva === 'pendentes'
+              ? 'border-[var(--scolio-success-green)] text-[var(--scolio-success-green)]'
+              : 'border-transparent text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)]'
+          }`}
+        >
+          {t('patients.tabPending')}
+          {!aCarregar && pendentes.length > 0 && (
+            <span
+              className="inline-flex items-center justify-center w-5 h-5 rounded-full text-white font-bold"
+              style={{ backgroundColor: '#f59e0b', fontSize: '11px' }}
+            >
+              {pendentes.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Pesquisa */}
@@ -186,7 +204,6 @@ export default function TecnicoPatientsScreen() {
                 <tr
                   key={p.id}
                   className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors"
-                  style={sucessoId === p.id ? { backgroundColor: 'var(--scolio-success-surface)' } : undefined}
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -222,33 +239,34 @@ export default function TecnicoPatientsScreen() {
                     {p.totalExames}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                    {p.contaAtivada ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => navigate('/tecnico/upload')}
+                          className="px-3 py-1 text-white rounded-[var(--radius-component)] transition-colors hover:opacity-90 flex items-center gap-1"
+                          style={{ fontSize: 'var(--text-caption)', backgroundColor: 'var(--scolio-success-green)' }}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          {t('patients.newExamButton')}
+                        </button>
+                        <button
+                          onClick={() => navigate(`/tecnico/patients/${p.id}/edit`)}
+                          className="px-3 py-1 text-[var(--scolio-primary-blue)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-light-blue-surface)] transition-colors flex items-center gap-1"
+                          style={{ fontSize: 'var(--text-caption)' }}
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          {t('patients.editPatient')}
+                        </button>
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => navigate('/tecnico/upload')}
-                        className="px-3 py-1 text-[var(--scolio-success-green)] border border-[var(--scolio-success-green)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-success-surface)] transition-colors"
-                        style={{ fontSize: 'var(--text-caption)' }}
+                        onClick={() => abrirModalAtribuir(p)}
+                        className="px-3 py-1 text-white rounded-[var(--radius-component)] transition-colors hover:opacity-90"
+                        style={{ fontSize: 'var(--text-caption)', backgroundColor: 'var(--scolio-success-green)' }}
                       >
-                        {t('patients.newExamButton')}
+                        {t('patients.assignDoctor')}
                       </button>
-                      <button
-                        onClick={() => navigate(`/tecnico/patients/${p.id}/edit`)}
-                        className="px-3 py-1 text-[var(--scolio-primary-blue)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-light-blue-surface)] transition-colors flex items-center gap-1"
-                        style={{ fontSize: 'var(--text-caption)' }}
-                        title={t('patients.editPatient')}
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                        {t('patients.editPatient')}
-                      </button>
-                      <button
-                        onClick={() => abrirModal(p)}
-                        className="px-3 py-1 text-[var(--scolio-text-secondary)] border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] hover:bg-[var(--scolio-page-surface)] transition-colors flex items-center gap-1"
-                        style={{ fontSize: 'var(--text-caption)' }}
-                        title={t('patients.changeDoctor')}
-                      >
-                        <UserCog className="w-3.5 h-3.5" />
-                        {t('patients.changeDoctor')}
-                      </button>
-                    </div>
+                    )}
                   </td>
                 </tr>
               ))
@@ -257,51 +275,34 @@ export default function TecnicoPatientsScreen() {
         </table>
       </div>
 
-      {/* Modal de alteração de médico */}
+      {/* Modal de atribuição de médico (pendentes) */}
       <Modal
-        isOpen={modal !== null}
+        isOpen={modalPaciente !== null}
         onClose={fecharModal}
-        title={t('patients.changeDoctorTitle')}
+        title={t('patients.assignDoctorTitle')}
         confirmLabel={aGuardar ? t('common.saving') : t('common.confirm')}
         cancelLabel={t('common.cancel')}
-        onConfirm={confirmarAlteracaoMedico}
+        onConfirm={confirmarAtribuicao}
         confirmVariant="primary"
       >
-        {modal && (
+        {modalPaciente && (
           <div className="space-y-4">
-            {/* Informação readonly do paciente */}
             <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-4 space-y-2">
               <div className="flex justify-between">
                 <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.colName')}</span>
-                <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>{modal.paciente.nomeCompleto}</span>
+                <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>{modalPaciente.nomeCompleto}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.colUtenteShort')}</span>
-                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{modal.paciente.numeroUtente ?? '—'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.colAge')}</span>
-                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{calcularIdade(modal.paciente.dataNascimento, (age) => t('patients.yearsOld', { age }))}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.colGender')}</span>
-                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{exibirGenero(modal.paciente.genero)}</span>
-              </div>
+              {modalPaciente.numeroUtente && (
+                <div className="flex justify-between">
+                  <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.colUtenteShort')}</span>
+                  <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{modalPaciente.numeroUtente}</span>
+                </div>
+              )}
             </div>
-
-            {/* Médico atual */}
-            <div>
-              <p className="text-[var(--scolio-text-secondary)] mb-1" style={{ fontSize: 'var(--text-caption)' }}>{t('patients.currentDoctor')}</p>
-              <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                {modal.paciente.medicoNome ?? <span className="italic text-[var(--scolio-text-secondary)]">{t('patients.noDoctor')}</span>}
-              </p>
-            </div>
-
-            {/* Seleção do novo médico */}
             <Select
               label={t('patients.newDoctorLabel')}
-              value={novoMedicoId}
-              onChange={(e) => { setNovoMedicoId(e.target.value); setErroModal(null); }}
+              value={medicoSelecionadoId}
+              onChange={(e) => { setMedicoSelecionadoId(e.target.value); setErroModal(null); }}
               options={opcoesSelect}
               error={erroModal ?? undefined}
               disabled={aGuardar}

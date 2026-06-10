@@ -363,6 +363,7 @@ export interface PacienteTecnico {
   ultimoExame: string | null;
   medicoId: string | null;
   medicoNome: string | null;
+  contaAtivada: boolean;
 }
 
 // ─── ML API ──────────────────────────────────────────────────────────────────

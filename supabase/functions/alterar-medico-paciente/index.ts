@@ -108,6 +108,12 @@ Deno.serve(async (req: Request) => {
       return json({ erro: `Falha ao criar nova associação: ${errAssoc.message}` }, 500)
     }
 
+    // ── 7b. Ativar conta do paciente (desbloqueio na app mobile) ────────────
+    await adminClient
+      .from('utilizadores')
+      .update({ conta_ativada: true })
+      .eq('id', pacienteId)
+
     // ── 8. Registar no audit_log ────────────────────────────────────────────
     await adminClient.from('audit_log').insert({
       utilizador_id: user.id,

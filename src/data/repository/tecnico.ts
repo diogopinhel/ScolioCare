@@ -168,7 +168,7 @@ export async function arquivarEstudoTecnico(
 export async function getPacientesTecnico(): Promise<PacienteTecnico[]> {
   const { data: pacientes, error } = await supabase
     .from('utilizadores')
-    .select('id, nome_completo, numero_utente, data_nascimento, genero')
+    .select('id, nome_completo, numero_utente, data_nascimento, genero, conta_ativada')
     .eq('perfil', 'PACIENTE')
     .eq('ativo', true)
     .order('nome_completo');
@@ -219,6 +219,7 @@ export async function getPacientesTecnico(): Promise<PacienteTecnico[]> {
     ultimoExame: resumoPorPaciente.get(p.id)?.ultimaData ?? null,
     medicoId: medicoPorPaciente.get(p.id)?.medicoId ?? null,
     medicoNome: medicoPorPaciente.get(p.id)?.medicoNome ?? null,
+    contaAtivada: (p.conta_ativada as boolean) ?? false,
   }));
 }
 
