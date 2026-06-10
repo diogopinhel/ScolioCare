@@ -66,7 +66,19 @@ Deno.serve(async (req: Request) => {
       return json({ erro: 'Médico não encontrado ou inativo' }, 404)
     }
 
-    // ── 5. Obter associação ativa atual ─────────────────────────────────────
+    // ── 5. Obter paciente (para saber se a conta já está ativada) ───────────
+    const { data: pacienteRow } = await adminClient
+      .from('utilizadores')
+      .select('id, conta_ativada')
+      .eq('id', pacienteId)
+      .eq('perfil', 'PACIENTE')
+      .single()
+
+    if (!pacienteRow) {
+      return json({ erro: 'Paciente não encontrado' }, 404)
+    }
+
+    // ── 6. Obter associação ativa atual ─────────────────────────────────────
     const { data: assocAtual } = await adminClient
       .from('paciente_medico')
       .select('id, medico_id')
@@ -74,11 +86,21 @@ Deno.serve(async (req: Request) => {
       .is('data_fim', null)
       .maybeSingle()
 
+    // Se já existe associação ao mesmo médico:
+    //  • Conta ativa → re-atribuição redundante: devolve 409 (fluxo da edição).
+    //  • Conta inativa → fluxo de ativação: garante apenas conta_ativada=true.
     if (assocAtual?.medico_id === novoMedicoId) {
-      return json({ erro: 'O médico selecionado já é o responsável deste paciente' }, 409)
+      if (pacienteRow.conta_ativada) {
+        return json({ erro: 'O médico selecionado já é o responsável deste paciente' }, 409)
+      }
+      await adminClient
+        .from('utilizadores')
+        .update({ conta_ativada: true })
+        .eq('id', pacienteId)
+      return json({ ok: true })
     }
 
-    // ── 6. Obter nome do médico anterior para o log ─────────────────────────
+    // ── 7. Obter nome do médico anterior para o log ─────────────────────────
     let medicoAnteriorNome: string | null = null
     if (assocAtual) {
       const { data: medicoAnterior } = await adminClient
@@ -99,7 +121,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // ── 7. Criar nova associação ────────────────────────────────────────────
+    // ── 8. Criar nova associação ────────────────────────────────────────────
     const { error: errAssoc } = await adminClient
       .from('paciente_medico')
       .insert({ paciente_id: pacienteId, medico_id: novoMedicoId })
@@ -108,13 +130,13 @@ Deno.serve(async (req: Request) => {
       return json({ erro: `Falha ao criar nova associação: ${errAssoc.message}` }, 500)
     }
 
-    // ── 7b. Ativar conta do paciente (desbloqueio na app mobile) ────────────
+    // ── 8b. Ativar conta do paciente (desbloqueio na app mobile) ────────────
     await adminClient
       .from('utilizadores')
       .update({ conta_ativada: true })
       .eq('id', pacienteId)
 
-    // ── 8. Registar no audit_log ────────────────────────────────────────────
+    // ── 9. Registar no audit_log ────────────────────────────────────────────
     await adminClient.from('audit_log').insert({
       utilizador_id: user.id,
       utilizador_snapshot: {
