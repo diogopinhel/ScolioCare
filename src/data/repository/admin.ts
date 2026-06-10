@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { registarAcao } from './audit';
-import type { AuditLogEntry, UtilizadorAdmin, UtilizadorAdminCompleto, MetricasDashboardAdmin, SystemSettings } from '../types';
+import type { AuditLogEntry, UtilizadorAdmin, UtilizadorAdminCompleto, MetricasDashboardAdmin } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════
 // Dashboard Admin
@@ -307,66 +307,5 @@ export async function getMetricasIA(): Promise<MetricasIA> {
     versaoAtiva,
     distribuicaoGrau,
   };
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// System Settings
-// ═══════════════════════════════════════════════════════════════════
-
-const DEFAULTS: SystemSettings = {
-  instituicao: '', nif: '', rgpdContact: '',
-  timeoutSessao: 30, tentativasLogin: 5, minPasswordLength: 12, validadePassword: 90,
-  force2faMedico: true, force2faTecnico: true, force2faAdmin: true,
-  modoManutencao: false, backupSchedule: '0 3 * * *', backupRetencao: 30,
-};
-
-function rowsToSettings(rows: { chave: string; valor: string | null }[]): SystemSettings {
-  const m = Object.fromEntries(rows.map((r) => [r.chave, r.valor ?? '']));
-  return {
-    instituicao:        m.instituicao        ?? DEFAULTS.instituicao,
-    nif:                m.nif               ?? DEFAULTS.nif,
-    rgpdContact:        m.rgpd_contact      ?? DEFAULTS.rgpdContact,
-    timeoutSessao:      Number(m.timeout_sessao)      || DEFAULTS.timeoutSessao,
-    tentativasLogin:    Number(m.tentativas_login)    || DEFAULTS.tentativasLogin,
-    minPasswordLength:  Number(m.min_password_length) || DEFAULTS.minPasswordLength,
-    validadePassword:   Number(m.validade_password)   || DEFAULTS.validadePassword,
-    force2faMedico:     m.force_2fa_medico  !== 'false',
-    force2faTecnico:    m.force_2fa_tecnico !== 'false',
-    force2faAdmin:      m.force_2fa_admin   !== 'false',
-    modoManutencao:     m.modo_manutencao   === 'true',
-    backupSchedule:     m.backup_schedule   ?? DEFAULTS.backupSchedule,
-    backupRetencao:     Number(m.backup_retencao)     || DEFAULTS.backupRetencao,
-  };
-}
-
-export async function getSystemSettings(): Promise<SystemSettings> {
-  const { data, error } = await supabase
-    .from('system_settings')
-    .select('chave, valor');
-  if (error || !data) return { ...DEFAULTS };
-  return rowsToSettings(data as { chave: string; valor: string | null }[]);
-}
-
-export async function saveSystemSettings(s: SystemSettings): Promise<void> {
-  const rows = [
-    { chave: 'instituicao',         valor: s.instituicao },
-    { chave: 'nif',                 valor: s.nif },
-    { chave: 'rgpd_contact',        valor: s.rgpdContact },
-    { chave: 'timeout_sessao',      valor: String(s.timeoutSessao) },
-    { chave: 'tentativas_login',    valor: String(s.tentativasLogin) },
-    { chave: 'min_password_length', valor: String(s.minPasswordLength) },
-    { chave: 'validade_password',   valor: String(s.validadePassword) },
-    { chave: 'force_2fa_medico',    valor: String(s.force2faMedico) },
-    { chave: 'force_2fa_tecnico',   valor: String(s.force2faTecnico) },
-    { chave: 'force_2fa_admin',     valor: String(s.force2faAdmin) },
-    { chave: 'modo_manutencao',     valor: String(s.modoManutencao) },
-    { chave: 'backup_schedule',     valor: s.backupSchedule },
-    { chave: 'backup_retencao',     valor: String(s.backupRetencao) },
-  ];
-  const { error } = await supabase
-    .from('system_settings')
-    .upsert(rows, { onConflict: 'chave' });
-  if (error) throw error;
-  registarAcao('EDITAR_SETTINGS', 'system_settings', null);
 }
 

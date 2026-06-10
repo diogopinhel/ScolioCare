@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Users,
   ScrollText,
-  Settings,
   Cpu,
   ChevronRight,
   LogOut,
@@ -31,7 +30,6 @@ export default function AdminLayout() {
     '/admin-panel': t('nav.dashboard'),
     '/admin-panel/users': t('admin.usersTitle'),
     '/admin-panel/audit': t('admin.auditTitle'),
-    '/admin-panel/settings': t('admin.settingsTitle'),
     '/admin-panel/ai': t('admin.aiTitle'),
     '/admin-panel/ui-audit': 'Auditoria UI/UX',
   };
@@ -125,7 +123,6 @@ export default function AdminLayout() {
             {t('nav.system')}
           </p>
           <ul className="space-y-1 mb-6">
-            {navItem('/admin-panel/settings', Settings, t('nav.settings'))}
             {navItem('/admin-panel/ai', Cpu, t('nav.aiData'))}
           </ul>
         </nav>

@@ -31,7 +31,6 @@ import PatientEditScreen from "./screens/tecnico/PatientEditScreen";
 import AdminDashboardScreen from "./screens/admin/AdminDashboardScreen";
 import AdminUsersScreen from "./screens/admin/AdminUsersScreen";
 import AdminAuditScreen from "./screens/admin/AdminAuditScreen";
-import AdminSettingsScreen from "./screens/admin/AdminSettingsScreen";
 import AdminAIScreen from "./screens/admin/AdminAIScreen";
 
 // Shared
@@ -101,7 +100,6 @@ export const router = createBrowserRouter([
       { index: true, Component: AdminDashboardScreen },
       { path: "users", Component: AdminUsersScreen },
       { path: "audit", Component: AdminAuditScreen },
-      { path: "settings", Component: AdminSettingsScreen },
       { path: "ai", Component: AdminAIScreen },
       { path: "ui-audit", Component: UIAuditScreen },
       { path: "*", Component: Error404Screen },

@@ -50,7 +50,7 @@ All Supabase queries live in `src/data/repository/`:
 | `estudos.ts` | dashboard KPIs, pending exams, weekly chart, exam history, AI validation, comparison, audit log on validate/correct/archive/send |
 | `pacientes.ts` | patient list, detail, notes, search, `getMedicos` (via RPC), `alterarMedicoPaciente`, `atualizarPaciente` |
 | `tecnico.ts` | technician queue, exam upload, `criarEstudo`, `uploadImagemEstudo`, `getMedicoResponsavelDoPaciente` (via RPC) |
-| `admin.ts` | admin KPIs, audit log, user management, `getUsoPorPerfil` (via RPC), `getUtilizadorCompleto`, `editarUtilizadorAdmin`, system settings — all operations audit-logged via `registarAcao` |
+| `admin.ts` | admin KPIs, audit log, user management, `getUsoPorPerfil` (via RPC), `getUtilizadorCompleto`, `editarUtilizadorAdmin` — all operations audit-logged via `registarAcao` |
 | `audit.ts` | `registarAcao()` fire-and-forget helper — calls `registar_acao` RPC |
 | `wellness.ts` | patient wellness log entries |
 
@@ -127,7 +127,6 @@ Key events recorded in `audit_log`:
 | Correct AI metrics | `CORRIGIR_EXAME` | `estudos.ts corrigirMetricasIA` |
 | Archive exam | `ARQUIVAR_EXAME` | `estudos.ts arquivarEstudoMedico` |
 | Send report to patient | `ENVIAR_RELATORIO` | `estudos.ts enviarEstudoAoPaciente` |
-| Save system settings | `EDITAR_SETTINGS` | `admin.ts saveSystemSettings` |
 | Export audit CSV | `EXPORTAR_AUDITORIA` | `AdminAuditScreen` |
 | Glass-break | `GLASS_BREAK` | `GlassBreakScreen` |
 
@@ -164,7 +163,6 @@ CSV export uses UTF-8 BOM (`﻿`) for correct rendering of Portuguese characters
 | AdminAuditScreen | `/admin-panel/audit` | ✅ Real `audit_log` entries (200 latest), categorized, CSV export (UTF-8 BOM). Search is client-side over the loaded 200. |
 | AdminUsersScreen | `/admin-panel/users` | ✅ Toggle active/blocked, edit user data, create user, change patient's doctor — all audited |
 | AdminAIScreen | `/admin-panel/ai` | ⚠️ ML metrics show N/D — requires ML pipeline integration |
-| AdminSettingsScreen | `/admin-panel/settings` | Persists to `system_settings` table via upsert by `chave` |
 
 ## Known remaining work
 

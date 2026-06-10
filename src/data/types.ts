@@ -456,24 +456,6 @@ export interface ResultadoAnaliseIA {
   appliedCorrectionDeg?: number | null;
 }
 
-// ─── System Settings ────────────────────────────────────────────────────────
-
-export interface SystemSettings {
-  instituicao: string;
-  nif: string;
-  rgpdContact: string;
-  timeoutSessao: number;
-  tentativasLogin: number;
-  minPasswordLength: number;
-  validadePassword: number;
-  force2faMedico: boolean;
-  force2faTecnico: boolean;
-  force2faAdmin: boolean;
-  modoManutencao: boolean;
-  backupSchedule: string;
-  backupRetencao: number;
-}
-
 /** Estudo com todas as relações necessárias para o ExamViewerScreen */
 export interface EstudoCompleto {
   id: string;
