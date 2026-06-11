@@ -8,23 +8,74 @@ import * as authRepo from '../../data/repository/auth';
  * A sessão é gerida pelo Supabase SDK (persiste em localStorage automaticamente).
  * `onAuthStateChange` dispara no arranque (restauro de sessão) e em qualquer
  * mudança posterior (login, logout, expiração). Os ecrãs não precisam de mudar.
+ *
+ * Estado `pendente2FA`: usado para o fluxo de 2FA por OTP via email.
+ * - modo `'login'`: a sessão Supabase já existe mas o OTP da segunda etapa
+ *   ainda não foi verificado — `estaAutenticado` é `false` até verificação.
+ * - modo `'ativar'`: o utilizador está autenticado e pediu para ativar 2FA;
+ *   o OTP foi enviado e a confirmação está pendente. Não bloqueia acesso.
+ *
+ * O estado é persistido em `sessionStorage` para sobreviver a refreshes na
+ * mesma tab (fecho de tab descarta-o, voltando ao estado normal).
  */
+
+export type ModoPendente2FA = 'login' | 'ativar';
+
+export interface Pendente2FAState {
+  email: string;
+  modo: ModoPendente2FA;
+}
 
 interface AuthContextValue {
   utilizador: UtilizadorAutenticado | null;
   estaAutenticado: boolean;
+  pendente2FA: Pendente2FAState | null;
   aCarregar: boolean;
-  login: (email: string, password: string) => Promise<UtilizadorAutenticado>;
+  login: (email: string, password: string) => Promise<{ needsTwoFactor: boolean }>;
   logout: () => Promise<void>;
+  iniciarAtivacao2FA: () => Promise<void>;
+  verificar2FA: (token: string) => Promise<void>;
+  verificarEAtivar2FA: (token: string) => Promise<void>;
+  desativar2FA: () => Promise<void>;
+  reenviarOtp: () => Promise<void>;
+  cancelarPendente2FA: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+const SS_KEY_PENDENTE_2FA = 'scolio.pendente2FA';
+
+function lerPendenteDeSessionStorage(): Pendente2FAState | null {
+  try {
+    const raw = sessionStorage.getItem(SS_KEY_PENDENTE_2FA);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<Pendente2FAState>;
+    if (typeof parsed.email !== 'string') return null;
+    if (parsed.modo !== 'login' && parsed.modo !== 'ativar') return null;
+    return { email: parsed.email, modo: parsed.modo };
+  } catch {
+    return null;
+  }
+}
 
 // ─── Provider ──────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [utilizador, setUtilizador] = useState<UtilizadorAutenticado | null>(null);
+  const [pendente2FA, setPendente2FAState] = useState<Pendente2FAState | null>(
+    lerPendenteDeSessionStorage,
+  );
   const [aCarregar, setACarregar] = useState(true);
+
+  const setPendente2FA = (proximo: Pendente2FAState | null) => {
+    setPendente2FAState(proximo);
+    try {
+      if (proximo) sessionStorage.setItem(SS_KEY_PENDENTE_2FA, JSON.stringify(proximo));
+      else sessionStorage.removeItem(SS_KEY_PENDENTE_2FA);
+    } catch {
+      // sessionStorage indisponível (ex: SSR ou private mode estrito) — ignorar
+    }
+  };
 
   useEffect(() => {
     let ativo = true;
@@ -51,24 +102,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const fazerLogin = async (email: string, password: string) => {
-    const u = await authRepo.login(email, password);
-    // Definir imediatamente para que o redirect via <Navigate> seja instantâneo.
-    // O subscriber também vai disparar, mas com o mesmo valor — sem consequências.
-    setUtilizador(u);
-    return u;
+    const resultado = await authRepo.login(email, password);
+    if (resultado.needsTwoFactor) {
+      setPendente2FA({ email: resultado.email, modo: 'login' });
+      return { needsTwoFactor: true };
+    }
+    setUtilizador(resultado.utilizador);
+    return { needsTwoFactor: false };
   };
 
   const fazerLogout = async () => {
+    setPendente2FA(null);
     await authRepo.logout();
     // O subscriber irá limpar utilizador quando onAuthStateChange disparar.
   };
 
+  const iniciarAtivacao2FA = async () => {
+    if (!utilizador) throw new Error('Não autenticado.');
+    await authRepo.enviarOtpEmail(utilizador.email);
+    setPendente2FA({ email: utilizador.email, modo: 'ativar' });
+  };
+
+  const verificar2FA = async (token: string) => {
+    if (!pendente2FA || pendente2FA.modo !== 'login') {
+      throw new Error('Nenhuma verificação de login pendente.');
+    }
+    const u = await authRepo.verificarOtpEmail(pendente2FA.email, token, {
+      marcarComoLogin: true,
+    });
+    setPendente2FA(null);
+    setUtilizador(u);
+  };
+
+  const verificarEAtivar2FA = async (token: string) => {
+    if (!pendente2FA || pendente2FA.modo !== 'ativar') {
+      throw new Error('Nenhuma ativação pendente.');
+    }
+    if (!utilizador) throw new Error('Não autenticado.');
+    await authRepo.verificarOtpEmail(pendente2FA.email, token);
+    await authRepo.ativar2FA(utilizador.id);
+    setUtilizador({ ...utilizador, twoFactorAtivo: true });
+    setPendente2FA(null);
+  };
+
+  const desativar2FA = async () => {
+    if (!utilizador) throw new Error('Não autenticado.');
+    await authRepo.desativar2FA(utilizador.id);
+    setUtilizador({ ...utilizador, twoFactorAtivo: false });
+  };
+
+  const reenviarOtp = async () => {
+    if (!pendente2FA) throw new Error('Nenhuma verificação pendente.');
+    await authRepo.enviarOtpEmail(pendente2FA.email);
+  };
+
+  const cancelarPendente2FA = async () => {
+    const modo = pendente2FA?.modo;
+    setPendente2FA(null);
+    if (modo === 'login') {
+      // No fluxo de login, a sessão Supabase já está estabelecida — temos de a
+      // terminar para evitar bypass do 2FA em refreshes futuros.
+      await authRepo.logout();
+      setUtilizador(null);
+    }
+    // No fluxo de ativação, a sessão é válida e o utilizador continua
+    // autenticado — basta limpar o estado pendente.
+  };
+
   const value: AuthContextValue = {
     utilizador,
-    estaAutenticado: utilizador !== null,
+    estaAutenticado: utilizador !== null && pendente2FA?.modo !== 'login',
+    pendente2FA,
     aCarregar,
     login: fazerLogin,
     logout: fazerLogout,
+    iniciarAtivacao2FA,
+    verificar2FA,
+    verificarEAtivar2FA,
+    desativar2FA,
+    reenviarOtp,
+    cancelarPendente2FA,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -101,6 +214,24 @@ export function rotaInicialPara(perfil: Perfil): string {
     case 'PACIENTE':
     default:
       // Pacientes utilizam a app React Native — acesso web não suportado
+      return '/login';
+  }
+}
+
+/**
+ * Devolve a rota de perfil para um determinado tipo de utilizador. Cada
+ * layout tem o seu próprio `/perfil` para manter o sidebar ativo.
+ */
+export function rotaPerfilPara(perfil: Perfil): string {
+  switch (perfil) {
+    case 'ADMIN':
+      return '/admin-panel/perfil';
+    case 'TECNICO':
+      return '/tecnico/perfil';
+    case 'MEDICO':
+      return '/perfil';
+    case 'PACIENTE':
+    default:
       return '/login';
   }
 }

@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 
 // Auth
 import LoginScreen from "./screens/auth/LoginScreen";
+import TwoFactorVerifyScreen from "./screens/auth/TwoFactorVerifyScreen";
 
 // Layouts
 import Layout from "./components/layouts/Layout";
@@ -37,12 +38,17 @@ import AdminAIScreen from "./screens/admin/AdminAIScreen";
 import UIAuditScreen from "./screens/shared/UIAuditScreen";
 import Error403Screen from "./screens/shared/Error403Screen";
 import Error404Screen from "./screens/shared/Error404Screen";
+import ProfileScreen from "./screens/shared/ProfileScreen";
 
 export const router = createBrowserRouter([
   // ─── Público ────────────────────────────────────────────────────────────
   {
     path: "/login",
     Component: LoginScreen,
+  },
+  {
+    path: "/auth/two-factor-verify",
+    Component: TwoFactorVerifyScreen,
   },
   {
     path: "/403",
@@ -66,6 +72,7 @@ export const router = createBrowserRouter([
       { path: "report-generation/:estudoId", Component: ReportGenerationScreen },
       { path: "glass-break/:pacienteId", Component: GlassBreakScreen },
       { path: "exam-upload/:pacienteId", Component: ExamUploadMedicoScreen },
+      { path: "perfil", Component: ProfileScreen },
       { path: "*", Component: Error404Screen },
     ],
   },
@@ -84,6 +91,7 @@ export const router = createBrowserRouter([
       { path: "queue", Component: ExamQueueScreen },
       { path: "patients", Component: TecnicoPatientsScreen },
       { path: "patients/:id/edit", Component: PatientEditScreen },
+      { path: "perfil", Component: ProfileScreen },
       { path: "*", Component: Error404Screen },
     ],
   },
@@ -102,6 +110,7 @@ export const router = createBrowserRouter([
       { path: "audit", Component: AdminAuditScreen },
       { path: "ai", Component: AdminAIScreen },
       { path: "ui-audit", Component: UIAuditScreen },
+      { path: "perfil", Component: ProfileScreen },
       { path: "*", Component: Error404Screen },
     ],
   },

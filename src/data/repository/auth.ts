@@ -9,6 +9,8 @@ export type AuthError =
   | 'PASSWORD_INCORRETA'
   | 'CONTA_BLOQUEADA'
   | 'CONTA_INATIVA'
+  | 'OTP_INVALIDO'
+  | 'OTP_NAO_ENVIADO'
   | 'ERRO_SERVIDOR';
 
 export class AuthenticationError extends Error {
@@ -98,15 +100,35 @@ async function fetchPerfil(userId: string, email: string): Promise<UtilizadorAut
   return mapUtilizadorDoBD(data, email);
 }
 
+// ─── Helper interno: marca login completo (ultimo_login + audit) ────────────
+
+function marcarLoginCompletado(userId: string): void {
+  supabase.rpc('registar_ultimo_login').then(() => undefined, () => undefined);
+  registarAcao('LOGIN', 'utilizadores', userId);
+}
+
 // ─── API pública ────────────────────────────────────────────────────────────
 
 /**
- * Autentica um utilizador via Supabase Auth e devolve o perfil completo.
+ * Resultado do `login`. Quando o utilizador tem 2FA ativo, o repositório
+ * envia o OTP por email e devolve `needsTwoFactor: true` — a sessão Supabase
+ * já está estabelecida mas o AuthContext bloqueia o acesso até ao OTP ser
+ * verificado (`verificarOtpEmail`).
  */
-export async function login(
-  email: string,
-  password: string,
-): Promise<UtilizadorAutenticado> {
+export type LoginResult =
+  | { needsTwoFactor: false; utilizador: UtilizadorAutenticado }
+  | { needsTwoFactor: true; email: string };
+
+/**
+ * Autentica um utilizador via Supabase Auth.
+ *
+ * - Sem 2FA: devolve o perfil completo, atualiza `ultimo_login` e regista
+ *   evento `LOGIN` no audit log.
+ * - Com 2FA: envia OTP por email e devolve `needsTwoFactor: true`. O
+ *   `ultimo_login` e o audit log só são registados quando `verificarOtpEmail`
+ *   é chamado com sucesso.
+ */
+export async function login(email: string, password: string): Promise<LoginResult> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
@@ -120,9 +142,25 @@ export async function login(
   }
 
   const utilizador = await fetchPerfil(data.user.id, data.user.email!);
-  supabase.rpc('registar_ultimo_login').then(() => undefined, () => undefined);
-  registarAcao('LOGIN', 'utilizadores', data.user.id);
-  return utilizador;
+
+  if (utilizador.twoFactorAtivo) {
+    // Envia o OTP por email; a sessão Supabase fica estabelecida mas o
+    // AuthContext bloqueia o acesso até ao código ser verificado.
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+    if (otpError) {
+      throw new AuthenticationError(
+        'OTP_NAO_ENVIADO',
+        'Não foi possível enviar o código de verificação. Tente novamente.',
+      );
+    }
+    return { needsTwoFactor: true, email };
+  }
+
+  marcarLoginCompletado(utilizador.id);
+  return { needsTwoFactor: false, utilizador };
 }
 
 /**
@@ -130,6 +168,89 @@ export async function login(
  */
 export async function logout(): Promise<void> {
   await supabase.auth.signOut();
+}
+
+/**
+ * Envia um novo OTP por email. Usado tanto na ativação de 2FA como no
+ * botão "reenviar código" do ecrã de verificação.
+ */
+export async function enviarOtpEmail(email: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false },
+  });
+  if (error) {
+    throw new AuthenticationError(
+      'OTP_NAO_ENVIADO',
+      'Não foi possível enviar o código. Tente novamente.',
+    );
+  }
+}
+
+/**
+ * Verifica o OTP introduzido pelo utilizador.
+ *
+ * - `marcarComoLogin = true` (modo "login"): regista evento LOGIN no audit e
+ *   atualiza `ultimo_login`. Usado quando este OTP é a segunda etapa do login.
+ * - `marcarComoLogin = false` (modo "ativar"): apenas valida o código sem
+ *   efeitos colaterais. Usado durante a ativação a partir do perfil.
+ */
+export async function verificarOtpEmail(
+  email: string,
+  token: string,
+  options?: { marcarComoLogin?: boolean },
+): Promise<UtilizadorAutenticado> {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'email',
+  });
+
+  if (error || !data.user) {
+    const msg = (error?.message ?? '').toLowerCase();
+    if (msg.includes('expired') || msg.includes('invalid') || msg.includes('token')) {
+      throw new AuthenticationError('OTP_INVALIDO', 'Código inválido ou expirado.');
+    }
+    throw new AuthenticationError('ERRO_SERVIDOR', 'Não foi possível verificar o código.');
+  }
+
+  const utilizador = await fetchPerfil(data.user.id, data.user.email!);
+
+  if (options?.marcarComoLogin) {
+    marcarLoginCompletado(utilizador.id);
+  }
+
+  return utilizador;
+}
+
+/**
+ * Ativa 2FA para o utilizador. Deve ser chamada SÓ depois de
+ * `verificarOtpEmail` ter sucesso.
+ */
+export async function ativar2FA(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('utilizadores')
+    .update({ two_factor_ativo: true })
+    .eq('id', userId);
+  if (error) {
+    throw new AuthenticationError('ERRO_SERVIDOR', 'Não foi possível ativar a 2FA.');
+  }
+  registarAcao('ATIVAR_2FA', 'utilizadores', userId);
+}
+
+/**
+ * Desativa 2FA para o utilizador. Não exige verificação OTP — apenas
+ * confirmação no UI.
+ */
+export async function desativar2FA(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('utilizadores')
+    .update({ two_factor_ativo: false })
+    .eq('id', userId);
+  if (error) {
+    throw new AuthenticationError('ERRO_SERVIDOR', 'Não foi possível desativar a 2FA.');
+  }
+  registarAcao('DESATIVAR_2FA', 'utilizadores', userId);
 }
 
 /**
@@ -165,8 +286,10 @@ export function subscribeToMudancasAuth(
       return;
     }
 
-    // SIGNED_IN: tratado diretamente por authRepo.login() — ignorar aqui
-    // para evitar dois fetchPerfil concorrentes que causam race condition.
+    // SIGNED_IN: tratado diretamente por authRepo.login()/verificarOtpEmail()
+    // — ignorar aqui. Particularmente importante para o fluxo de 2FA: o
+    // verifyOtp dispara SIGNED_IN, mas o AuthContext precisa de limpar o
+    // estado `pendente2FA` antes de marcar o utilizador como autenticado.
     // TOKEN_REFRESHED / USER_UPDATED: o perfil não muda com um refresh de token.
   });
 

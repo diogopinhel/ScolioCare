@@ -98,7 +98,17 @@ export default function Layout() {
 
         {/* Utilizador autenticado + sair */}
         <div className="p-4 border-t border-[var(--scolio-border-light)]">
-          <div className="flex items-center gap-3 mb-3">
+          <NavLink
+            to="/perfil"
+            className={({ isActive }) =>
+              `flex items-center gap-3 mb-3 p-2 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-[var(--scolio-light-blue-surface)]'
+                  : 'hover:bg-[var(--scolio-page-surface)]'
+              }`
+            }
+            title={t('profile.title')}
+          >
             <div className="w-10 h-10 rounded-full bg-[var(--scolio-primary-blue)] flex items-center justify-center text-white font-medium">
               {iniciais}
             </div>
@@ -116,7 +126,7 @@ export default function Layout() {
                 {especialidade}
               </p>
             </div>
-          </div>
+          </NavLink>
           <button
             type="button"
             onClick={handleLogout}

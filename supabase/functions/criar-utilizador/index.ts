@@ -119,6 +119,10 @@ Deno.serve(async (req: Request) => {
     return json({ id: novoId }, 201)
 
   } catch (err) {
-    return json({ erro: String(err) }, 500)
+    // Loga o erro completo (com stack) para os Function Logs do dashboard.
+    console.error('criar-utilizador failed:', err)
+    const mensagem =
+      err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+    return json({ erro: mensagem }, 500)
   }
 })

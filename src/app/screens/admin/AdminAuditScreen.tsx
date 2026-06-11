@@ -16,7 +16,7 @@ function formatarDataHora(iso: string, locale: string): string {
 
 function categoriaDaTipoAcao(tipoAcao: string): string {
   const t = tipoAcao.toUpperCase();
-  if (t === 'LOGIN' || t === 'LOGOUT') return 'AUTH';
+  if (t === 'LOGIN' || t === 'LOGOUT' || t.includes('2FA')) return 'AUTH';
   if (t.includes('GLASS_BREAK')) return 'GLASSBREAK';
   if (t.startsWith('EXPORTAR')) return 'EXPORT';
   if (t.includes('SETTINGS') || t.includes('CONFIG')) return 'CONFIG';
@@ -42,9 +42,12 @@ export default function AdminAuditScreen() {
   const dateLocale = useDateLocale();
   const [eventos, setEventos] = React.useState<AuditLogEntry[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
+  const [aRefrescar, setARefrescar] = React.useState(false);
   const [pesquisa, setPesquisa] = React.useState('');
+  const [pesquisaDebounced, setPesquisaDebounced] = React.useState('');
   const [categoriaFiltro, setCategoriaFiltro] = React.useState('all');
   const [toast, setToast] = React.useState<string | null>(null);
+  const primeiraCargaRef = React.useRef(true);
 
   const CATEGORIAS = [
     { label: t('admin.filterAll'), value: 'all' },
@@ -61,26 +64,32 @@ export default function AdminAuditScreen() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Debounce do input de pesquisa
+  React.useEffect(() => {
+    const id = setTimeout(() => setPesquisaDebounced(pesquisa.trim()), 300);
+    return () => clearTimeout(id);
+  }, [pesquisa]);
+
+  // Re-fetch sempre que o termo (debounced) mudar
   React.useEffect(() => {
     let cancelado = false;
-    setACarregar(true);
-    getAuditLog(undefined, 200)
+    if (primeiraCargaRef.current) setACarregar(true);
+    else setARefrescar(true);
+    getAuditLog(pesquisaDebounced || undefined, 200)
       .then((data) => { if (!cancelado) setEventos(data); })
-      .finally(() => { if (!cancelado) setACarregar(false); });
+      .finally(() => {
+        if (cancelado) return;
+        setACarregar(false);
+        setARefrescar(false);
+        primeiraCargaRef.current = false;
+      });
     return () => { cancelado = true; };
-  }, []);
+  }, [pesquisaDebounced]);
 
-  // Filtragem client-side
+  // Filtragem client-side só por categoria (pesquisa é server-side)
   const filtrados = eventos.filter((e) => {
     const cat = categoriaDaTipoAcao(e.tipoAcao);
-    const matchCat = categoriaFiltro === 'all' || cat === categoriaFiltro;
-    const termo = pesquisa.toLowerCase();
-    const matchPesquisa =
-      !pesquisa ||
-      (e.utilizadorSnapshot?.nome ?? '').toLowerCase().includes(termo) ||
-      e.tipoAcao.toLowerCase().includes(termo) ||
-      e.entidadeAfetada.toLowerCase().includes(termo);
-    return matchCat && matchPesquisa;
+    return categoriaFiltro === 'all' || cat === categoriaFiltro;
   });
 
   const exportarCSV = () => {
@@ -153,7 +162,10 @@ export default function AdminAuditScreen() {
       </div>
 
       {/* Tabela */}
-      <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] overflow-hidden">
+      <div
+        className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] overflow-hidden"
+        style={{ opacity: aRefrescar ? 0.6 : 1, transition: 'opacity 150ms' }}
+      >
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--scolio-border-light)] bg-[var(--scolio-page-surface)]">

@@ -160,7 +160,7 @@ CSV export uses UTF-8 BOM (`﻿`) for correct rendering of Portuguese characters
 | Screen | Route | State |
 |--------|-------|-------|
 | AdminDashboardScreen | `/admin-panel` | ✅ Real KPIs + usage chart from `audit_log` |
-| AdminAuditScreen | `/admin-panel/audit` | ✅ Real `audit_log` entries (200 latest), categorized, CSV export (UTF-8 BOM). Search is client-side over the loaded 200. |
+| AdminAuditScreen | `/admin-panel/audit` | ✅ Real `audit_log` entries (200 latest), categorized, CSV export (UTF-8 BOM). Search is server-side (debounced, includes `utilizador_snapshot->>nome/email`); category filter is client-side. |
 | AdminUsersScreen | `/admin-panel/users` | ✅ Toggle active/blocked, edit user data, create user, change patient's doctor — all audited |
 | AdminAIScreen | `/admin-panel/ai` | ⚠️ ML metrics show N/D — requires ML pipeline integration |
 
@@ -171,13 +171,25 @@ CSV export uses UTF-8 BOM (`﻿`) for correct rendering of Portuguese characters
 
 ### Polish
 - `calcularIdade()` in several screens returns `"X anos"` hardcoded in PT — not using i18n
-- `AdminAuditScreen` search is client-side over the latest 200 events — older entries aren't searchable. `getAuditLog` accepts a `pesquisa` parameter that isn't currently wired to the UI.
 
 ### Future
 - Real push notifications (bell icon exists but badge is decorative — no count shown)
-- Full 2FA flow (toggle exists in settings, no setup flow)
 - ML model integration (`resultados` currently populated manually)
 - React Native app for patients (built by team member)
+
+## 2FA (email OTP)
+
+Same approach as the mobile app: `signInWithOtp` + `verifyOtp` (type: `email`) via the Supabase project's shared Gmail SMTP. Optional for all web profiles (MEDICO/TECNICO/ADMIN); the `utilizadores.two_factor_ativo` column drives it.
+
+| Layer | Code |
+|---|---|
+| Repo | `src/data/repository/auth.ts` — `login` returns `LoginResult` union (`needsTwoFactor`), `enviarOtpEmail`, `verificarOtpEmail`, `ativar2FA`, `desativar2FA` |
+| Context | `src/app/auth/AuthContext.tsx` — `pendente2FA: { email, modo: 'login' \| 'ativar' } \| null` persisted in `sessionStorage`; `estaAutenticado` is `false` while `modo='login'` is pending |
+| Verify screen | `src/app/screens/auth/TwoFactorVerifyScreen.tsx` at `/auth/two-factor-verify` — 6 input boxes, paste, backspace, 60s resend cooldown |
+| Profile | `src/app/screens/shared/ProfileScreen.tsx` mounted at `/perfil`, `/tecnico/perfil`, `/admin-panel/perfil` — toggle 2FA; deactivation only needs confirmation (no OTP) |
+| Audit | New `tipo_acao` values `ATIVAR_2FA` / `DESATIVAR_2FA`, categorized as `AUTH` in `AdminAuditScreen` |
+
+`onAuthStateChange` listener ignores `SIGNED_IN` — `verifyOtp` triggers it, and processing it would mark the user authenticated before `pendente2FA` is cleared. `INITIAL_SESSION` (page reload) is still handled normally, so a refresh during pending-2FA-login keeps the user on the verify screen because `pendente2FA` is restored from `sessionStorage`.
 
 ## Git
 

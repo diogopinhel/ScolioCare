@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 /**
  * Protege uma rota. Comportamento:
  *
+ * - Se há um 2FA de login pendente → redirecciona para a verificação.
  * - Se não autenticado → redirecciona para /login (guardando o destino
  *   pretendido em location.state.from para retomar depois).
  * - Se autenticado mas sem o perfil certo → redirecciona para /403.
@@ -19,7 +20,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ perfis, children }: ProtectedRouteProps) {
-  const { utilizador, estaAutenticado, aCarregar } = useAuth();
+  const { utilizador, estaAutenticado, pendente2FA, aCarregar } = useAuth();
   const location = useLocation();
 
   if (aCarregar) {
@@ -28,6 +29,12 @@ export function ProtectedRoute({ perfis, children }: ProtectedRouteProps) {
         <div className="w-10 h-10 border-4 border-[var(--scolio-primary-blue)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
+
+  // 2FA de login pendente: forçar passagem pelo ecrã de verificação.
+  // (O modo "ativar" não bloqueia o acesso — o utilizador já está autenticado.)
+  if (pendente2FA?.modo === 'login') {
+    return <Navigate to="/auth/two-factor-verify" replace />;
   }
 
   if (!estaAutenticado || !utilizador) {

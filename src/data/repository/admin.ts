@@ -56,9 +56,16 @@ export async function getAuditLog(
     .order('data_hora', { ascending: false })
     .limit(limite);
 
-  if (pesquisa) {
+  // Remove caracteres reservados pelo parser PostgREST `.or()` antes de injetar.
+  const termo = pesquisa?.trim().replace(/[,()"\\]/g, '');
+  if (termo) {
     query = query.or(
-      `tipo_acao.ilike.%${pesquisa}%,entidade_afetada.ilike.%${pesquisa}%`,
+      [
+        `tipo_acao.ilike.%${termo}%`,
+        `entidade_afetada.ilike.%${termo}%`,
+        `utilizador_snapshot->>nome.ilike.%${termo}%`,
+        `utilizador_snapshot->>email.ilike.%${termo}%`,
+      ].join(','),
     );
   }
 
@@ -241,7 +248,21 @@ export interface DadosCriarUtilizador {
 export async function criarUtilizador(dados: DadosCriarUtilizador): Promise<{ id: string }> {
   const { data, error } = await supabase.functions.invoke('criar-utilizador', { body: dados });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Em FunctionsHttpError (resposta não-2xx) o supabase-js esconde o body
+    // por trás de `error.context`. Tentamos extrair o campo `erro` para
+    // mostrar a mensagem real do servidor em vez de "non-2xx status code".
+    const ctx = (error as unknown as { context?: Response }).context;
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const body = await ctx.json();
+        if (body?.erro) throw new Error(body.erro);
+      } catch (parseErr) {
+        if (parseErr instanceof Error && parseErr.message) throw parseErr;
+      }
+    }
+    throw new Error(error.message);
+  }
   if (data?.erro) throw new Error(data.erro);
   return data as { id: string };
 }

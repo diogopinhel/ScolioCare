@@ -22,7 +22,7 @@ function destinoSeguro(from: string | undefined, perfil: Perfil): string {
 export default function LoginScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, utilizador, estaAutenticado, aCarregar } = useAuth();
+  const { login, utilizador, estaAutenticado, pendente2FA, aCarregar } = useAuth();
   const { t } = useTranslation();
 
   const [email, setEmail] = React.useState('');
@@ -46,6 +46,11 @@ export default function LoginScreen() {
     );
   }
 
+  // 2FA de login pendente? Redirecionar para a verificação.
+  if (pendente2FA?.modo === 'login') {
+    return <Navigate to="/auth/two-factor-verify" replace />;
+  }
+
   // Já autenticado? Redirecionar para a área correcta.
   if (estaAutenticado && utilizador) {
     const from = (location.state as { from?: string } | null)?.from;
@@ -58,9 +63,12 @@ export default function LoginScreen() {
     setASubmeter(true);
 
     try {
-      const u = await login(email, password);
-      const from = (location.state as { from?: string } | null)?.from;
-      navigate(destinoSeguro(from, u.perfil), { replace: true });
+      const resultado = await login(email, password);
+      if (resultado.needsTwoFactor) {
+        navigate('/auth/two-factor-verify', { replace: true });
+      }
+      // Caso contrário, o efeito de `<Navigate>` acima trata do redirect
+      // depois de `utilizador` ser definido no contexto.
     } catch (err) {
       if (err instanceof AuthenticationError) {
         setErro(err.message);
