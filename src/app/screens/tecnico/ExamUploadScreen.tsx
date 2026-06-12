@@ -13,6 +13,7 @@ import {
 import { registarAcao } from '../../../data/repository/audit';
 import { criarNotificacao } from '../../../data/repository/notificacoes';
 import { validarFicheiroExame, mensagemErroFicheiroExame } from '../../../lib/validarFicheiroExame';
+import { hojeLocalISO } from '../../../lib/camposPaciente';
 import type { PacienteTecnico } from '../../../data/types';
 
 export default function ExamUploadScreen() {
@@ -32,7 +33,7 @@ export default function ExamUploadScreen() {
   const [mostrarDropdown, setMostrarDropdown] = React.useState(false);
 
   // Outros campos
-  const [dataEstudo, setDataEstudo] = React.useState(new Date().toISOString().split('T')[0]);
+  const [dataEstudo, setDataEstudo] = React.useState(hojeLocalISO());
 
   // Toast
   const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -264,7 +265,7 @@ export default function ExamUploadScreen() {
                   type="date"
                   value={dataEstudo}
                   onChange={(e) => setDataEstudo(e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={hojeLocalISO()}
                   className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
                 />
               </div>

@@ -9,6 +9,7 @@ import { criarEstudo, uploadImagemEstudo } from '../../../data/repository/tecnic
 import { registarAcao } from '../../../data/repository/audit';
 import { supabase } from '../../../lib/supabase';
 import { validarFicheiroExame, mensagemErroFicheiroExame } from '../../../lib/validarFicheiroExame';
+import { hojeLocalISO } from '../../../lib/camposPaciente';
 import type { PacienteResumo } from '../../../data/types';
 
 export default function ExamUploadMedicoScreen() {
@@ -25,7 +26,7 @@ export default function ExamUploadMedicoScreen() {
   const [aCarregarPacientes, setACarregarPacientes] = React.useState(true);
   const [pacienteSelecionado, setPacienteSelecionado] = React.useState<PacienteResumo | null>(null);
 
-  const [dataEstudo, setDataEstudo] = React.useState(new Date().toISOString().split('T')[0]);
+  const [dataEstudo, setDataEstudo] = React.useState(hojeLocalISO());
 
   const [toast, setToast] = React.useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const mostrarToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -223,7 +224,7 @@ export default function ExamUploadMedicoScreen() {
                   type="date"
                   value={dataEstudo}
                   onChange={(e) => setDataEstudo(e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={hojeLocalISO()}
                   className="w-full px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
                 />
               </div>

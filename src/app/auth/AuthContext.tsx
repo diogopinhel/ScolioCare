@@ -94,10 +94,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(timeout);
         setUtilizador(u);
         if (u === null) {
-          // Sem sessão o gate de login pendente não protege nada — limpá-lo
-          // evita que um estado órfão mande o utilizador para o ecrã de
-          // verificação sem haver login em curso.
-          setPendente2FA((atual) => (atual?.modo === 'login' ? null : atual));
+          // Sem sessão nenhum gate pendente faz sentido: um login pendente
+          // não protege nada e uma ativação pendente referia a sessão que
+          // morreu. Limpar evita estados órfãos (ex: gate de 'ativar' do
+          // utilizador A a sobreviver até um login posterior do utilizador B).
+          setPendente2FA(null);
         }
         setACarregar(false);
       }
@@ -148,6 +149,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Nenhuma ativação pendente.');
     }
     if (!utilizador) throw new Error('Não autenticado.');
+    if (pendente2FA.email !== utilizador.email) {
+      // Gate órfão de outro utilizador (ex: restaurado do localStorage após
+      // troca de sessão) — nunca ativar 2FA com um OTP verificado para
+      // outro email.
+      setPendente2FA(null);
+      throw new Error('A ativação pendente não corresponde ao utilizador atual.');
+    }
     await authRepo.verificarOtpEmail(pendente2FA.email, token);
     await authRepo.ativar2FA(utilizador.id);
     setUtilizador({ ...utilizador, twoFactorAtivo: true });

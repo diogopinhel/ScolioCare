@@ -315,11 +315,16 @@ export function subscribeToMudancasAuth(
         } catch (err) {
           // Conta bloqueada/inativa entretanto: termina a sessão restaurada
           // (fail-closed) em vez de a deixar viva mas "escondida" do UI.
+          // setTimeout: chamar métodos auth DENTRO do callback do
+          // onAuthStateChange é o footgun de deadlock documentado do
+          // supabase-js v2 — diferir para um macrotask sai desse contexto.
           if (
             err instanceof AuthenticationError &&
             (err.code === 'CONTA_BLOQUEADA' || err.code === 'CONTA_INATIVA')
           ) {
-            supabase.auth.signOut().then(() => undefined, () => undefined);
+            setTimeout(() => {
+              supabase.auth.signOut().then(() => undefined, () => undefined);
+            }, 0);
           }
           callback(null);
         }
