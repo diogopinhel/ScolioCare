@@ -202,66 +202,74 @@ export default function ExamUploadScreen() {
                 <label className="block text-[var(--scolio-text-primary)] mb-2" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
                   {t('upload.patientLabel')}
                 </label>
-                <div className="relative">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)]" />
-                    <input
-                      type="text"
-                      value={pacienteSelecionado ? pacienteSelecionado.nomeCompleto : pesquisaPaciente}
-                      onChange={(e) => {
-                        if (pacienteSelecionado) setPacienteSelecionado(null);
-                        setPesquisaPaciente(e.target.value);
-                        setMostrarDropdown(true);
-                      }}
-                      onFocus={() => setMostrarDropdown(true)}
-                      placeholder={aCarregarPacientes ? t('upload.loadingPatients') : t('upload.searchPatientPlaceholder')}
-                      className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
-                      disabled={aCarregarPacientes}
-                    />
-                  </div>
-                  {mostrarDropdown && !pacienteSelecionado && pesquisaPaciente.length > 0 && (
-                    <div className="absolute z-10 w-full bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] shadow-lg mt-1 max-h-48 overflow-y-auto">
-                      {pacientesFiltrados.length === 0 ? (
-                        <p className="px-3 py-2 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                          {t('upload.noPatientFound')}
-                        </p>
-                      ) : (
-                        pacientesFiltrados.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => {
-                              setPacienteSelecionado(p);
-                              setPesquisaPaciente('');
-                              setMostrarDropdown(false);
-                            }}
-                            className="w-full text-left px-3 py-2 hover:bg-[var(--scolio-page-surface)] transition-colors"
-                          >
-                            <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
-                              {p.nomeCompleto}
-                            </p>
-                            <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                              {p.numeroUtente ?? '—'}
-                            </p>
-                          </button>
-                        ))
+                {pacienteSelecionado ? (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-[var(--scolio-success-surface)] rounded-[var(--radius-component)]">
+                    <CheckCircle2 className="w-4 h-4 text-[var(--scolio-success-green)] flex-shrink-0" />
+                    <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
+                      {pacienteSelecionado.nomeCompleto}
+                      {pacienteSelecionado.numeroUtente && (
+                        <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                          {' · '}{pacienteSelecionado.numeroUtente}
+                        </span>
                       )}
-                    </div>
-                  )}
-                </div>
-                {pacienteSelecionado && (
-                  <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-[var(--scolio-success-surface)] rounded-[var(--radius-component)]">
-                    <CheckCircle2 className="w-4 h-4 text-[var(--scolio-success-green)]" />
-                    <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                      {pacienteSelecionado.nomeCompleto} · {pacienteSelecionado.numeroUtente ?? '—'}
                     </span>
                     <button
                       type="button"
                       onClick={() => { setPacienteSelecionado(null); setPesquisaPaciente(''); }}
                       className="ml-auto"
+                      aria-label={t('common.clear')}
                     >
                       <X className="w-3.5 h-3.5 text-[var(--scolio-text-secondary)]" />
                     </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--scolio-neutral-gray)]" />
+                      <input
+                        type="text"
+                        value={pesquisaPaciente}
+                        onChange={(e) => {
+                          setPesquisaPaciente(e.target.value);
+                          setMostrarDropdown(true);
+                        }}
+                        onFocus={() => setMostrarDropdown(true)}
+                        placeholder={aCarregarPacientes ? t('upload.loadingPatients') : t('upload.searchPatientPlaceholder')}
+                        className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-success-green)]"
+                        disabled={aCarregarPacientes}
+                      />
+                    </div>
+                    {mostrarDropdown && pesquisaPaciente.length > 0 && (
+                      <div className="absolute z-10 w-full bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] shadow-lg mt-1 max-h-48 overflow-y-auto">
+                        {pacientesFiltrados.length === 0 ? (
+                          <p className="px-3 py-2 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                            {t('upload.noPatientFound')}
+                          </p>
+                        ) : (
+                          pacientesFiltrados.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setPacienteSelecionado(p);
+                                setPesquisaPaciente('');
+                                setMostrarDropdown(false);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-[var(--scolio-page-surface)] transition-colors"
+                            >
+                              <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
+                                {p.nomeCompleto}
+                              </p>
+                              {p.numeroUtente && (
+                                <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                                  {p.numeroUtente}
+                                </p>
+                              )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
