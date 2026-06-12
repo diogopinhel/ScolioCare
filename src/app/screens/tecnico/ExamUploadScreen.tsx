@@ -12,7 +12,7 @@ import {
 } from '../../../data/repository/tecnico';
 import { registarAcao } from '../../../data/repository/audit';
 import { criarNotificacao } from '../../../data/repository/notificacoes';
-import { validarFicheiroExame, TAMANHO_MAX_EXAME_MB } from '../../../lib/validarFicheiroExame';
+import { validarFicheiroExame, mensagemErroFicheiroExame } from '../../../lib/validarFicheiroExame';
 import type { PacienteTecnico } from '../../../data/types';
 
 export default function ExamUploadScreen() {
@@ -54,12 +54,9 @@ export default function ExamUploadScreen() {
 
   const handleFicheiro = (f: File) => {
     const erro = validarFicheiroExame(f);
-    if (erro === 'TIPO_INVALIDO') {
-      mostrarToast(t('upload.invalidFileType'), 'error');
-      return;
-    }
-    if (erro === 'DEMASIADO_GRANDE') {
-      mostrarToast(t('upload.fileTooLarge', { max: TAMANHO_MAX_EXAME_MB }), 'error');
+    if (erro) {
+      const { chave, params } = mensagemErroFicheiroExame(erro);
+      mostrarToast(t(chave, params), 'error');
       return;
     }
     setFicheiro(f);

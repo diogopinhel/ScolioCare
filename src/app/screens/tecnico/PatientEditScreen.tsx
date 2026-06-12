@@ -4,6 +4,7 @@ import { Button, Input, Select, Toast } from '../../components/scolio';
 import { useNavigate, useParams } from 'react-router';
 import { getPaciente, atualizarPaciente, getMedicos, alterarMedicoPaciente } from '../../../data/repository/pacientes';
 import { getMedicoResponsavelDoPaciente } from '../../../data/repository/tecnico';
+import { sanitizarNumeroUtente, sanitizarCartaoCidadao, sanitizarContacto, hojeLocalISO } from '../../../lib/camposPaciente';
 import type { PacienteDetalhe, MedicoResumo } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
 
@@ -185,7 +186,7 @@ export default function PatientEditScreen() {
                 <input
                   type="date"
                   value={formData.dataNascimento}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={hojeLocalISO()}
                   onChange={(e) => handleChange('dataNascimento', e.target.value)}
                   className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
                 />
@@ -220,7 +221,7 @@ export default function PatientEditScreen() {
               inputMode="numeric"
               maxLength={9}
               value={formData.numeroUtente}
-              onChange={(e) => handleChange('numeroUtente', e.target.value.replace(/\D/g, '').slice(0, 9))}
+              onChange={(e) => handleChange('numeroUtente', sanitizarNumeroUtente(e.target.value))}
               placeholder={t('patientEdit.clinicalIdPlaceholder')}
             />
           </div>
@@ -247,7 +248,7 @@ export default function PatientEditScreen() {
                   type="tel"
                   maxLength={16}
                   value={formData.contacto}
-                  onChange={(e) => handleChange('contacto', e.target.value.replace(/[^\d+ ]/g, '').slice(0, 16))}
+                  onChange={(e) => handleChange('contacto', sanitizarContacto(e.target.value))}
                   placeholder={t('patientEdit.phonePlaceholder')}
                   className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
                 />
@@ -283,7 +284,7 @@ export default function PatientEditScreen() {
                 type="text"
                 maxLength={14}
                 value={formData.cartaoCidadao}
-                onChange={(e) => handleChange('cartaoCidadao', e.target.value.toUpperCase().replace(/[^0-9A-Z ]/g, '').slice(0, 14))}
+                onChange={(e) => handleChange('cartaoCidadao', sanitizarCartaoCidadao(e.target.value))}
                 placeholder={t('patientEdit.citizenCardPlaceholder')}
                 className="w-full pl-10 pr-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
               />

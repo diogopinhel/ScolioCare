@@ -57,8 +57,13 @@ export async function getAuditLog(
     .order('data_hora', { ascending: false })
     .limit(limite);
 
-  // Remove caracteres reservados pelo parser PostgREST `.or()` antes de injetar.
-  const termo = pesquisa?.trim().replace(/[,()"\\]/g, '');
+  // Remove caracteres reservados pelo parser PostgREST `.or()` e escapa os
+  // wildcards do ILIKE (% e _) para que a pesquisa seja literal — sem isto,
+  // pesquisar "joao_lima" também devolvia "joaoXlima".
+  const termo = pesquisa
+    ?.trim()
+    .replace(/[,()"\\]/g, '')
+    .replace(/[%_]/g, '\\$&');
   if (termo) {
     query = query.or(
       [

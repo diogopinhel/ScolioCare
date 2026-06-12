@@ -16,3 +16,16 @@ export function validarFicheiroExame(f: File): ErroFicheiroExame | null {
   if (f.size > TAMANHO_MAX_EXAME_MB * 1024 * 1024) return 'DEMASIADO_GRANDE';
   return null;
 }
+
+/**
+ * Mapeia o erro de validação para a chave i18n + parâmetros a passar ao `t()`.
+ * Mantém a correspondência erro→mensagem num único sítio para os dois ecrãs
+ * de upload (técnico e médico) não divergirem.
+ */
+export function mensagemErroFicheiroExame(
+  erro: ErroFicheiroExame,
+): { chave: string; params?: Record<string, unknown> } {
+  return erro === 'TIPO_INVALIDO'
+    ? { chave: 'upload.invalidFileType' }
+    : { chave: 'upload.fileTooLarge', params: { max: TAMANHO_MAX_EXAME_MB } };
+}

@@ -16,6 +16,7 @@ import type { UtilizadorAdmin, UtilizadorAdminCompleto, MedicoResumo } from '../
 import { useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
+import { sanitizarNumeroUtente, sanitizarCartaoCidadao, sanitizarContacto, hojeLocalISO } from '../../../lib/camposPaciente';
 
 function perfilStyle(perfil: string, t: (key: string) => string) {
   const map: Record<string, { bg: string; fg: string; label: string }> = {
@@ -524,7 +525,7 @@ export default function AdminUsersScreen() {
                           {t('patientEdit.dob')}
                         </label>
                         <input type="date" value={formEditar.dataNascimento ?? ''}
-                          max={new Date().toISOString().split('T')[0]}
+                          max={hojeLocalISO()}
                           onChange={(e) => setFormEditar((f) => ({ ...f, dataNascimento: e.target.value }))}
                           className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                       </div>
@@ -548,7 +549,7 @@ export default function AdminUsersScreen() {
                           {t('patientEdit.clinicalId')}
                         </label>
                         <input type="text" inputMode="numeric" maxLength={9} value={formEditar.numeroUtente ?? ''}
-                          onChange={(e) => setFormEditar((f) => ({ ...f, numeroUtente: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
+                          onChange={(e) => setFormEditar((f) => ({ ...f, numeroUtente: sanitizarNumeroUtente(e.target.value) }))}
                           className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -556,7 +557,7 @@ export default function AdminUsersScreen() {
                           {t('patientEdit.citizenCard')}
                         </label>
                         <input type="text" maxLength={14} value={formEditar.cartaoCidadao ?? ''}
-                          onChange={(e) => setFormEditar((f) => ({ ...f, cartaoCidadao: e.target.value.toUpperCase().replace(/[^0-9A-Z ]/g, '').slice(0, 14) }))}
+                          onChange={(e) => setFormEditar((f) => ({ ...f, cartaoCidadao: sanitizarCartaoCidadao(e.target.value) }))}
                           className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                       </div>
                     </div>
@@ -565,7 +566,7 @@ export default function AdminUsersScreen() {
                         {t('patientEdit.phone')}
                       </label>
                       <input type="tel" maxLength={16} value={formEditar.contacto ?? ''}
-                        onChange={(e) => setFormEditar((f) => ({ ...f, contacto: e.target.value.replace(/[^\d+ ]/g, '').slice(0, 16) }))}
+                        onChange={(e) => setFormEditar((f) => ({ ...f, contacto: sanitizarContacto(e.target.value) }))}
                         className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                     </div>
                     <div className="flex flex-col gap-1.5">
