@@ -114,7 +114,7 @@
   "twoFactor": {
     "titleLogin": "Verificação em duas etapas",
     "titleActivate": "Confirmar ativação",
-    "subtitleLogin": "Introduza o código de 6 dígitos que enviámos para:",
+    "subtitleLogin": "Introduza o código de {{n}} dígitos que enviámos para:",
     "subtitleActivate": "Para ativar o 2FA, introduza o código que enviámos para:",
     "verifyButton": "Verificar",
     "verifying": "A verificar...",

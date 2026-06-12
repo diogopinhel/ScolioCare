@@ -107,6 +107,30 @@ function marcarLoginCompletado(userId: string): void {
   registarAcao('LOGIN', 'utilizadores', userId);
 }
 
+/**
+ * Como o fetchPerfil só corre DEPOIS de o Supabase ter estabelecido a sessão
+ * (signInWithPassword/verifyOtp), uma conta bloqueada ou inativa ficaria com
+ * uma sessão válida apesar do erro mostrado no UI. Este wrapper termina a
+ * sessão nesses casos (fail-closed) antes de propagar o erro. Erros
+ * transitórios (ERRO_SERVIDOR) não terminam a sessão.
+ */
+async function fetchPerfilOuTerminarSessao(
+  userId: string,
+  email: string,
+): Promise<UtilizadorAutenticado> {
+  try {
+    return await fetchPerfil(userId, email);
+  } catch (err) {
+    if (
+      err instanceof AuthenticationError &&
+      (err.code === 'CONTA_BLOQUEADA' || err.code === 'CONTA_INATIVA')
+    ) {
+      await supabase.auth.signOut().catch(() => undefined);
+    }
+    throw err;
+  }
+}
+
 // ─── API pública ────────────────────────────────────────────────────────────
 
 /**
@@ -141,7 +165,7 @@ export async function login(email: string, password: string): Promise<LoginResul
     throw new AuthenticationError('ERRO_SERVIDOR', 'Erro ao autenticar. Tente novamente.');
   }
 
-  const utilizador = await fetchPerfil(data.user.id, data.user.email!);
+  const utilizador = await fetchPerfilOuTerminarSessao(data.user.id, data.user.email!);
 
   if (utilizador.twoFactorAtivo) {
     // Envia o OTP por email; a sessão Supabase fica estabelecida mas o
@@ -151,6 +175,10 @@ export async function login(email: string, password: string): Promise<LoginResul
       options: { shouldCreateUser: false },
     });
     if (otpError) {
+      // Fail-closed: sem OTP enviado a verificação nunca pode acontecer, e a
+      // sessão da password já está viva — terminá-la evita que um refresh
+      // entre sem segundo fator (ex: quando o rate-limit de email dispara).
+      await supabase.auth.signOut().catch(() => undefined);
       throw new AuthenticationError(
         'OTP_NAO_ENVIADO',
         'Não foi possível enviar o código de verificação. Tente novamente.',
@@ -214,7 +242,7 @@ export async function verificarOtpEmail(
     throw new AuthenticationError('ERRO_SERVIDOR', 'Não foi possível verificar o código.');
   }
 
-  const utilizador = await fetchPerfil(data.user.id, data.user.email!);
+  const utilizador = await fetchPerfilOuTerminarSessao(data.user.id, data.user.email!);
 
   if (options?.marcarComoLogin) {
     marcarLoginCompletado(utilizador.id);
@@ -233,7 +261,12 @@ export async function ativar2FA(userId: string): Promise<void> {
     .update({ two_factor_ativo: true })
     .eq('id', userId);
   if (error) {
-    throw new AuthenticationError('ERRO_SERVIDOR', 'Não foi possível ativar a 2FA.');
+    // Nesta altura o verifyOtp já consumiu o código — repetir o mesmo código
+    // daria "inválido ou expirado", por isso a mensagem pede um código novo.
+    throw new AuthenticationError(
+      'ERRO_SERVIDOR',
+      'Não foi possível concluir a ativação. Pede um novo código e tenta novamente.',
+    );
   }
   registarAcao('ATIVAR_2FA', 'utilizadores', userId);
 }
@@ -279,7 +312,15 @@ export function subscribeToMudancasAuth(
         try {
           const utilizador = await fetchPerfil(session.user.id, session.user.email!);
           callback(utilizador);
-        } catch {
+        } catch (err) {
+          // Conta bloqueada/inativa entretanto: termina a sessão restaurada
+          // (fail-closed) em vez de a deixar viva mas "escondida" do UI.
+          if (
+            err instanceof AuthenticationError &&
+            (err.code === 'CONTA_BLOQUEADA' || err.code === 'CONTA_INATIVA')
+          ) {
+            supabase.auth.signOut().then(() => undefined, () => undefined);
+          }
           callback(null);
         }
       }

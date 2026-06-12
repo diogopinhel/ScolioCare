@@ -15,8 +15,11 @@ import * as authRepo from '../../data/repository/auth';
  * - modo `'ativar'`: o utilizador está autenticado e pediu para ativar 2FA;
  *   o OTP foi enviado e a confirmação está pendente. Não bloqueia acesso.
  *
- * O estado é persistido em `sessionStorage` para sobreviver a refreshes na
- * mesma tab (fecho de tab descarta-o, voltando ao estado normal).
+ * O estado é persistido em `localStorage` (fail-closed): como a sessão
+ * Supabase também vive em localStorage, fechar a tab a meio da verificação
+ * NÃO pode desbloquear o acesso — o gate tem de sobreviver ao mesmo tempo
+ * que a sessão. Quando a sessão morre (logout/expiração), o gate de login
+ * pendente é limpo por já não proteger nada.
  */
 
 export type ModoPendente2FA = 'login' | 'ativar';
@@ -43,11 +46,11 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const SS_KEY_PENDENTE_2FA = 'scolio.pendente2FA';
+const LS_KEY_PENDENTE_2FA = 'scolio.pendente2FA';
 
-function lerPendenteDeSessionStorage(): Pendente2FAState | null {
+function lerPendenteDeStorage(): Pendente2FAState | null {
   try {
-    const raw = sessionStorage.getItem(SS_KEY_PENDENTE_2FA);
+    const raw = localStorage.getItem(LS_KEY_PENDENTE_2FA);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<Pendente2FAState>;
     if (typeof parsed.email !== 'string') return null;
@@ -62,20 +65,20 @@ function lerPendenteDeSessionStorage(): Pendente2FAState | null {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [utilizador, setUtilizador] = useState<UtilizadorAutenticado | null>(null);
-  const [pendente2FA, setPendente2FAState] = useState<Pendente2FAState | null>(
-    lerPendenteDeSessionStorage,
+  const [pendente2FA, setPendente2FA] = useState<Pendente2FAState | null>(
+    lerPendenteDeStorage,
   );
   const [aCarregar, setACarregar] = useState(true);
 
-  const setPendente2FA = (proximo: Pendente2FAState | null) => {
-    setPendente2FAState(proximo);
+  // Sincroniza o estado pendente com o localStorage (ver doc acima).
+  useEffect(() => {
     try {
-      if (proximo) sessionStorage.setItem(SS_KEY_PENDENTE_2FA, JSON.stringify(proximo));
-      else sessionStorage.removeItem(SS_KEY_PENDENTE_2FA);
+      if (pendente2FA) localStorage.setItem(LS_KEY_PENDENTE_2FA, JSON.stringify(pendente2FA));
+      else localStorage.removeItem(LS_KEY_PENDENTE_2FA);
     } catch {
-      // sessionStorage indisponível (ex: SSR ou private mode estrito) — ignorar
+      // localStorage indisponível (private mode estrito) — gate fica só em memória
     }
-  };
+  }, [pendente2FA]);
 
   useEffect(() => {
     let ativo = true;
@@ -90,6 +93,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (ativo) {
         clearTimeout(timeout);
         setUtilizador(u);
+        if (u === null) {
+          // Sem sessão o gate de login pendente não protege nada — limpá-lo
+          // evita que um estado órfão mande o utilizador para o ecrã de
+          // verificação sem haver login em curso.
+          setPendente2FA((atual) => (atual?.modo === 'login' ? null : atual));
+        }
         setACarregar(false);
       }
     });
@@ -218,20 +227,3 @@ export function rotaInicialPara(perfil: Perfil): string {
   }
 }
 
-/**
- * Devolve a rota de perfil para um determinado tipo de utilizador. Cada
- * layout tem o seu próprio `/perfil` para manter o sidebar ativo.
- */
-export function rotaPerfilPara(perfil: Perfil): string {
-  switch (perfil) {
-    case 'ADMIN':
-      return '/admin-panel/perfil';
-    case 'TECNICO':
-      return '/tecnico/perfil';
-    case 'MEDICO':
-      return '/perfil';
-    case 'PACIENTE':
-    default:
-      return '/login';
-  }
-}

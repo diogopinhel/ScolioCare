@@ -148,7 +148,7 @@ export default function TwoFactorVerifyScreen() {
             </div>
             <h1 className="text-[var(--scolio-text-primary)] mb-2">{t(tituloKey)}</h1>
             <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-              {t(subtituloKey)}
+              {t(subtituloKey, { n: NUM_DIGITOS })}
             </p>
             <p className="mt-2 inline-flex items-center gap-2 text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>
               <Mail className="w-4 h-4 text-[var(--scolio-neutral-gray)]" />

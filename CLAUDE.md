@@ -184,12 +184,12 @@ Same approach as the mobile app: `signInWithOtp` + `verifyOtp` (type: `email`) v
 | Layer | Code |
 |---|---|
 | Repo | `src/data/repository/auth.ts` — `login` returns `LoginResult` union (`needsTwoFactor`), `enviarOtpEmail`, `verificarOtpEmail`, `ativar2FA`, `desativar2FA` |
-| Context | `src/app/auth/AuthContext.tsx` — `pendente2FA: { email, modo: 'login' \| 'ativar' } \| null` persisted in `sessionStorage`; `estaAutenticado` is `false` while `modo='login'` is pending |
-| Verify screen | `src/app/screens/auth/TwoFactorVerifyScreen.tsx` at `/auth/two-factor-verify` — 6 input boxes, paste, backspace, 60s resend cooldown |
+| Context | `src/app/auth/AuthContext.tsx` — `pendente2FA: { email, modo: 'login' \| 'ativar' } \| null` persisted in `localStorage` (fail-closed: survives tab close, same lifetime as the Supabase session; cleared when the session dies); `estaAutenticado` is `false` while `modo='login'` is pending |
+| Verify screen | `src/app/screens/auth/TwoFactorVerifyScreen.tsx` at `/auth/two-factor-verify` — `NUM_DIGITOS` input boxes (must match the Supabase "Email OTP Length" setting; i18n interpolates the count), paste, backspace, 60s resend cooldown |
 | Profile | `src/app/screens/shared/ProfileScreen.tsx` mounted at `/perfil`, `/tecnico/perfil`, `/admin-panel/perfil` — toggle 2FA; deactivation only needs confirmation (no OTP) |
 | Audit | New `tipo_acao` values `ATIVAR_2FA` / `DESATIVAR_2FA`, categorized as `AUTH` in `AdminAuditScreen` |
 
-`onAuthStateChange` listener ignores `SIGNED_IN` — `verifyOtp` triggers it, and processing it would mark the user authenticated before `pendente2FA` is cleared. `INITIAL_SESSION` (page reload) is still handled normally, so a refresh during pending-2FA-login keeps the user on the verify screen because `pendente2FA` is restored from `sessionStorage`.
+`onAuthStateChange` listener ignores `SIGNED_IN` — `verifyOtp` triggers it, and processing it would mark the user authenticated before `pendente2FA` is cleared. `INITIAL_SESSION` (page reload or tab reopen) is still handled normally, so a refresh or tab close during pending-2FA-login keeps the user on the verify screen because `pendente2FA` is restored from `localStorage`. Fail-closed hardening: a blocked/inactive account detected after `signInWithPassword`/`verifyOtp` triggers `signOut`; an OTP send failure during login also signs out (a refresh can't skip the second factor). Note the 2FA gate is still client-side only — the Supabase session itself is valid before OTP verification, so direct API access is limited only by RLS, not by 2FA.
 
 ## Git
 
