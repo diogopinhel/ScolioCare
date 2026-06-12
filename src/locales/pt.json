@@ -125,6 +125,15 @@
     "resendSuccess": "Novo código enviado.",
     "digitLabel": "Dígito {{n}}"
   },
+  "setPassword": {
+    "title": "Definir password",
+    "subtitle": "Escolha uma password de acesso à sua conta ScolioCare.",
+    "invalidLink": "Este link de convite é inválido ou já expirou. Solicite um novo convite ao administrador.",
+    "backToLogin": "Voltar ao login",
+    "submitButton": "Definir password",
+    "submitting": "A guardar...",
+    "success": "Password definida com sucesso. Inicie sessão com a sua nova password."
+  },
   "profile": {
     "title": "O meu perfil",
     "subtitle": "Os teus dados e configurações de segurança.",
@@ -147,7 +156,18 @@
     "deactivate": "Desativar",
     "twoFactorDeactivateTitle": "Desativar 2FA?",
     "twoFactorDeactivateConfirm": "Vais voltar a iniciar sessão apenas com email e password. Tens a certeza que queres desativar a verificação em duas etapas?",
-    "twoFactorDeactivated": "Verificação em duas etapas desativada."
+    "twoFactorDeactivated": "Verificação em duas etapas desativada.",
+    "changePasswordTitle": "Alterar password",
+    "changePasswordDescription": "Define uma nova password de acesso à tua conta.",
+    "currentPassword": "Password atual",
+    "newPassword": "Nova password",
+    "confirmPassword": "Confirmar nova password",
+    "changePassword": "Alterar password",
+    "changingPassword": "A alterar...",
+    "passwordChanged": "Password alterada com sucesso.",
+    "passwordMismatch": "As passwords não coincidem.",
+    "passwordTooShort": "A nova password deve ter pelo menos 8 caracteres.",
+    "currentPasswordIncorrect": "Password atual incorreta."
   },
   "dashboard": {
     "goodMorning": "Bom dia, {{name}}",
@@ -742,12 +762,12 @@
     "editError": "Erro ao guardar as alterações.",
     "newUser": "Novo utilizador",
     "newUserTitle": "Criar novo utilizador",
-    "newUserSubtitle": "A conta ficará ativa imediatamente. Comunique as credenciais ao utilizador.",
+    "newUserSubtitle": "O utilizador recebe um email de convite para definir a própria password no primeiro acesso.",
     "fieldProfile": "Perfil",
     "selectProfile": "Selecionar perfil...",
     "fieldName": "Nome completo",
     "fieldEmail": "Email institucional",
-    "fieldPassword": "Password inicial",
+    "fieldEmailEdit": "Email",
     "fieldCedula": "Cédula profissional",
     "fieldEspecialidade": "Especialidade",
     "fieldCodigoFuncionario": "Código de funcionário",

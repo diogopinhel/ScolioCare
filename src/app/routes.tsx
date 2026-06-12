@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 // Auth
 import LoginScreen from "./screens/auth/LoginScreen";
 import TwoFactorVerifyScreen from "./screens/auth/TwoFactorVerifyScreen";
+import SetPasswordScreen from "./screens/auth/SetPasswordScreen";
 
 // Layouts
 import Layout from "./components/layouts/Layout";
@@ -49,6 +50,10 @@ export const router = createBrowserRouter([
   {
     path: "/auth/two-factor-verify",
     Component: TwoFactorVerifyScreen,
+  },
+  {
+    path: "/auth/set-password",
+    Component: SetPasswordScreen,
   },
   {
     path: "/403",

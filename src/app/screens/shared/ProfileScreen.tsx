@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
 import { ShieldCheck, ShieldOff, Mail, User, BadgeCheck, Clock } from 'lucide-react';
-import { Button, Modal, Toast } from '../../components/scolio';
+import { Button, Input, Modal, Toast } from '../../components/scolio';
 import { useAuth } from '../../auth/AuthContext';
 import { AuthenticationError } from '../../../data/repository/auth';
+import { registarAcao } from '../../../data/repository/audit';
+import { supabase } from '../../../lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
 
@@ -31,6 +33,13 @@ export default function ProfileScreen() {
   const [aProcessar, setAProcessar] = React.useState(false);
   const [erro, setErro] = React.useState<string | null>(null);
   const [toast, setToast] = React.useState<string | null>(null);
+
+  // Alterar password
+  const [passwordAtual, setPasswordAtual] = React.useState('');
+  const [novaPassword, setNovaPassword] = React.useState('');
+  const [confirmarPassword, setConfirmarPassword] = React.useState('');
+  const [erroPassword, setErroPassword] = React.useState<string | null>(null);
+  const [aAlterarPassword, setAAlterarPassword] = React.useState(false);
 
   if (!utilizador) return null;
 
@@ -65,6 +74,45 @@ export default function ProfileScreen() {
       else setErro(t('auth.unexpectedError'));
     } finally {
       setAProcessar(false);
+    }
+  };
+
+  const tratarAlterarPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErroPassword(null);
+
+    if (novaPassword.length < 8) {
+      setErroPassword(t('profile.passwordTooShort'));
+      return;
+    }
+    if (novaPassword !== confirmarPassword) {
+      setErroPassword(t('profile.passwordMismatch'));
+      return;
+    }
+
+    setAAlterarPassword(true);
+    try {
+      const { error: authErr } = await supabase.auth.signInWithPassword({
+        email: utilizador.email,
+        password: passwordAtual,
+      });
+      if (authErr) {
+        setErroPassword(t('profile.currentPasswordIncorrect'));
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: novaPassword });
+      if (error) throw error;
+
+      registarAcao('ALTERAR_PASSWORD', 'utilizadores', utilizador.id);
+      setPasswordAtual('');
+      setNovaPassword('');
+      setConfirmarPassword('');
+      mostrarToast(t('profile.passwordChanged'));
+    } catch {
+      setErroPassword(t('auth.unexpectedError'));
+    } finally {
+      setAAlterarPassword(false);
     }
   };
 
@@ -146,6 +194,54 @@ export default function ProfileScreen() {
             )}
           </div>
         </div>
+      </section>
+
+      {/* Alterar password */}
+      <section className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
+        <h2 className="text-[var(--scolio-text-primary)] mb-1" style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--weight-semibold)' }}>
+          {t('profile.changePasswordTitle')}
+        </h2>
+        <p className="text-[var(--scolio-text-secondary)] mb-4" style={{ fontSize: 'var(--text-body)' }}>
+          {t('profile.changePasswordDescription')}
+        </p>
+
+        {erroPassword && (
+          <div className="flex items-start gap-2 p-3 rounded-[var(--radius-component)] bg-[var(--scolio-danger-surface)] border border-[var(--scolio-danger-coral)] mb-4" role="alert">
+            <span className="text-[var(--scolio-danger-coral)]" style={{ fontSize: 'var(--text-body)' }}>{erroPassword}</span>
+          </div>
+        )}
+
+        <form onSubmit={tratarAlterarPassword} className="space-y-4 max-w-sm">
+          <Input
+            label={t('profile.currentPassword')}
+            type="password"
+            autoComplete="current-password"
+            required
+            value={passwordAtual}
+            onChange={(e) => setPasswordAtual(e.target.value)}
+          />
+          <Input
+            label={t('profile.newPassword')}
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            required
+            value={novaPassword}
+            onChange={(e) => setNovaPassword(e.target.value)}
+          />
+          <Input
+            label={t('profile.confirmPassword')}
+            type="password"
+            autoComplete="new-password"
+            minLength={8}
+            required
+            value={confirmarPassword}
+            onChange={(e) => setConfirmarPassword(e.target.value)}
+          />
+          <Button type="submit" variant="primary" disabled={aAlterarPassword}>
+            {aAlterarPassword ? t('profile.changingPassword') : t('profile.changePassword')}
+          </Button>
+        </form>
       </section>
 
       <Modal

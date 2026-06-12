@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button, Input } from '../../components/scolio';
 import { useAuth, rotaInicialPara } from '../../auth/AuthContext';
 import { AuthenticationError } from '../../../data/repository/auth';
@@ -30,6 +30,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [erro, setErro] = React.useState<string | null>(null);
   const [aSubmeter, setASubmeter] = React.useState(false);
+  const mensagemSucesso = (location.state as { mensagem?: string } | null)?.mensagem;
 
   // Enquanto a sessão carrega, mostrar spinner (evita o flash do formulário
   // seguido de redirect abrupto quando a sessão é restaurada do localStorage).
@@ -95,6 +96,18 @@ export default function LoginScreen() {
               {t('auth.subtitle')}
             </p>
           </div>
+
+          {mensagemSucesso && (
+            <div
+              className="flex items-start gap-2 p-3 rounded-[var(--radius-component)] bg-[var(--scolio-success-surface)] border border-[var(--scolio-success-green)] mb-6"
+              role="status"
+            >
+              <CheckCircle className="w-4 h-4 text-[var(--scolio-success-green)] mt-0.5 flex-shrink-0" />
+              <span className="text-[var(--scolio-success-green)]" style={{ fontSize: 'var(--text-body)' }}>
+                {mensagemSucesso}
+              </span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input

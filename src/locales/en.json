@@ -125,6 +125,15 @@
     "resendSuccess": "New code sent.",
     "digitLabel": "Digit {{n}}"
   },
+  "setPassword": {
+    "title": "Set password",
+    "subtitle": "Choose a password to access your ScolioCare account.",
+    "invalidLink": "This invite link is invalid or has expired. Ask an administrator for a new invite.",
+    "backToLogin": "Back to login",
+    "submitButton": "Set password",
+    "submitting": "Saving...",
+    "success": "Password set successfully. Sign in with your new password."
+  },
   "profile": {
     "title": "My profile",
     "subtitle": "Your details and security settings.",
@@ -147,7 +156,18 @@
     "deactivate": "Disable",
     "twoFactorDeactivateTitle": "Disable 2FA?",
     "twoFactorDeactivateConfirm": "You will sign in using only email and password again. Are you sure you want to disable two-step verification?",
-    "twoFactorDeactivated": "Two-step verification disabled."
+    "twoFactorDeactivated": "Two-step verification disabled.",
+    "changePasswordTitle": "Change password",
+    "changePasswordDescription": "Set a new password for your account.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "changePassword": "Change password",
+    "changingPassword": "Changing...",
+    "passwordChanged": "Password changed successfully.",
+    "passwordMismatch": "Passwords do not match.",
+    "passwordTooShort": "The new password must be at least 8 characters long.",
+    "currentPasswordIncorrect": "Current password is incorrect."
   },
   "dashboard": {
     "goodMorning": "Good morning, {{name}}",
@@ -742,12 +762,12 @@
     "editError": "Error saving changes.",
     "newUser": "New user",
     "newUserTitle": "Create new user",
-    "newUserSubtitle": "The account will be active immediately. Share the credentials with the user.",
+    "newUserSubtitle": "The user receives an invite email to set their own password on first access.",
     "fieldProfile": "Profile",
     "selectProfile": "Select profile...",
     "fieldName": "Full name",
     "fieldEmail": "Institutional email",
-    "fieldPassword": "Initial password",
+    "fieldEmailEdit": "Email",
     "fieldCedula": "Medical licence number",
     "fieldEspecialidade": "Speciality",
     "fieldCodigoFuncionario": "Employee code",

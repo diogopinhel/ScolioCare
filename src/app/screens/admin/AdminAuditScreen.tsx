@@ -16,7 +16,7 @@ function formatarDataHora(iso: string, locale: string): string {
 
 function categoriaDaTipoAcao(tipoAcao: string): string {
   const t = tipoAcao.toUpperCase();
-  if (t === 'LOGIN' || t === 'LOGOUT' || t.includes('2FA')) return 'AUTH';
+  if (t === 'LOGIN' || t === 'LOGOUT' || t.includes('2FA') || t.includes('PASSWORD')) return 'AUTH';
   if (t.includes('GLASS_BREAK')) return 'GLASSBREAK';
   if (t.startsWith('EXPORTAR')) return 'EXPORT';
   if (t.includes('SETTINGS') || t.includes('CONFIG')) return 'CONFIG';

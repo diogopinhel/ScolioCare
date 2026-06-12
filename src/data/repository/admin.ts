@@ -242,7 +242,6 @@ export interface DadosCriarUtilizador {
   perfil: 'MEDICO' | 'TECNICO' | 'ADMIN';
   nomeCompleto: string;
   email: string;
-  password: string;
   // MEDICO
   cedulaProfissional?: string;
   especialidade?: string;
@@ -252,7 +251,19 @@ export interface DadosCriarUtilizador {
 }
 
 export async function criarUtilizador(dados: DadosCriarUtilizador): Promise<{ id: string }> {
-  return invocarEdgeFunction<{ id: string }>('criar-utilizador', dados);
+  return invocarEdgeFunction<{ id: string }>('criar-utilizador', {
+    ...dados,
+    redirectTo: `${window.location.origin}/auth/set-password`,
+  });
+}
+
+export async function obterEmailUtilizador(id: string): Promise<string> {
+  const { email } = await invocarEdgeFunction<{ email: string }>('gerir-email-utilizador', { utilizadorId: id });
+  return email;
+}
+
+export async function editarEmailUtilizador(id: string, novoEmail: string): Promise<void> {
+  await invocarEdgeFunction<{ email: string }>('gerir-email-utilizador', { utilizadorId: id, novoEmail });
 }
 
 // ═══════════════════════════════════════════════════════════════════

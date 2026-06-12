@@ -47,33 +47,31 @@ Deno.serve(async (req: Request) => {
 
     // ── 3. Validar corpo do pedido ──────────────────────────────────────────
     const body = await req.json()
-    const { perfil, nomeCompleto, email, password } = body
+    const { perfil, nomeCompleto, email, redirectTo } = body
 
-    if (!nomeCompleto?.trim() || !email?.trim() || !password?.trim()) {
-      return json({ erro: 'Nome completo, email e password são obrigatórios' }, 400)
+    if (!nomeCompleto?.trim() || !email?.trim() || !redirectTo?.trim()) {
+      return json({ erro: 'Nome completo, email e redirectTo são obrigatórios' }, 400)
     }
 
     if (!['MEDICO', 'TECNICO', 'ADMIN'].includes(perfil)) {
       return json({ erro: 'Perfil inválido. Use MEDICO, TECNICO ou ADMIN.' }, 400)
     }
 
-    if (password.length < 8) {
-      return json({ erro: 'A password deve ter pelo menos 8 caracteres' }, 400)
-    }
-
-    // ── 4. Criar utilizador no Supabase Auth ────────────────────────────────
-    const { data: authData, error: createErr } = await adminClient.auth.admin.createUser({
-      email: email.trim().toLowerCase(),
-      email_confirm: true,
-      password: password.trim(),
-      user_metadata: { nome_completo: nomeCompleto.trim() },
-    })
+    // ── 4. Convidar utilizador por email (sem password — o próprio define
+    //      a password no primeiro acesso, em redirectTo) ────────────────────
+    const { data: authData, error: createErr } = await adminClient.auth.admin.inviteUserByEmail(
+      email.trim().toLowerCase(),
+      {
+        data: { nome_completo: nomeCompleto.trim() },
+        redirectTo,
+      },
+    )
 
     if (createErr || !authData.user) {
       if (createErr?.message?.toLowerCase().includes('already registered')) {
         return json({ erro: 'Já existe um utilizador com este email.' }, 409)
       }
-      return json({ erro: createErr?.message ?? 'Falha ao criar utilizador Auth' }, 500)
+      return json({ erro: createErr?.message ?? 'Falha ao convidar utilizador' }, 500)
     }
 
     const novoId = authData.user.id
@@ -96,16 +94,20 @@ Deno.serve(async (req: Request) => {
       camposBase.departamento = body.departamento?.trim() ?? ''
     }
 
-    // ── 6. Atualizar a row em utilizadores criada pelo trigger de auth ───────
-    const { error: updateErr } = await adminClient
+    // ── 6. Criar a row em utilizadores com os dados definidos pelo admin.
+    //      handle_new_user() só cria esta row quando o convite é aceite
+    //      (email confirmado) — até aí não existe nenhuma row para
+    //      atualizar, por isso usamos upsert. Se handle_new_user() vier a
+    //      correr depois, o ON CONFLICT (id) DO NOTHING dele preserva os
+    //      dados gravados aqui.
+    const { error: upsertErr } = await adminClient
       .from('utilizadores')
-      .update(camposBase)
-      .eq('id', novoId)
+      .upsert({ id: novoId, ...camposBase })
 
-    if (updateErr) {
+    if (upsertErr) {
       // Reverter: eliminar o utilizador Auth para não ficar registo órfão
       await adminClient.auth.admin.deleteUser(novoId)
-      return json({ erro: `Falha ao actualizar perfil: ${updateErr.message}` }, 500)
+      return json({ erro: `Falha ao gravar perfil: ${upsertErr.message}` }, 500)
     }
 
     await adminClient.from('audit_log').insert({

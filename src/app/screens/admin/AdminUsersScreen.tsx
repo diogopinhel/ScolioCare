@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, CheckCircle, XCircle, UserPlus, Eye, EyeOff, Pencil, Loader2 } from 'lucide-react';
+import { Power, CheckCircle, XCircle, UserPlus, Pencil, Loader2 } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
 import {
   getUtilizadoresAdmin,
@@ -8,6 +8,8 @@ import {
   criarUtilizador,
   getUtilizadorCompleto,
   editarUtilizadorAdmin,
+  obterEmailUtilizador,
+  editarEmailUtilizador,
 } from '../../../data/repository/admin';
 import { getMedicos, alterarMedicoPaciente } from '../../../data/repository/pacientes';
 import { supabase } from '../../../lib/supabase';
@@ -63,6 +65,8 @@ export default function AdminUsersScreen() {
   const [aCarregarEditar, setACarregarEditar] = React.useState(false);
   const [aGuardar, setAGuardar] = React.useState(false);
   const [formEditar, setFormEditar] = React.useState<CamposEdicaoUtilizador>({ nomeCompleto: '' });
+  const [emailEditar, setEmailEditar] = React.useState('');
+  const [emailOriginal, setEmailOriginal] = React.useState('');
   // Reatribuição de médico (só para PACIENTE)
   const [medicos, setMedicos] = React.useState<MedicoResumo[]>([]);
   const [medicoIdOriginal, setMedicoIdOriginal] = React.useState<string>('');
@@ -71,12 +75,15 @@ export default function AdminUsersScreen() {
   const abrirEditar = async (u: UtilizadorAdmin) => {
     setACarregarEditar(true);
     try {
-      const [completo, listaMedicos] = await Promise.all([
+      const [completo, listaMedicos, email] = await Promise.all([
         getUtilizadorCompleto(u.id),
         u.perfil === 'PACIENTE' ? getMedicos() : Promise.resolve([] as MedicoResumo[]),
+        obterEmailUtilizador(u.id).catch(() => ''),
       ]);
       if (completo) {
         setUtilizadorEditar(completo);
+        setEmailEditar(email);
+        setEmailOriginal(email);
         setFormEditar({
           nomeCompleto:      completo.nomeCompleto ?? '',
           cedulaProfissional: completo.cedulaProfissional ?? '',
@@ -107,6 +114,8 @@ export default function AdminUsersScreen() {
   const fecharEditar = () => {
     setUtilizadorEditar(null);
     setFormEditar({ nomeCompleto: '' });
+    setEmailEditar('');
+    setEmailOriginal('');
     setMedicoIdOriginal('');
     setMedicoIdSelecionado('');
   };
@@ -116,6 +125,9 @@ export default function AdminUsersScreen() {
     if (!utilizadorEditar) return;
     setAGuardar(true);
     try {
+      if (emailEditar.trim().toLowerCase() !== emailOriginal.toLowerCase()) {
+        await editarEmailUtilizador(utilizadorEditar.id, emailEditar);
+      }
       await editarUtilizadorAdmin(utilizadorEditar.id, utilizadorEditar.perfil, formEditar);
       // Reatribuir médico se mudou (só para PACIENTE)
       if (utilizadorEditar.perfil === 'PACIENTE' && medicoIdSelecionado && medicoIdSelecionado !== medicoIdOriginal) {
@@ -126,8 +138,8 @@ export default function AdminUsersScreen() {
       );
       mostrarToast(t('admin.editSuccess'));
       fecharEditar();
-    } catch {
-      mostrarToast(t('admin.editError'), 'error');
+    } catch (err) {
+      mostrarToast(err instanceof Error ? err.message : t('admin.editError'), 'error');
     } finally {
       setAGuardar(false);
     }
@@ -136,12 +148,10 @@ export default function AdminUsersScreen() {
   // Modal de criação de utilizador
   const [modalAberto, setModalAberto] = React.useState(false);
   const [aCriar, setACriar] = React.useState(false);
-  const [showPassword, setShowPassword] = React.useState(false);
   const formularioVazio: DadosCriarUtilizador = {
     perfil: 'MEDICO',
     nomeCompleto: '',
     email: '',
-    password: '',
     cedulaProfissional: '',
     especialidade: '',
     codigoFuncionario: '',
@@ -152,7 +162,6 @@ export default function AdminUsersScreen() {
   const fecharModal = () => {
     setModalAberto(false);
     setForm(formularioVazio);
-    setShowPassword(false);
   };
 
   const submeterNovoUtilizador = async (e: React.FormEvent) => {
@@ -472,6 +481,21 @@ export default function AdminUsersScreen() {
                   />
                 </div>
 
+                {/* Email — todos os perfis (Supabase Auth) */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                    {t('admin.fieldEmailEdit')}
+                  </label>
+                  <input
+                    required
+                    type="email"
+                    maxLength={254}
+                    value={emailEditar}
+                    onChange={(e) => setEmailEditar(e.target.value)}
+                    className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                  />
+                </div>
+
                 {/* MEDICO */}
                 {utilizadorEditar.perfil === 'MEDICO' && (
                   <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--scolio-border-light)]">
@@ -670,30 +694,6 @@ export default function AdminUsersScreen() {
                     onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                     className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
                   />
-                </div>
-
-                {/* Password */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
-                    {t('admin.fieldPassword')}
-                  </label>
-                  <div className="relative">
-                    <input
-                      required
-                      minLength={8}
-                      type={showPassword ? 'text' : 'password'}
-                      value={form.password}
-                      onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                      className="px-3 py-2 pr-10 w-full border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--scolio-neutral-gray)] hover:text-[var(--scolio-text-primary)]"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
                 </div>
 
                 {/* Campos específicos — MEDICO */}
