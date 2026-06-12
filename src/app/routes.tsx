@@ -88,6 +88,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: TecnicoDashboardScreen },
       { path: "upload", Component: ExamUploadScreen },
+      { path: "upload/:pacienteId", Component: ExamUploadScreen },
       { path: "queue", Component: ExamQueueScreen },
       { path: "patients", Component: TecnicoPatientsScreen },
       { path: "patients/:id/edit", Component: PatientEditScreen },

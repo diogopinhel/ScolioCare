@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { Upload, FileImage, X, CheckCircle2, Loader2, Image as ImageIcon, Search } from 'lucide-react';
 import { Button, Toast } from '../../components/scolio';
 import { useAuth } from '../../auth/AuthContext';
@@ -18,6 +18,7 @@ import type { PacienteTecnico } from '../../../data/types';
 
 export default function ExamUploadScreen() {
   const navigate = useNavigate();
+  const { pacienteId } = useParams<{ pacienteId: string }>();
   const { utilizador } = useAuth();
   const { t } = useTranslation();
 
@@ -44,9 +45,18 @@ export default function ExamUploadScreen() {
 
   React.useEffect(() => {
     getPacientesTecnico()
-      .then(setPacientes)
+      .then((lista) => {
+        setPacientes(lista);
+        // Pré-seleciona quando vimos de "Novo exame" na lista de pacientes.
+        // Se o id da URL não estiver na lista (caso raro — paciente desativado
+        // ou trocado de técnico entre o clique e o load), deixa em branco.
+        if (pacienteId) {
+          const escolhido = lista.find((p) => p.id === pacienteId);
+          if (escolhido) setPacienteSelecionado(escolhido);
+        }
+      })
       .finally(() => setACarregarPacientes(false));
-  }, []);
+  }, [pacienteId]);
 
   const pacientesFiltrados = pacientes.filter((p) =>
     p.nomeCompleto.toLowerCase().includes(pesquisaPaciente.toLowerCase()) ||

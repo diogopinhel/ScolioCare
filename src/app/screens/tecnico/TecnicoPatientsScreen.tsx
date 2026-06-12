@@ -248,7 +248,7 @@ export default function TecnicoPatientsScreen() {
                     {p.contaAtivada ? (
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => navigate('/tecnico/upload')}
+                          onClick={() => navigate(`/tecnico/upload/${p.id}`)}
                           className="px-3 py-1 text-white rounded-[var(--radius-component)] transition-colors hover:opacity-90 flex items-center gap-1"
                           style={{ fontSize: 'var(--text-caption)', backgroundColor: 'var(--scolio-success-green)' }}
                         >
