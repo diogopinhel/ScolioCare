@@ -163,7 +163,7 @@ export interface EstudoComResultado {
 export interface WellnessLogEntry {
   id: string;
   dataRegisto: string;         // ISO date
-  nivelDor: number;            // 0-9
+  nivelDor: number;            // 0-10
   desconforto: string | null;  // 'none' | 'mild' | 'moderate' | 'intense'
   notas: string | null;
 }

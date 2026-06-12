@@ -213,13 +213,13 @@ export default function PatientRecordScreen() {
     };
 
     const linhaWellness = (w: typeof wellnessLog[0]) => {
-      const nivel = ['😊','😊','😌','😐','😐','😕','😟','😟','😣','😭'][w.nivelDor] ?? w.nivelDor;
+      const nivel = ['😊','😊','😌','😐','😐','😕','😟','😟','😣','😣','😭'][w.nivelDor] ?? w.nivelDor;
       const desconforto: Record<string, string> = {
         none: 'Nenhum', mild: 'Ligeiro', moderate: 'Moderado', intense: 'Intenso',
       };
       return `<tr>
         <td>${new Date(w.dataRegisto).toLocaleDateString('pt-PT')}</td>
-        <td>${nivel} ${w.nivelDor}/9</td>
+        <td>${nivel} ${w.nivelDor}/10</td>
         <td>${w.desconforto ? desconforto[w.desconforto] ?? w.desconforto : '—'}</td>
         <td style="font-size:11px;color:#555">${w.notas ?? '—'}</td>
       </tr>`;
@@ -653,11 +653,11 @@ export default function PatientRecordScreen() {
                           <div className="flex-1 h-3 bg-white rounded-full overflow-hidden">
                             <div
                               className="h-full bg-[var(--scolio-success-green)] rounded-full"
-                              style={{ width: `${(ultimoWellness.nivelDor / 9) * 100}%` }}
+                              style={{ width: `${(ultimoWellness.nivelDor / 10) * 100}%` }}
                             />
                           </div>
                           <span className="text-[var(--scolio-success-green)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>
-                            {ultimoWellness.nivelDor}/9
+                            {ultimoWellness.nivelDor}/10
                           </span>
                         </div>
                       </div>
@@ -985,11 +985,11 @@ export default function PatientRecordScreen() {
                         <div className="flex-1 h-2 bg-[var(--scolio-page-surface)] rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${fb.nivelDor <= 3 ? 'bg-[var(--scolio-success-green)]' : fb.nivelDor <= 6 ? 'bg-[var(--scolio-warning-amber)]' : 'bg-[var(--scolio-danger-coral)]'}`}
-                            style={{ width: `${(fb.nivelDor / 9) * 100}%` }}
+                            style={{ width: `${(fb.nivelDor / 10) * 100}%` }}
                           />
                         </div>
                         <span className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-body)' }}>
-                          {fb.nivelDor}/9
+                          {fb.nivelDor}/10
                         </span>
                       </div>
                     </div>
