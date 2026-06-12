@@ -102,10 +102,10 @@ export default function Layout() {
           <NavLink
             to="/perfil"
             className={({ isActive }) =>
-              `group flex items-center gap-3 mb-3 p-2 rounded-lg border transition-colors cursor-pointer ${
+              `group flex items-center gap-3 mb-3 p-2 rounded-lg transition-colors cursor-pointer ${
                 isActive
-                  ? 'bg-[var(--scolio-light-blue-surface)] border-[var(--scolio-primary-blue)]'
-                  : 'border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] hover:border-[var(--scolio-primary-blue)]'
+                  ? 'bg-[var(--scolio-light-blue-surface)]'
+                  : 'hover:bg-[var(--scolio-page-surface)]'
               }`
             }
             title={t('profile.title')}

@@ -102,10 +102,10 @@ export default function TecnicoLayout() {
           <NavLink
             to="/tecnico/perfil"
             className={({ isActive }) =>
-              `group flex items-center gap-3 mb-3 p-2 rounded-lg border transition-colors cursor-pointer ${
+              `group flex items-center gap-3 mb-3 p-2 rounded-lg transition-colors cursor-pointer ${
                 isActive
-                  ? 'bg-[var(--scolio-success-surface)] border-[var(--scolio-success-green)]'
-                  : 'border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] hover:border-[var(--scolio-success-green)]'
+                  ? 'bg-[var(--scolio-success-surface)]'
+                  : 'hover:bg-[var(--scolio-page-surface)]'
               }`
             }
             title={t('profile.title')}
