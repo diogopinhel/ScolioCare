@@ -133,10 +133,10 @@ export default function AdminLayout() {
           <NavLink
             to="/admin-panel/perfil"
             className={({ isActive }) =>
-              `flex items-center gap-3 mb-3 p-2 rounded-lg transition-colors ${
+              `group flex items-center gap-3 mb-3 p-2 rounded-lg border transition-colors cursor-pointer ${
                 isActive
-                  ? 'bg-[var(--scolio-light-blue-surface)]'
-                  : 'hover:bg-[var(--scolio-page-surface)]'
+                  ? 'bg-[var(--scolio-light-blue-surface)] border-[var(--scolio-primary-blue)]'
+                  : 'border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] hover:border-[var(--scolio-primary-blue)]'
               }`
             }
             title={t('profile.title')}
@@ -158,6 +158,7 @@ export default function AdminLayout() {
                 {t('nav.administrator')}
               </p>
             </div>
+            <ChevronRight className="w-4 h-4 text-[var(--scolio-neutral-gray)] group-hover:text-[var(--scolio-primary-blue)] transition-colors flex-shrink-0" />
           </NavLink>
           <button
             type="button"

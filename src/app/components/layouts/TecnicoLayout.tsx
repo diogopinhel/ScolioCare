@@ -6,6 +6,7 @@ import {
   ListChecks,
   Users,
   LogOut,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -101,10 +102,10 @@ export default function TecnicoLayout() {
           <NavLink
             to="/tecnico/perfil"
             className={({ isActive }) =>
-              `flex items-center gap-3 mb-3 p-2 rounded-lg transition-colors ${
+              `group flex items-center gap-3 mb-3 p-2 rounded-lg border transition-colors cursor-pointer ${
                 isActive
-                  ? 'bg-[var(--scolio-success-surface)]'
-                  : 'hover:bg-[var(--scolio-page-surface)]'
+                  ? 'bg-[var(--scolio-success-surface)] border-[var(--scolio-success-green)]'
+                  : 'border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] hover:border-[var(--scolio-success-green)]'
               }`
             }
             title={t('profile.title')}
@@ -126,6 +127,7 @@ export default function TecnicoLayout() {
                 {departamento}
               </p>
             </div>
+            <ChevronRight className="w-4 h-4 text-[var(--scolio-neutral-gray)] group-hover:text-[var(--scolio-success-green)] transition-colors flex-shrink-0" />
           </NavLink>
           <button
             type="button"
