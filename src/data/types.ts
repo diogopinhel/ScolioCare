@@ -168,6 +168,14 @@ export interface WellnessLogEntry {
   notas: string | null;
 }
 
+export interface MedidaPaciente {
+  id: string;
+  dataRegisto: string;         // ISO datetime
+  peso: number;                // kg
+  altura: number;              // cm
+  registadoPorNome: string;
+}
+
 export interface HistoricoEstadoEntry {
   id: string;
   dataTransicao: string;       // ISO datetime

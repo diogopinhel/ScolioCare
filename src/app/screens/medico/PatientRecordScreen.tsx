@@ -1,16 +1,17 @@
 import React from 'react';
-import { FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown, GitCompare, ShieldAlert, Lock, Trash2 } from 'lucide-react';
-import { Button, StatusBadge, type BadgeStatus, Textarea, Toast, ExamCard, SkeletonBlock } from '../../components/scolio';
+import { FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown, GitCompare, ShieldAlert, Lock, Trash2, Weight, Ruler, History, Pencil } from 'lucide-react';
+import { Button, StatusBadge, type BadgeStatus, Textarea, Toast, ExamCard, SkeletonBlock, Modal, Input } from '../../components/scolio';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Dot } from 'recharts';
 import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
 import { getPaciente, getNotasDoPaciente, criarNotaPaciente, apagarNotaPaciente } from '../../../data/repository/pacientes';
-import { getEstudosDoPaciente, getHistoricoEstadoDoPaciente, getUrlImagemEstudo } from '../../../data/repository/estudos';
+import { getEstudosDoPaciente, getHistoricoEstadoDoPaciente, getUrlImagemEstudo, getUrlRelatorioPdf } from '../../../data/repository/estudos';
 import { supabase } from '../../../lib/supabase';
 import { getWellnessLogDoPaciente } from '../../../data/repository/wellness';
-import type { PacienteDetalhe, EstudoComResultado, WellnessLogEntry, HistoricoEstadoEntry, EstadoEstudo, NotaPaciente } from '../../../data/types';
+import { getMedidasPaciente, registarMedidaPaciente } from '../../../data/repository/medidas';
+import type { PacienteDetalhe, EstudoComResultado, WellnessLogEntry, HistoricoEstadoEntry, EstadoEstudo, NotaPaciente, MedidaPaciente } from '../../../data/types';
 
 type TabKey = 'overview' | 'exams' | 'reports' | 'evolution' | 'notes' | 'feedback' | 'audit';
 
@@ -105,9 +106,16 @@ export default function PatientRecordScreen() {
   const [wellnessLog, setWellnessLog] = React.useState<WellnessLogEntry[]>([]);
   const [historico, setHistorico] = React.useState<HistoricoEstadoEntry[]>([]);
   const [notas, setNotas] = React.useState<NotaPaciente[]>([]);
+  const [medidas, setMedidas] = React.useState<MedidaPaciente[]>([]);
   const [aCarregar, setACarregar] = React.useState(true);
   const [aGuardarNota, setAGuardarNota] = React.useState(false);
   const [aApagarNota, setAApagarNota] = React.useState<string | null>(null); // id da nota a apagar
+  const [showMedidasModal, setShowMedidasModal] = React.useState(false);
+  const [showHistoricoMedidas, setShowHistoricoMedidas] = React.useState(false);
+  const [pesoInput, setPesoInput] = React.useState('');
+  const [alturaInput, setAlturaInput] = React.useState('');
+  const [erroMedidas, setErroMedidas] = React.useState<string | null>(null);
+  const [aGuardarMedidas, setAGuardarMedidas] = React.useState(false);
   // null = ainda a verificar; true = associado; false = não associado (glass-break ativo ou necessário)
   const [estaAssociado, setEstaAssociado] = React.useState<boolean | null>(null);
 
@@ -137,8 +145,9 @@ export default function PatientRecordScreen() {
       getWellnessLogDoPaciente(id),
       getHistoricoEstadoDoPaciente(id),
       getNotasDoPaciente(id),
+      getMedidasPaciente(id),
       verificarAssociacao,
-    ]).then(([p, e, w, h, n, assoc]) => {
+    ]).then(([p, e, w, h, n, m, assoc]) => {
       if (!cancelado) {
         clearTimeout(timeout);
         setPaciente(p);
@@ -146,6 +155,7 @@ export default function PatientRecordScreen() {
         setWellnessLog(w);
         setHistorico(h);
         setNotas(n);
+        setMedidas(m);
         setEstaAssociado((assoc.count ?? 0) > 0);
         setACarregar(false);
 
@@ -178,6 +188,34 @@ export default function PatientRecordScreen() {
     setToastMsg(msg);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
+  };
+
+  const abrirModalMedidas = () => {
+    setPesoInput(medidas[0] ? String(medidas[0].peso) : '');
+    setAlturaInput(medidas[0] ? String(medidas[0].altura) : '');
+    setErroMedidas(null);
+    setShowMedidasModal(true);
+  };
+
+  const confirmarMedidas = async () => {
+    const peso = Number(pesoInput.replace(',', '.'));
+    const altura = Number(alturaInput.replace(',', '.'));
+    if (!Number.isFinite(peso) || peso <= 0 || !Number.isFinite(altura) || altura <= 0) {
+      setErroMedidas(t('patientRecord.invalidMeasurements'));
+      return;
+    }
+    setAGuardarMedidas(true);
+    setErroMedidas(null);
+    try {
+      const nova = await registarMedidaPaciente(id!, peso, altura, utilizador!.id, utilizador!.nomeCompleto);
+      setMedidas((prev) => [nova, ...prev]);
+      setShowMedidasModal(false);
+      mostrarToast(t('patientRecord.measurementsSaved'));
+    } catch {
+      setErroMedidas(t('patientRecord.measurementsError'));
+    } finally {
+      setAGuardarMedidas(false);
+    }
   };
 
   const handleExport = () => {
@@ -533,6 +571,36 @@ export default function PatientRecordScreen() {
                 </section>
 
                 <section>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-[var(--scolio-text-primary)]">{t('patientRecord.measurements')}</h3>
+                    <div className="flex items-center gap-4">
+                      {medidas.length > 0 && (
+                        <button
+                          onClick={() => setShowHistoricoMedidas(true)}
+                          className="flex items-center gap-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-primary-blue)] transition-colors"
+                          style={{ fontSize: 'var(--text-caption)' }}
+                        >
+                          <History className="w-3.5 h-3.5" />
+                          {t('patientRecord.viewHistory')}
+                        </button>
+                      )}
+                      <button
+                        onClick={abrirModalMedidas}
+                        className="flex items-center gap-1.5 text-[var(--scolio-primary-blue)] hover:underline"
+                        style={{ fontSize: 'var(--text-caption)' }}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        {t('patientRecord.editMeasurements')}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-5 space-y-4">
+                    <DataRow icon={Weight} label={t('patientRecord.weight')} value={medidas[0] ? `${medidas[0].peso} kg` : '—'} />
+                    <DataRow icon={Ruler} label={t('patientRecord.height')} value={medidas[0] ? `${medidas[0].altura} cm` : '—'} />
+                  </div>
+                </section>
+
+                <section>
                   <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('patientRecord.cobbEvolution')}</h3>
                   {cobbData.length > 0 ? (
                     <div className="bg-white border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] p-5">
@@ -762,7 +830,11 @@ export default function PatientRecordScreen() {
                           </button>
                           {exame.ficheiroPdf && (
                             <button
-                              onClick={() => window.open(exame.ficheiroPdf!, '_blank')}
+                              onClick={async () => {
+                                const url = await getUrlRelatorioPdf(exame.ficheiroPdf!);
+                                if (url) window.open(url, '_blank');
+                                else mostrarToast(t('patientRecord.downloadError'));
+                              }}
                               className="flex items-center gap-2 text-[var(--scolio-text-secondary)] hover:underline"
                               style={{ fontSize: 'var(--text-body)' }}
                             >
@@ -1073,6 +1145,69 @@ export default function PatientRecordScreen() {
           <Toast title={toastMsg} type="success" onClose={() => setShowToast(false)} />
         </div>
       )}
+
+      <Modal
+        isOpen={showMedidasModal}
+        onClose={() => setShowMedidasModal(false)}
+        title={t('patientRecord.registerMeasurements')}
+        confirmLabel={aGuardarMedidas ? t('common.saving') : t('common.save')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={confirmarMedidas}
+        confirmVariant="primary"
+      >
+        <div className="space-y-4">
+          <Input
+            label={t('patientRecord.weightKg')}
+            type="number"
+            step="0.1"
+            min="0"
+            value={pesoInput}
+            onChange={(e) => { setPesoInput(e.target.value); setErroMedidas(null); }}
+            disabled={aGuardarMedidas}
+          />
+          <Input
+            label={t('patientRecord.heightCm')}
+            type="number"
+            step="0.1"
+            min="0"
+            value={alturaInput}
+            onChange={(e) => { setAlturaInput(e.target.value); setErroMedidas(null); }}
+            disabled={aGuardarMedidas}
+          />
+          {erroMedidas && (
+            <p className="text-[var(--scolio-danger-coral)]" style={{ fontSize: 'var(--text-caption)' }}>
+              {erroMedidas}
+            </p>
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showHistoricoMedidas}
+        onClose={() => setShowHistoricoMedidas(false)}
+        title={t('patientRecord.measurementsHistory')}
+      >
+        {medidas.length > 0 ? (
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {medidas.map((m) => (
+              <div key={m.id} className="flex items-center justify-between bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-3">
+                <div>
+                  <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
+                    {m.peso} kg · {m.altura} cm
+                  </p>
+                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
+                    {formatarDataHora(m.dataRegisto, dateLocale)} · {m.registadoPorNome}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[var(--scolio-text-secondary)] text-center py-6" style={{ fontSize: 'var(--text-body)' }}>
+            {t('patientRecord.noMeasurementsHistory')}
+          </p>
+        )}
+      </Modal>
     </div>
   );
 }
