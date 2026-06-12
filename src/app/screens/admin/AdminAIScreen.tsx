@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 const GRAU_CORES: Record<string, string> = {
   LEVE:        'var(--scolio-success-green)',
   MODERADA:    'var(--scolio-warning-amber)',
-  GRAVE:       'var(--scolio-error-red)',
+  GRAVE:       'var(--scolio-danger-coral)',
   DESCONHECIDO: 'var(--scolio-neutral-gray)',
 };
 

@@ -8,6 +8,7 @@ import { getPacientesAssociados, getPaciente } from '../../../data/repository/pa
 import { criarEstudo, uploadImagemEstudo } from '../../../data/repository/tecnico';
 import { registarAcao } from '../../../data/repository/audit';
 import { supabase } from '../../../lib/supabase';
+import { validarFicheiroExame, TAMANHO_MAX_EXAME_MB } from '../../../lib/validarFicheiroExame';
 import type { PacienteResumo } from '../../../data/types';
 
 export default function ExamUploadMedicoScreen() {
@@ -54,6 +55,19 @@ export default function ExamUploadMedicoScreen() {
       }
     }).finally(() => setACarregarPacientes(false));
   }, [pacienteId]);
+
+  const handleFicheiro = (f: File) => {
+    const erro = validarFicheiroExame(f);
+    if (erro === 'TIPO_INVALIDO') {
+      mostrarToast(t('upload.invalidFileType'), 'error');
+      return;
+    }
+    if (erro === 'DEMASIADO_GRANDE') {
+      mostrarToast(t('upload.fileTooLarge', { max: TAMANHO_MAX_EXAME_MB }), 'error');
+      return;
+    }
+    setFicheiro(f);
+  };
 
   const podeSubmeter = ficheiro && pacienteSelecionado && dataEstudo && fase === 'idle';
 
@@ -108,7 +122,7 @@ export default function ExamUploadMedicoScreen() {
               e.preventDefault();
               setDragOver(false);
               const f = e.dataTransfer.files?.[0];
-              if (f) setFicheiro(f);
+              if (f) handleFicheiro(f);
             }}
             className={`bg-white rounded-[var(--radius-card)] border-2 border-dashed p-12 text-center transition-colors ${
               dragOver ? 'border-[var(--scolio-primary-blue)] bg-[var(--scolio-light-blue-surface)]' : 'border-[var(--scolio-border-light)]'
@@ -128,7 +142,7 @@ export default function ExamUploadMedicoScreen() {
                     type="file"
                     accept=".dcm,.png,.jpg,.jpeg"
                     className="hidden"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) setFicheiro(f); }}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFicheiro(f); }}
                   />
                   <span className="cursor-pointer inline-block px-4 py-2 bg-[var(--scolio-primary-blue)] text-white rounded-[var(--radius-component)] hover:opacity-90">
                     {t('upload.selectFile')}

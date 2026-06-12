@@ -237,9 +237,6 @@
     "showingPlural": "Mostrando {{from}}–{{to}} de {{total}} pacientes",
     "viewPatient": "Ver paciente",
     "editPatient": "Editar paciente",
-    "archivePatient": "Arquivar paciente",
-    "archiveTitle": "Arquivar paciente",
-    "archivePermission": "A remoção de associações médico-paciente requer permissão de <strong>administrador</strong>. Contacte o administrador do sistema para encerrar esta associação ou desativar a conta.",
     "emergencyAccess": "Acesso de emergência (Glass-Break)",
     "emergencyDesc": "Aceder ao registo de um paciente não associado à sua lista. Todos os acessos são auditados.",
     "emergencyProtocol": "Protocolo de emergência — utilize apenas em situações clínicas urgentes",
@@ -582,7 +579,9 @@
     "submitError": "Erro — tentar novamente",
     "successToast": "Exame submetido para análise IA com sucesso.",
     "noMedicoError": "Não foi possível determinar o médico responsável por este paciente. Contacte um administrador.",
-    "uploadError": "Erro ao submeter o exame. Verifica as permissões do bucket de armazenamento."
+    "uploadError": "Erro ao submeter o exame. Verifica as permissões do bucket de armazenamento.",
+    "invalidFileType": "Formato não suportado. Use DICOM (.dcm), PNG ou JPEG.",
+    "fileTooLarge": "O ficheiro excede o limite de {{max}} MB."
   },
   "queue": {
     "title": "Fila de exames",

@@ -237,9 +237,6 @@
     "showingPlural": "Showing {{from}}–{{to}} of {{total}} patients",
     "viewPatient": "View patient",
     "editPatient": "Edit patient",
-    "archivePatient": "Archive patient",
-    "archiveTitle": "Archive patient",
-    "archivePermission": "Removing doctor-patient associations requires <strong>administrator</strong> permission. Contact the system administrator to end this association or deactivate the account.",
     "emergencyAccess": "Emergency access (Glass-Break)",
     "emergencyDesc": "Access a patient record not associated with your list. All access is audited.",
     "emergencyProtocol": "Emergency protocol — use only in urgent clinical situations",
@@ -582,7 +579,9 @@
     "submitError": "Error — try again",
     "successToast": "Exam submitted for AI analysis successfully.",
     "noMedicoError": "Could not determine the responsible doctor for this patient. Contact an administrator.",
-    "uploadError": "Error submitting the exam. Check the storage bucket permissions."
+    "uploadError": "Error submitting the exam. Check the storage bucket permissions.",
+    "invalidFileType": "Unsupported format. Use DICOM (.dcm), PNG or JPEG.",
+    "fileTooLarge": "File exceeds the {{max}} MB limit."
   },
   "queue": {
     "title": "Exam queue",

@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { registarAcao } from './audit';
+import { invocarEdgeFunction } from './edge';
 import type { AuditLogEntry, UtilizadorAdmin, UtilizadorAdminCompleto, MetricasDashboardAdmin } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -246,25 +247,7 @@ export interface DadosCriarUtilizador {
 }
 
 export async function criarUtilizador(dados: DadosCriarUtilizador): Promise<{ id: string }> {
-  const { data, error } = await supabase.functions.invoke('criar-utilizador', { body: dados });
-
-  if (error) {
-    // Em FunctionsHttpError (resposta não-2xx) o supabase-js esconde o body
-    // por trás de `error.context`. Tentamos extrair o campo `erro` para
-    // mostrar a mensagem real do servidor em vez de "non-2xx status code".
-    const ctx = (error as unknown as { context?: Response }).context;
-    if (ctx && typeof ctx.json === 'function') {
-      try {
-        const body = await ctx.json();
-        if (body?.erro) throw new Error(body.erro);
-      } catch (parseErr) {
-        if (parseErr instanceof Error && parseErr.message) throw parseErr;
-      }
-    }
-    throw new Error(error.message);
-  }
-  if (data?.erro) throw new Error(data.erro);
-  return data as { id: string };
+  return invocarEdgeFunction<{ id: string }>('criar-utilizador', dados);
 }
 
 // ═══════════════════════════════════════════════════════════════════

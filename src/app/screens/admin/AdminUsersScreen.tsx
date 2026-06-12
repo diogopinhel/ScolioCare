@@ -478,7 +478,7 @@ export default function AdminUsersScreen() {
                       <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
                         {t('admin.fieldCedula')}
                       </label>
-                      <input type="text" value={formEditar.cedulaProfissional ?? ''}
+                      <input type="text" maxLength={20} value={formEditar.cedulaProfissional ?? ''}
                         onChange={(e) => setFormEditar((f) => ({ ...f, cedulaProfissional: e.target.value }))}
                         className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                     </div>
@@ -486,7 +486,7 @@ export default function AdminUsersScreen() {
                       <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
                         {t('admin.fieldEspecialidade')}
                       </label>
-                      <input type="text" value={formEditar.especialidade ?? ''}
+                      <input type="text" maxLength={60} value={formEditar.especialidade ?? ''}
                         onChange={(e) => setFormEditar((f) => ({ ...f, especialidade: e.target.value }))}
                         className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                     </div>
@@ -500,7 +500,7 @@ export default function AdminUsersScreen() {
                       <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
                         {t('admin.fieldCodigoFuncionario')}
                       </label>
-                      <input type="text" value={formEditar.codigoFuncionario ?? ''}
+                      <input type="text" maxLength={20} value={formEditar.codigoFuncionario ?? ''}
                         onChange={(e) => setFormEditar((f) => ({ ...f, codigoFuncionario: e.target.value }))}
                         className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                     </div>
@@ -508,7 +508,7 @@ export default function AdminUsersScreen() {
                       <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
                         {t('admin.fieldDepartamento')}
                       </label>
-                      <input type="text" value={formEditar.departamento ?? ''}
+                      <input type="text" maxLength={60} value={formEditar.departamento ?? ''}
                         onChange={(e) => setFormEditar((f) => ({ ...f, departamento: e.target.value }))}
                         className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                     </div>
@@ -524,6 +524,7 @@ export default function AdminUsersScreen() {
                           {t('patientEdit.dob')}
                         </label>
                         <input type="date" value={formEditar.dataNascimento ?? ''}
+                          max={new Date().toISOString().split('T')[0]}
                           onChange={(e) => setFormEditar((f) => ({ ...f, dataNascimento: e.target.value }))}
                           className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                       </div>
@@ -546,16 +547,16 @@ export default function AdminUsersScreen() {
                         <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
                           {t('patientEdit.clinicalId')}
                         </label>
-                        <input type="text" value={formEditar.numeroUtente ?? ''}
-                          onChange={(e) => setFormEditar((f) => ({ ...f, numeroUtente: e.target.value }))}
+                        <input type="text" inputMode="numeric" maxLength={9} value={formEditar.numeroUtente ?? ''}
+                          onChange={(e) => setFormEditar((f) => ({ ...f, numeroUtente: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
                           className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
                           {t('patientEdit.citizenCard')}
                         </label>
-                        <input type="text" value={formEditar.cartaoCidadao ?? ''}
-                          onChange={(e) => setFormEditar((f) => ({ ...f, cartaoCidadao: e.target.value }))}
+                        <input type="text" maxLength={14} value={formEditar.cartaoCidadao ?? ''}
+                          onChange={(e) => setFormEditar((f) => ({ ...f, cartaoCidadao: e.target.value.toUpperCase().replace(/[^0-9A-Z ]/g, '').slice(0, 14) }))}
                           className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                       </div>
                     </div>
@@ -563,8 +564,8 @@ export default function AdminUsersScreen() {
                       <label className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}>
                         {t('patientEdit.phone')}
                       </label>
-                      <input type="tel" value={formEditar.contacto ?? ''}
-                        onChange={(e) => setFormEditar((f) => ({ ...f, contacto: e.target.value }))}
+                      <input type="tel" maxLength={16} value={formEditar.contacto ?? ''}
+                        onChange={(e) => setFormEditar((f) => ({ ...f, contacto: e.target.value.replace(/[^\d+ ]/g, '').slice(0, 16) }))}
                         className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]" />
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -663,6 +664,7 @@ export default function AdminUsersScreen() {
                   <input
                     required
                     type="email"
+                    maxLength={254}
                     value={form.email}
                     onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                     className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
@@ -702,6 +704,7 @@ export default function AdminUsersScreen() {
                       </label>
                       <input
                         type="text"
+                        maxLength={20}
                         value={form.cedulaProfissional}
                         onChange={(e) => setForm((f) => ({ ...f, cedulaProfissional: e.target.value }))}
                         className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
@@ -713,6 +716,7 @@ export default function AdminUsersScreen() {
                       </label>
                       <input
                         type="text"
+                        maxLength={60}
                         value={form.especialidade}
                         onChange={(e) => setForm((f) => ({ ...f, especialidade: e.target.value }))}
                         className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
@@ -730,6 +734,7 @@ export default function AdminUsersScreen() {
                       </label>
                       <input
                         type="text"
+                        maxLength={20}
                         value={form.codigoFuncionario}
                         onChange={(e) => setForm((f) => ({ ...f, codigoFuncionario: e.target.value }))}
                         className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
@@ -741,6 +746,7 @@ export default function AdminUsersScreen() {
                       </label>
                       <input
                         type="text"
+                        maxLength={60}
                         value={form.departamento}
                         onChange={(e) => setForm((f) => ({ ...f, departamento: e.target.value }))}
                         className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"

@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { invocarEdgeFunction } from './edge';
 import type {
   PacienteResumo,
   PacienteListagem,
@@ -235,12 +236,7 @@ export async function getMedicos(): Promise<MedicoResumo[]> {
  * permitir a atualização.
  */
 export async function atualizarPaciente(dados: DadosAtualizacaoPaciente): Promise<void> {
-  const { data, error } = await supabase.functions.invoke('atualizar-paciente', {
-    body: dados,
-  });
-
-  if (error) throw new Error(error.message ?? 'Erro ao invocar a Edge Function');
-  if (data?.erro) throw new Error(data.erro as string);
+  await invocarEdgeFunction('atualizar-paciente', dados);
 }
 
 /**
@@ -252,11 +248,7 @@ export async function atualizarPaciente(dados: DadosAtualizacaoPaciente): Promis
  *  - regista em audit_log
  */
 export async function alterarMedicoPaciente(pacienteId: string, novoMedicoId: string): Promise<void> {
-  const { data, error } = await supabase.functions.invoke('alterar-medico-paciente', {
-    body: { pacienteId, novoMedicoId },
-  });
-  if (error) throw new Error(error.message ?? 'Erro ao invocar a Edge Function');
-  if (data?.erro) throw new Error(data.erro as string);
+  await invocarEdgeFunction('alterar-medico-paciente', { pacienteId, novoMedicoId });
 }
 
 export async function getPacientesAssociados(): Promise<PacienteResumo[]> {

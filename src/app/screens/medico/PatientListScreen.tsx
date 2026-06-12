@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Archive, ChevronLeft, ChevronRight, ChevronDown, ShieldAlert, Search, Loader2, Lock, UserCheck } from 'lucide-react';
+import { Eye, ChevronLeft, ChevronRight, ChevronDown, ShieldAlert, Search, Loader2, Lock, UserCheck } from 'lucide-react';
 import { Button, SearchBar, StatusBadge, TableSkeleton } from '../../components/scolio';
 import type { BadgeStatus } from '../../components/scolio';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -73,8 +73,6 @@ export default function PatientListScreen() {
   const [perPage, setPerPage] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
-  const [showArchiveModal, setShowArchiveModal] = useState(false);
-  const [patientToArchive, setPatientToArchive] = useState<{ id: string; nome: string } | null>(null);
 
   // ── Estado do painel de acesso de emergência ─────────────────────────────
   const [mostrarEmergencia, setMostrarEmergencia] = useState(false);
@@ -187,19 +185,6 @@ export default function PatientListScreen() {
     }, 400);
     return () => clearTimeout(timer);
   }, [pesquisaEmergencia]);
-
-  const handleArchiveClick = (id: string, nome: string) => {
-    setPatientToArchive({ id, nome });
-    setShowArchiveModal(true);
-  };
-
-  const confirmArchive = () => {
-    // A gestão de associações médico-paciente (encerrar data_fim em paciente_medico)
-    // requer permissão de ADMIN. O médico deve contactar o administrador para
-    // remover a associação ou desativar a conta do paciente.
-    setShowArchiveModal(false);
-    setPatientToArchive(null);
-  };
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
@@ -351,13 +336,6 @@ export default function PatientListScreen() {
                           onClick={() => navigate(`/patients/${patient.id}`)}
                         >
                           <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-1.5 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-danger-coral)] hover:bg-[var(--scolio-danger-surface)] rounded transition-colors"
-                          title={t('patients.archivePatient')}
-                          onClick={(e) => { e.stopPropagation(); handleArchiveClick(patient.id, patient.nomeCompleto); }}
-                        >
-                          <Archive className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -583,34 +561,6 @@ export default function PatientListScreen() {
         )}
       </div>
 
-      {/* Modal de confirmação de arquivo */}
-      {showArchiveModal && patientToArchive && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-[var(--radius-modal)] shadow-lg w-[480px] max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-[var(--scolio-border-light)]">
-              <h2 className="text-[var(--scolio-text-primary)]">{t('patients.archiveTitle')}</h2>
-            </div>
-            <div className="p-6 space-y-3">
-              <p className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-                {patientToArchive.nome}
-              </p>
-              <div className="p-4 bg-[var(--scolio-warning-surface)] border border-[var(--scolio-warning-amber)] rounded-[var(--radius-component)]">
-                <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}
-                  dangerouslySetInnerHTML={{ __html: t('patients.archivePermission') }}
-                />
-              </div>
-            </div>
-            <div className="p-6 border-t border-[var(--scolio-border-light)] flex justify-end gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => { setShowArchiveModal(false); setPatientToArchive(null); }}
-              >
-                {t('common.close')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
