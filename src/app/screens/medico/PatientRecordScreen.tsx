@@ -285,7 +285,7 @@ export default function PatientRecordScreen() {
     <div class="logo">
       <div class="logo-box">S</div>
       <div>
-        <h1>ScolioScan</h1>
+        <h1>ScolioCare</h1>
         <div style="font-size:11px;color:#666">Ficha clínica do paciente</div>
       </div>
     </div>
@@ -328,7 +328,7 @@ export default function PatientRecordScreen() {
   </table>` : ''}
 
   <div class="footer">
-    <span>ScolioScan — documento gerado automaticamente, não substituindo relatório clínico assinado</span>
+    <span>ScolioCare — documento gerado automaticamente, não substituindo relatório clínico assinado</span>
     <span>${agora}</span>
   </div>
 

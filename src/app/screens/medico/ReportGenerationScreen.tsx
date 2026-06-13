@@ -88,7 +88,7 @@ const REPORT_TR = {
     notes: 'Observações do médico', sig: 'Assinatura digital',
     sigBy: 'Médico', license: 'Cédula', specialty: 'Especialidade',
     pending: 'Documento por assinar',
-    footer: 'Documento gerado automaticamente pelo ScolioScan — não substitui relatório clínico assinado.',
+    footer: 'Documento gerado automaticamente pelo ScolioCare — não substitui relatório clínico assinado.',
     metric: 'Métrica', value: 'Valor', yearsUnit: 'anos',
   },
   en: {
@@ -565,7 +565,7 @@ export default function ReportGenerationScreen() {
                           <span className="text-white text-2xl font-semibold">S</span>
                         </div>
                         <div>
-                          <h3 className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>ScolioScan</h3>
+                          <h3 className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>ScolioCare</h3>
                           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{ps.subtitle}</p>
                         </div>
                       </div>

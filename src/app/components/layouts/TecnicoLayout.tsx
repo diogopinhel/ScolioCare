@@ -69,15 +69,13 @@ export default function TecnicoLayout() {
       <aside className="w-60 bg-white border-r border-[var(--scolio-border-light)] flex flex-col">
         <div className="p-6 border-b border-[var(--scolio-border-light)]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[var(--scolio-success-green)] rounded-lg flex items-center justify-center">
-              <span className="text-white text-xl font-semibold">S</span>
-            </div>
+            <img src="/logo.png" alt="ScolioCare" className="w-10 h-10 rounded-lg" />
             <div>
               <h2
                 className="text-[var(--scolio-text-primary)] font-semibold"
                 style={{ fontSize: 'var(--text-h3)' }}
               >
-                ScolioScan
+                ScolioCare
               </h2>
               <p
                 className="text-[var(--scolio-text-secondary)]"

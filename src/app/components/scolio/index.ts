@@ -1,4 +1,4 @@
-// ScolioScan Design System - Main exports
+// ScolioCare Design System - Main exports
 
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant } from './Button';

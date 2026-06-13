@@ -88,9 +88,7 @@ export default function LoginScreen() {
         <div className="bg-white rounded-[var(--radius-card)] shadow-lg p-8">
           {/* Logo e título */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-[var(--scolio-primary-blue)] rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-white text-3xl font-semibold">S</span>
-            </div>
+            <img src="/logo.png" alt="ScolioCare" className="w-16 h-16 rounded-2xl mx-auto mb-4" />
             <h1 className="text-[var(--scolio-text-primary)] mb-2">ScolioCare</h1>
             <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
               {t('auth.subtitle')}

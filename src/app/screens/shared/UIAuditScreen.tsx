@@ -211,7 +211,7 @@ export default function UIAuditScreen() {
             <div>
               <h1 className="text-[var(--scolio-text-primary)]">Relatório de Auditoria UI/UX</h1>
               <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                ScolioScan · Avaliação de conformidade funcional · 22 de abril de 2026
+                ScolioCare · Avaliação de conformidade funcional · 22 de abril de 2026
               </p>
             </div>
           </div>

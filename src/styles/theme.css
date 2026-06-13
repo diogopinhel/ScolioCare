@@ -1,7 +1,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* ScolioScan Design Tokens */
+  /* ScolioCare Design Tokens */
   
   /* Color Palette */
   --scolio-primary-blue: #1A6FAF;

@@ -1,5 +1,5 @@
 /**
- * Tipos do domínio ScolioScan.
+ * Tipos do domínio ScolioCare.
  *
  * Espelham o diagrama de classes SGE_Escoliose_v4_1.puml.
  * Esta versão inicial cobre apenas a hierarquia de Utilizador, suficiente
