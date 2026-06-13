@@ -210,6 +210,73 @@ export async function pesquisarPacientesGlobal(query: string): Promise<PacienteR
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// Sessões glass-break ativas (banner global de acesso de emergência)
+// ═══════════════════════════════════════════════════════════════════
+
+export interface SessaoGlassBreak {
+  pacienteId: string;
+  pacienteNome: string;
+  dataExpiracao: string; // ISO (timestamptz)
+}
+
+/**
+ * Sessões de acesso de emergência (glass-break) ativas do médico autenticado.
+ * Via RPC SECURITY DEFINER `get_sessoes_glassbreak_ativas` — o médico não lê
+ * `glassbreak_log` diretamente. Alimenta o banner global no Layout do médico,
+ * que mostra o tempo restante até `data_expiracao` em todos os ecrãs.
+ */
+export async function getSessoesGlassBreakAtivas(): Promise<SessaoGlassBreak[]> {
+  const { data, error } = await supabase.rpc('get_sessoes_glassbreak_ativas');
+
+  if (error || !data) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((row) => ({
+    pacienteId: row.paciente_id as string,
+    pacienteNome: row.paciente_nome as string,
+    dataExpiracao: row.data_expiracao as string,
+  }));
+}
+
+export interface AcaoResumoGlassBreak {
+  dataHora: string;
+  tipoAcao: string;
+  entidadeAfetada: string;
+}
+
+export interface ResumoGlassBreak {
+  pacienteNome: string;
+  motivoCategoria: string;
+  justificacao: string;
+  dataInicio: string;
+  dataFim: string;
+  encerradoManualmente: boolean;
+  acoes: AcaoResumoGlassBreak[];
+}
+
+/**
+ * Termina (encerra) a sessão glass-break ativa do médico para o paciente, antes
+ * dos 15 min. Via RPC SECURITY DEFINER `encerrar_glassbreak` — só escreve
+ * `encerrado_em`, o único campo que o trigger de imutabilidade permite alterar.
+ */
+export async function encerrarGlassBreak(pacienteId: string): Promise<void> {
+  await supabase.rpc('encerrar_glassbreak', { p_paciente_id: pacienteId });
+}
+
+/**
+ * Resumo da última sessão glass-break do médico para o paciente: metadados +
+ * lista de ações feitas durante a janela. Mostrado no modal quando a sessão
+ * termina (manualmente ou por expiração). Via RPC `get_resumo_glassbreak`.
+ */
+export async function getResumoGlassBreak(pacienteId: string): Promise<ResumoGlassBreak | null> {
+  const { data, error } = await supabase.rpc('get_resumo_glassbreak', { p_paciente_id: pacienteId });
+
+  if (error || !data) return null;
+
+  return data as ResumoGlassBreak;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // Lista de médicos (para dropdown no formulário de novo paciente)
 // ═══════════════════════════════════════════════════════════════════
 

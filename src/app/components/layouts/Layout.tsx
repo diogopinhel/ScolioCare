@@ -10,6 +10,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../LanguageSwitcher';
 import { NotificationDropdown } from '../NotificationDropdown';
+import { BannerGlassBreak } from '../BannerGlassBreak';
 
 function obterIniciais(nomeCompleto: string): string {
   const partes = nomeCompleto
@@ -173,6 +174,8 @@ export default function Layout() {
             </div>
           </div>
         </header>
+
+        <BannerGlassBreak />
 
         <main className="flex-1 overflow-hidden">
           <Outlet />

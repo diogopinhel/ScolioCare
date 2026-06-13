@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown, GitCompare, ShieldAlert, Lock, Trash2, Weight, Ruler, History, Pencil } from 'lucide-react';
+import { FileText, Download, MapPin, Phone, Calendar, User, Stethoscope, Plus, FileDown, GitCompare, Trash2, Weight, Ruler, History, Pencil } from 'lucide-react';
 import { Button, StatusBadge, type BadgeStatus, Textarea, Toast, ExamCard, SkeletonBlock, Modal, Input } from '../../components/scolio';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Dot } from 'recharts';
 import { useNavigate, useParams } from 'react-router';
@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { useDateLocale } from '../../../lib/dateLocale';
 import { getPaciente, getNotasDoPaciente, criarNotaPaciente, apagarNotaPaciente } from '../../../data/repository/pacientes';
 import { getEstudosDoPaciente, getHistoricoEstadoDoPaciente, getUrlImagemEstudo, getUrlRelatorioPdf } from '../../../data/repository/estudos';
-import { supabase } from '../../../lib/supabase';
 import { getWellnessLogDoPaciente } from '../../../data/repository/wellness';
 import { getMedidasPaciente, registarMedidaPaciente } from '../../../data/repository/medidas';
 import type { PacienteDetalhe, EstudoComResultado, WellnessLogEntry, HistoricoEstadoEntry, EstadoEstudo, NotaPaciente, MedidaPaciente } from '../../../data/types';
@@ -116,8 +115,6 @@ export default function PatientRecordScreen() {
   const [alturaInput, setAlturaInput] = React.useState('');
   const [erroMedidas, setErroMedidas] = React.useState<string | null>(null);
   const [aGuardarMedidas, setAGuardarMedidas] = React.useState(false);
-  // null = ainda a verificar; true = associado; false = não associado (glass-break ativo ou necessário)
-  const [estaAssociado, setEstaAssociado] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
     if (!id) {
@@ -132,13 +129,7 @@ export default function PatientRecordScreen() {
       if (!cancelado) setACarregar(false);
     }, 15000);
 
-    // Verificar associação médico-paciente e carregar dados em paralelo
-    const verificarAssociacao = supabase
-      .from('paciente_medico')
-      .select('paciente_id', { count: 'exact', head: true })
-      .eq('paciente_id', id)
-      .is('data_fim', null);
-
+    // Carregar dados do paciente em paralelo
     Promise.all([
       getPaciente(id),
       getEstudosDoPaciente(id),
@@ -146,8 +137,7 @@ export default function PatientRecordScreen() {
       getHistoricoEstadoDoPaciente(id),
       getNotasDoPaciente(id),
       getMedidasPaciente(id),
-      verificarAssociacao,
-    ]).then(([p, e, w, h, n, m, assoc]) => {
+    ]).then(([p, e, w, h, n, m]) => {
       if (!cancelado) {
         clearTimeout(timeout);
         setPaciente(p);
@@ -156,7 +146,6 @@ export default function PatientRecordScreen() {
         setHistorico(h);
         setNotas(n);
         setMedidas(m);
-        setEstaAssociado((assoc.count ?? 0) > 0);
         setACarregar(false);
 
         // Gerar URLs assinadas para thumbnails dos exames (em paralelo, best-effort)
@@ -467,27 +456,6 @@ export default function PatientRecordScreen() {
 
   return (
     <div className="p-8 space-y-6 overflow-auto h-full">
-
-      {/* Banner de acesso de emergência — visível quando não associado */}
-      {estaAssociado === false && (
-        <div className="flex items-center justify-between gap-4 px-5 py-4 bg-[var(--scolio-danger-surface)] border border-[var(--scolio-danger-coral)] rounded-[var(--radius-card)]">
-          <div className="flex items-center gap-3">
-            <ShieldAlert className="w-5 h-5 text-[var(--scolio-danger-coral)] flex-shrink-0" />
-            <div>
-              <p className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-semibold)' }}>
-                {t('patientRecord.emergencyBannerTitle')}
-              </p>
-              <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                {t('patientRecord.emergencyBannerDesc')}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[var(--scolio-danger-coral)] rounded-[var(--radius-component)] flex-shrink-0">
-            <Lock className="w-4 h-4 text-[var(--scolio-danger-coral)]" />
-            <span className="text-[var(--scolio-danger-coral)]" style={{ fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}>Glass-Break</span>
-          </div>
-        </div>
-      )}
 
       {/* Header */}
       <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
