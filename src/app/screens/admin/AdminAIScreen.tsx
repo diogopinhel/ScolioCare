@@ -115,12 +115,22 @@ export default function AdminAIScreen() {
       </div>
 
       {/* Consentimentos de treino */}
-      <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-        <div className="mb-4">
-          <h3 className="text-[var(--scolio-text-primary)]">{t('admin.aiConsents')}</h3>
-          <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
-            {totalPacientes !== null ? t('admin.totalActivePatients', { count: totalPacientes }) : t('admin.loadingCount')}
-          </p>
+      <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6 opacity-70">
+        <div className="mb-4 flex items-center gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-[var(--scolio-text-primary)]">{t('admin.aiConsents')}</h3>
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: 'var(--scolio-warning-surface)', color: 'var(--scolio-warning-amber)', fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}
+              >
+                {t('admin.notImplemented')}
+              </span>
+            </div>
+            <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
+              {totalPacientes !== null ? t('admin.totalActivePatients', { count: totalPacientes }) : t('admin.loadingCount')}
+            </p>
+          </div>
         </div>
         <div className="flex items-start gap-3 p-4 bg-[var(--scolio-light-blue-surface)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)]">
           <Info className="w-5 h-5 text-[var(--scolio-primary-blue)] flex-shrink-0 mt-0.5" />

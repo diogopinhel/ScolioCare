@@ -770,7 +770,11 @@
     "fieldDepartamento": "Department",
     "creating": "Creating...",
     "createSuccess": "User created successfully.",
-    "createError": "Error creating user."
+    "createError": "Error creating user.",
+    "emailLoadError": "Could not load email. Enter it manually.",
+    "notImplemented": "Under development",
+    "auditLoadError": "Error loading audit log. Check your connection and try again.",
+    "dashboardLoadError": "Error loading dashboard data. Check your connection and try again."
   },
   "report": {
     "sectionsTitle": "Report sections",

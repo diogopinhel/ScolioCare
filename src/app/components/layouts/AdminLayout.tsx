@@ -31,7 +31,6 @@ export default function AdminLayout() {
     '/admin-panel/users': t('admin.usersTitle'),
     '/admin-panel/audit': t('admin.auditTitle'),
     '/admin-panel/ai': t('admin.aiTitle'),
-    '/admin-panel/ui-audit': 'Auditoria UI/UX',
     '/admin-panel/perfil': t('profile.title'),
   };
 

@@ -31,7 +31,8 @@ function perfilStyle(perfil: string, t: (key: string) => string) {
 }
 
 function iniciais(nome: string): string {
-  return nome.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+  if (!nome.trim()) return '?';
+  return nome.trim().split(/\s+/).map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 }
 
 function formatarData(iso: string | null, locale: string): string {
@@ -62,8 +63,9 @@ export default function AdminUsersScreen() {
 
   // Modal de edição
   const [utilizadorEditar, setUtilizadorEditar] = React.useState<UtilizadorAdminCompleto | null>(null);
-  const [aCarregarEditar, setACarregarEditar] = React.useState(false);
+  const [idACarregarEditar, setIdACarregarEditar] = React.useState<string | null>(null);
   const [aGuardar, setAGuardar] = React.useState(false);
+  const [emailErro, setEmailErro] = React.useState(false);
   const [formEditar, setFormEditar] = React.useState<CamposEdicaoUtilizador>({ nomeCompleto: '' });
   const [emailEditar, setEmailEditar] = React.useState('');
   const [emailOriginal, setEmailOriginal] = React.useState('');
@@ -73,13 +75,20 @@ export default function AdminUsersScreen() {
   const [medicoIdSelecionado, setMedicoIdSelecionado] = React.useState<string>('');
 
   const abrirEditar = async (u: UtilizadorAdmin) => {
-    setACarregarEditar(true);
+    setIdACarregarEditar(u.id);
+    setEmailErro(false);
     try {
-      const [completo, listaMedicos, email] = await Promise.all([
+      const [completo, listaMedicos] = await Promise.all([
         getUtilizadorCompleto(u.id),
         u.perfil === 'PACIENTE' ? getMedicos() : Promise.resolve([] as MedicoResumo[]),
-        obterEmailUtilizador(u.id).catch(() => ''),
       ]);
+      let email = '';
+      try {
+        email = await obterEmailUtilizador(u.id);
+      } catch {
+        setEmailErro(true);
+        mostrarToast(t('admin.emailLoadError'), 'error');
+      }
       if (completo) {
         setUtilizadorEditar(completo);
         setEmailEditar(email);
@@ -107,7 +116,7 @@ export default function AdminUsersScreen() {
         }
       }
     } finally {
-      setACarregarEditar(false);
+      setIdACarregarEditar(null);
     }
   };
 
@@ -116,6 +125,7 @@ export default function AdminUsersScreen() {
     setFormEditar({ nomeCompleto: '' });
     setEmailEditar('');
     setEmailOriginal('');
+    setEmailErro(false);
     setMedicoIdOriginal('');
     setMedicoIdSelecionado('');
   };
@@ -387,9 +397,10 @@ export default function AdminUsersScreen() {
                         <button
                           title={t('admin.editUser')}
                           onClick={() => abrirEditar(u)}
-                          className="p-2 rounded text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-primary-blue)] hover:bg-[var(--scolio-light-blue-surface)] transition-colors"
+                          disabled={idACarregarEditar === u.id}
+                          className="p-2 rounded text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-primary-blue)] hover:bg-[var(--scolio-light-blue-surface)] transition-colors disabled:opacity-50"
                         >
-                          {aCarregarEditar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+                          {idACarregarEditar === u.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
                         </button>
                         <button
                           title={u.contaBloqueada ? t('admin.clickUnblock') : t('admin.clickBlock')}
@@ -491,9 +502,14 @@ export default function AdminUsersScreen() {
                     type="email"
                     maxLength={254}
                     value={emailEditar}
-                    onChange={(e) => setEmailEditar(e.target.value)}
-                    className="px-3 py-2 border border-[var(--scolio-border-light)] rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)]"
+                    onChange={(e) => { setEmailEditar(e.target.value); setEmailErro(false); }}
+                    className={`px-3 py-2 border rounded-[var(--radius-component)] focus:outline-none focus:ring-2 focus:ring-[var(--scolio-primary-blue)] ${emailErro ? 'border-[var(--scolio-warning-amber)]' : 'border-[var(--scolio-border-light)]'}`}
                   />
+                  {emailErro && (
+                    <p className="text-[var(--scolio-warning-amber)]" style={{ fontSize: 'var(--text-caption)' }}>
+                      {t('admin.emailLoadError')}
+                    </p>
+                  )}
                 </div>
 
                 {/* MEDICO */}

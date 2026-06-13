@@ -770,7 +770,11 @@
     "fieldDepartamento": "Departamento",
     "creating": "A criar...",
     "createSuccess": "Utilizador criado com sucesso.",
-    "createError": "Erro ao criar utilizador."
+    "createError": "Erro ao criar utilizador.",
+    "emailLoadError": "Não foi possível carregar o email. Introduza-o manualmente.",
+    "notImplemented": "Em desenvolvimento",
+    "auditLoadError": "Erro ao carregar o registo de auditoria. Verifique a ligação e tente novamente.",
+    "dashboardLoadError": "Erro ao carregar os dados do painel. Verifique a ligação e tente novamente."
   },
   "report": {
     "sectionsTitle": "Secções do relatório",

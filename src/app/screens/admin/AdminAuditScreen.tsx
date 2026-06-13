@@ -20,6 +20,7 @@ function categoriaDaTipoAcao(tipoAcao: string): string {
   if (t.includes('GLASS_BREAK')) return 'GLASSBREAK';
   if (t.startsWith('EXPORTAR')) return 'EXPORT';
   if (t.includes('SETTINGS') || t.includes('CONFIG')) return 'CONFIG';
+  if (t === 'REGISTAR_MEDIDAS') return 'USUARIO';
   if (t.includes('UTILIZADOR') || t.includes('PACIENTE')) return 'USUARIO';
   if (t.includes('ESTUDO') || t.includes('EXAME') || t.includes('RELATORIO')) return 'ESTUDO';
   return 'ESTUDO';
@@ -46,7 +47,8 @@ export default function AdminAuditScreen() {
   const [pesquisa, setPesquisa] = React.useState('');
   const [pesquisaDebounced, setPesquisaDebounced] = React.useState('');
   const [categoriaFiltro, setCategoriaFiltro] = React.useState('all');
-  const [toast, setToast] = React.useState<string | null>(null);
+  const [toast, setToast] = React.useState<{ msg: string; tipo: 'success' | 'error' } | null>(null);
+  const [erroCarregar, setErroCarregar] = React.useState(false);
   const primeiraCargaRef = React.useRef(true);
 
   const CATEGORIAS = [
@@ -59,8 +61,8 @@ export default function AdminAuditScreen() {
     { label: t('admin.filterExport'), value: 'EXPORT' },
   ];
 
-  const mostrarToast = (msg: string) => {
-    setToast(msg);
+  const mostrarToast = (msg: string, tipo: 'success' | 'error' = 'success') => {
+    setToast({ msg, tipo });
     setTimeout(() => setToast(null), 3000);
   };
 
@@ -75,8 +77,10 @@ export default function AdminAuditScreen() {
     let cancelado = false;
     if (primeiraCargaRef.current) setACarregar(true);
     else setARefrescar(true);
+    setErroCarregar(false);
     getAuditLog(pesquisaDebounced || undefined, 200)
       .then((data) => { if (!cancelado) setEventos(data); })
+      .catch(() => { if (!cancelado) setErroCarregar(true); })
       .finally(() => {
         if (cancelado) return;
         setACarregar(false);
@@ -114,7 +118,7 @@ export default function AdminAuditScreen() {
     a.click();
     URL.revokeObjectURL(url);
     registarAcao('EXPORTAR_AUDITORIA', 'audit_log', null);
-    mostrarToast(t('admin.exportSuccess'));
+    mostrarToast(t('admin.exportSuccess'), 'success');
   };
 
   return (
@@ -132,6 +136,12 @@ export default function AdminAuditScreen() {
           </Button>
         </div>
       </div>
+
+      {erroCarregar && (
+        <div className="bg-[var(--scolio-danger-surface)] border border-[var(--scolio-danger-coral)] rounded-[var(--radius-component)] px-4 py-3 text-[var(--scolio-danger-coral)]" style={{ fontSize: 'var(--text-body)' }}>
+          {t('admin.auditLoadError')}
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-4">
@@ -237,7 +247,7 @@ export default function AdminAuditScreen() {
 
       {toast && (
         <div className="fixed top-8 right-8 z-50">
-          <Toast title={toast} type="success" onClose={() => setToast(null)} />
+          <Toast title={toast.msg} type={toast.tipo} onClose={() => setToast(null)} />
         </div>
       )}
     </div>
