@@ -136,24 +136,33 @@ Deno.serve(async (req: Request) => {
       .update({ conta_ativada: true })
       .eq('id', pacienteId)
 
-    // ── 9. Registar no audit_log ────────────────────────────────────────────
-    await adminClient.from('audit_log').insert({
-      utilizador_id: user.id,
-      utilizador_snapshot: {
-        nome: perfilRow.nome_completo,
-        perfil: perfilRow.perfil,
-        email: user.email,
-      },
-      tipo_acao: 'ALTERAR_MEDICO_PACIENTE',
-      entidade_afetada: 'paciente_medico',
-      entidade_id: pacienteId,
-      detalhe: {
-        medico_anterior_id: assocAtual?.medico_id ?? null,
-        medico_anterior_nome: medicoAnteriorNome,
-        medico_novo_id: novoMedicoId,
-        medico_novo_nome: novoMedico.nome_completo,
-      },
-    })
+    // ── 9. Registar no audit_log e procurar os exames pendentes em paralelo.
+    //       São operações independentes (tabelas diferentes, sem ordem entre
+    //       si), por isso correm juntas para poupar uma ida-e-volta. ──────────
+    const [, { data: estudosPendentes, error: errEstudos }] = await Promise.all([
+      adminClient.from('audit_log').insert({
+        utilizador_id: user.id,
+        utilizador_snapshot: {
+          nome: perfilRow.nome_completo,
+          perfil: perfilRow.perfil,
+          email: user.email,
+        },
+        tipo_acao: 'ALTERAR_MEDICO_PACIENTE',
+        entidade_afetada: 'paciente_medico',
+        entidade_id: pacienteId,
+        detalhe: {
+          medico_anterior_id: assocAtual?.medico_id ?? null,
+          medico_anterior_nome: medicoAnteriorNome,
+          medico_novo_id: novoMedicoId,
+          medico_novo_nome: novoMedico.nome_completo,
+        },
+      }),
+      adminClient
+        .from('estudos')
+        .select('id')
+        .eq('paciente_id', pacienteId)
+        .in('estado', ['UPLOADED', 'PROCESSING', 'PENDING_VALIDATION']),
+    ])
 
     // ── 10. Notificar o novo médico dos exames que herda por analisar. A RLS
     //       de `estudos` baseia-se na associação ativa, por isso o novo médico
@@ -164,13 +173,9 @@ Deno.serve(async (req: Request) => {
     //       PENDING_VALIDATION pode não estar ativo — sem isto, exames reais
     //       (presos em PROCESSING) nunca gerariam notificação.
     //       Best-effort: uma falha aqui não desfaz a reatribuição.
-    const { data: estudosPendentes } = await adminClient
-      .from('estudos')
-      .select('id')
-      .eq('paciente_id', pacienteId)
-      .in('estado', ['UPLOADED', 'PROCESSING', 'PENDING_VALIDATION'])
-
-    if (estudosPendentes && estudosPendentes.length > 0) {
+    if (errEstudos) {
+      console.error('alterar-medico-paciente: falha ao procurar exames pendentes:', errEstudos)
+    } else if (estudosPendentes && estudosPendentes.length > 0) {
       const nomePaciente = pacienteRow.nome_completo ?? 'um paciente'
       const { error: errNotif } = await adminClient.from('notificacoes').insert(
         estudosPendentes.map((e) => ({
