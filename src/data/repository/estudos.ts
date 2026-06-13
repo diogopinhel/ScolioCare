@@ -1,6 +1,5 @@
 import { supabase } from '../../lib/supabase';
 import { registarAcao } from './audit';
-import { criarNotificacao } from './notificacoes';
 import type {
   EstudoResumo,
   MetricasDashboardMedico,
@@ -629,17 +628,6 @@ export async function enviarEstudoAoPaciente(estudoId: string, pacienteId: strin
   if (error) throw error;
 
   registarAcao('ENVIAR_RELATORIO', 'estudos', estudoId);
-
-  criarNotificacao({
-    destinatarioId: pacienteId,
-    tipo: 'RELATORIO',
-    titulo: 'Resultado disponível',
-    mensagem: 'O seu exame foi analisado e os resultados foram disponibilizados pelo seu médico.',
-    tituloEn: 'Results available',
-    mensagemEn: 'Your exam has been reviewed and the results have been made available by your doctor.',
-    referenciaEntidade: 'estudos',
-    referenciaId: estudoId,
-  });
 }
 
 /**
