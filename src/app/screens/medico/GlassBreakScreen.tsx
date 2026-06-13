@@ -121,9 +121,8 @@ export default function GlassBreakScreen() {
       registarAcao('GLASS_BREAK', 'glassbreak_log', pacienteId);
 
       // Notificar todos os admins activos (fire-and-forget).
-      // Texto sempre em PT (convenção das notificações guardadas na BD),
-      // por isso o motivo é resolvido com lng:'pt' e não com o idioma da UI.
-      const motivoLabel = t(`glassBreak.reasons.${selectedReason}`, { lng: 'pt' });
+      const motivoLabel   = t(`glassBreak.reasons.${selectedReason}`, { lng: 'pt' });
+      const motivoLabelEn = t(`glassBreak.reasons.${selectedReason}`, { lng: 'en' });
       supabase
         .from('utilizadores')
         .select('id')
@@ -136,6 +135,8 @@ export default function GlassBreakScreen() {
               tipo:              'GLASS_BREAK',
               titulo:            'Acesso de emergência activado',
               mensagem:          `Dr. ${utilizador.nomeCompleto} activou glass-break. Motivo: ${motivoLabel}.`,
+              tituloEn:          'Emergency access activated',
+              mensagemEn:        `Dr. ${utilizador.nomeCompleto} activated glass-break. Reason: ${motivoLabelEn}.`,
               referenciaEntidade: 'glassbreak_log',
               referenciaId:      pacienteId,
             });

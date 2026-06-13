@@ -8,6 +8,7 @@ import {
   marcarComoLida,
   marcarTodasComoLidas,
   resolverLink,
+  resolverTextoNotificacao,
   type NotificacaoItem,
   type TipoNotificacao,
 } from '../../data/repository/notificacoes';
@@ -48,7 +49,7 @@ export function NotificationDropdown({
   intervalo = 10_000,
 }: NotificationDropdownProps) {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { utilizador } = useAuth();
   const perfil = utilizador?.perfil ?? 'MEDICO';
 
@@ -198,21 +199,28 @@ export function NotificationDropdown({
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p
-                      className="text-[var(--scolio-text-primary)] truncate"
-                      style={{
-                        fontSize: 'var(--text-body)',
-                        fontWeight: n.lida ? 'var(--weight-normal)' : 'var(--weight-semibold)',
-                      }}
-                    >
-                      {n.titulo}
-                    </p>
-                    <p
-                      className="text-[var(--scolio-text-secondary)] line-clamp-2 mt-0.5"
-                      style={{ fontSize: 'var(--text-caption)', lineHeight: '1.4' }}
-                    >
-                      {n.mensagem}
-                    </p>
+                    {(() => {
+                      const { titulo, mensagem } = resolverTextoNotificacao(n, i18n.language);
+                      return (
+                        <>
+                          <p
+                            className="text-[var(--scolio-text-primary)] truncate"
+                            style={{
+                              fontSize: 'var(--text-body)',
+                              fontWeight: n.lida ? 'var(--weight-normal)' : 'var(--weight-semibold)',
+                            }}
+                          >
+                            {titulo}
+                          </p>
+                          <p
+                            className="text-[var(--scolio-text-secondary)] line-clamp-2 mt-0.5"
+                            style={{ fontSize: 'var(--text-caption)', lineHeight: '1.4' }}
+                          >
+                            {mensagem}
+                          </p>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <span

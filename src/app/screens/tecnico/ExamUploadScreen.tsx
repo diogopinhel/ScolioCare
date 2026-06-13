@@ -107,6 +107,8 @@ export default function ExamUploadScreen() {
         tipo:              'EXAME',
         titulo:            'Novo exame para validação',
         mensagem:          `O técnico ${utilizador.nomeCompleto} carregou um exame de ${pacienteSelecionado.nomeCompleto} para validação.`,
+        tituloEn:          'New exam pending validation',
+        mensagemEn:        `Technician ${utilizador.nomeCompleto} uploaded an exam for ${pacienteSelecionado.nomeCompleto} to validate.`,
         referenciaEntidade: 'estudos',
         referenciaId:      estudoId,
       });

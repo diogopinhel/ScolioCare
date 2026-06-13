@@ -190,6 +190,8 @@ export default function ExamViewerScreen() {
           tipo:              'EXAME',
           titulo:            'Exame validado',
           mensagem:          `O Dr. ${utilizador.nomeCompleto} validou o exame de ${estudo.pacienteNome}.`,
+          tituloEn:          'Exam validated',
+          mensagemEn:        `Dr. ${utilizador.nomeCompleto} validated the exam of ${estudo.pacienteNome}.`,
           referenciaEntidade: 'estudos',
           referenciaId:      estudo.id,
         });
@@ -245,6 +247,8 @@ export default function ExamViewerScreen() {
           tipo:              'EXAME',
           titulo:            'Exame corrigido e validado',
           mensagem:          `O Dr. ${utilizador.nomeCompleto} corrigiu e validou o exame de ${estudo.pacienteNome} (ângulo: ${angulo}°).`,
+          tituloEn:          'Exam corrected and validated',
+          mensagemEn:        `Dr. ${utilizador.nomeCompleto} corrected and validated the exam of ${estudo.pacienteNome} (angle: ${angulo}°).`,
           referenciaEntidade: 'estudos',
           referenciaId:      estudo.id,
         });

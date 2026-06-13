@@ -1,0 +1,3 @@
+ALTER TABLE notificacoes
+  ADD COLUMN IF NOT EXISTS titulo_en   TEXT,
+  ADD COLUMN IF NOT EXISTS mensagem_en TEXT;

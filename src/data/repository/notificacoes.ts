@@ -12,10 +12,23 @@ export interface NotificacaoItem {
   tipo: TipoNotificacao;
   titulo: string;
   mensagem: string;
+  tituloEn: string | null;
+  mensagemEn: string | null;
   dataEnvio: string;         // ISO datetime
   lida: boolean;             // data_leitura IS NOT NULL
   referenciaEntidade: string | null;
   referenciaId: string | null;
+}
+
+export function resolverTextoNotificacao(
+  notificacao: NotificacaoItem,
+  language: string,
+): { titulo: string; mensagem: string } {
+  const isEn = language.startsWith('en');
+  return {
+    titulo:   (isEn && notificacao.tituloEn)   ? notificacao.tituloEn   : notificacao.titulo,
+    mensagem: (isEn && notificacao.mensagemEn) ? notificacao.mensagemEn : notificacao.mensagem,
+  };
 }
 
 /**
@@ -27,16 +40,20 @@ export async function criarNotificacao(params: {
   tipo: TipoNotificacao;
   titulo: string;
   mensagem: string;
+  tituloEn?: string;
+  mensagemEn?: string;
   referenciaEntidade?: string;
   referenciaId?: string;
 }): Promise<void> {
   await supabase.from('notificacoes').insert({
-    destinatario_id:    params.destinatarioId,
-    tipo:               params.tipo,
-    titulo:             params.titulo,
-    mensagem:           params.mensagem,
+    destinatario_id:     params.destinatarioId,
+    tipo:                params.tipo,
+    titulo:              params.titulo,
+    mensagem:            params.mensagem,
+    titulo_en:           params.tituloEn ?? null,
+    mensagem_en:         params.mensagemEn ?? null,
     referencia_entidade: params.referenciaEntidade ?? null,
-    referencia_id:      params.referenciaId ?? null,
+    referencia_id:       params.referenciaId ?? null,
   });
 }
 
@@ -47,7 +64,7 @@ export async function criarNotificacao(params: {
 export async function getNotificacoesUtilizador(): Promise<NotificacaoItem[]> {
   const { data, error } = await supabase
     .from('notificacoes')
-    .select('id, tipo, titulo, mensagem, data_envio, data_leitura, referencia_entidade, referencia_id')
+    .select('id, tipo, titulo, mensagem, titulo_en, mensagem_en, data_envio, data_leitura, referencia_entidade, referencia_id')
     .order('data_envio', { ascending: false })
     .limit(30);
 
@@ -59,6 +76,8 @@ export async function getNotificacoesUtilizador(): Promise<NotificacaoItem[]> {
     tipo: (row.tipo ?? 'SISTEMA') as TipoNotificacao,
     titulo: row.titulo as string,
     mensagem: row.mensagem as string,
+    tituloEn: (row.titulo_en ?? null) as string | null,
+    mensagemEn: (row.mensagem_en ?? null) as string | null,
     dataEnvio: row.data_envio as string,
     lida: row.data_leitura !== null,
     referenciaEntidade: (row.referencia_entidade ?? null) as string | null,
