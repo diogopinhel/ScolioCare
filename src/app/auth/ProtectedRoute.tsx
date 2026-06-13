@@ -20,12 +20,24 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
+/** Spinner de página inteira mostrado enquanto a sessão é restaurada. */
+function EcraCarregamento() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--scolio-page-surface)]">
+      <div className="w-10 h-10 border-4 border-[var(--scolio-primary-blue)] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
 /**
  * Redireciona rotas inexistentes (catch-all "*") para a área inicial do
- * utilizador autenticado, ou para /login se não autenticado.
+ * utilizador autenticado, ou para /login se não autenticado. Enquanto a
+ * sessão é restaurada (aCarregar) mostra o spinner — sem isto, um utilizador
+ * autenticado seria mandado para /login durante o restauro da sessão.
  */
 export function NotFoundRedirect() {
-  const { utilizador } = useAuth();
+  const { utilizador, aCarregar } = useAuth();
+  if (aCarregar) return <EcraCarregamento />;
   return <Navigate to={utilizador ? rotaInicialPara(utilizador.perfil) : '/login'} replace />;
 }
 
@@ -34,11 +46,7 @@ export function ProtectedRoute({ perfis, children }: ProtectedRouteProps) {
   const location = useLocation();
 
   if (aCarregar) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--scolio-page-surface)]">
-        <div className="w-10 h-10 border-4 border-[var(--scolio-primary-blue)] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <EcraCarregamento />;
   }
 
   // 2FA de login pendente: forçar passagem pelo ecrã de verificação.
