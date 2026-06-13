@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
     // ── 5. Obter paciente (para saber se a conta já está ativada) ───────────
     const { data: pacienteRow } = await adminClient
       .from('utilizadores')
-      .select('id, conta_ativada')
+      .select('id, conta_ativada, nome_completo')
       .eq('id', pacienteId)
       .eq('perfil', 'PACIENTE')
       .single()
@@ -154,6 +154,40 @@ Deno.serve(async (req: Request) => {
         medico_novo_nome: novoMedico.nome_completo,
       },
     })
+
+    // ── 10. Notificar o novo médico dos exames que herda por analisar. A RLS
+    //       de `estudos` baseia-se na associação ativa, por isso o novo médico
+    //       já tem acesso — falta apenas avisá-lo (na troca de médico, o exame
+    //       deixa de aparecer ao anterior e ninguém era notificado).
+    //       "Por analisar" = qualquer estado antes da validação. Inclui
+    //       UPLOADED/PROCESSING porque o pipeline de ML que transiciona para
+    //       PENDING_VALIDATION pode não estar ativo — sem isto, exames reais
+    //       (presos em PROCESSING) nunca gerariam notificação.
+    //       Best-effort: uma falha aqui não desfaz a reatribuição.
+    const { data: estudosPendentes } = await adminClient
+      .from('estudos')
+      .select('id')
+      .eq('paciente_id', pacienteId)
+      .in('estado', ['UPLOADED', 'PROCESSING', 'PENDING_VALIDATION'])
+
+    if (estudosPendentes && estudosPendentes.length > 0) {
+      const nomePaciente = pacienteRow.nome_completo ?? 'um paciente'
+      const { error: errNotif } = await adminClient.from('notificacoes').insert(
+        estudosPendentes.map((e) => ({
+          destinatario_id:     novoMedicoId,
+          tipo:                'EXAME',
+          titulo:              'Exame por validar atribuído',
+          mensagem:            `O paciente ${nomePaciente} foi-lhe atribuído e tem um exame por validar.`,
+          titulo_en:           'Exam to validate assigned',
+          mensagem_en:         `Patient ${nomePaciente} has been assigned to you and has an exam awaiting validation.`,
+          referencia_entidade: 'estudos',
+          referencia_id:       e.id,
+        })),
+      )
+      if (errNotif) {
+        console.error('alterar-medico-paciente: falha ao notificar novo médico:', errNotif)
+      }
+    }
 
     return json({ ok: true })
 
