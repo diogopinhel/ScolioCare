@@ -226,13 +226,11 @@ export default function PatientRecordScreen() {
         ? (e.resultado.anguloCobbCorrigido ?? e.resultado.anguloCobb).toFixed(1) + '°'
         : '—';
       const classif = e.resultado?.grauCurvatura ?? '—';
-      const vertebra = e.resultado?.nivelVertebras ?? '—';
       const estado = estadoTexto[e.estado] ?? e.estado;
       const data = new Date(e.dataEstudo).toLocaleDateString('pt-PT');
       return `<tr>
         <td>${data}</td>
         <td style="font-weight:600">${angulo}</td>
-        <td>${vertebra}</td>
         <td>${classif}</td>
         <td>${estado}</td>
         <td style="font-size:11px;color:#555">${e.notasClinicas ?? '—'}</td>
@@ -318,7 +316,7 @@ export default function PatientRecordScreen() {
   ${estudos.length > 0 ? `
   <h2>Histórico de exames</h2>
   <table>
-    <thead><tr><th>Data</th><th>Ângulo Cobb</th><th>Vértebra</th><th>Classificação</th><th>Estado</th><th>Notas clínicas</th></tr></thead>
+    <thead><tr><th>Data</th><th>Ângulo Cobb</th><th>Classificação</th><th>Estado</th><th>Notas clínicas</th></tr></thead>
     <tbody>${estudos.map(linhaExame).join('')}</tbody>
   </table>` : '<h2>Histórico de exames</h2><p style="color:#999;margin-top:4px">Sem exames registados.</p>'}
 
@@ -639,16 +637,6 @@ export default function PatientRecordScreen() {
                                 {(ultimoExame.resultado.anguloCobbCorrigido ?? ultimoExame.resultado.anguloCobb).toFixed(1)}°
                               </span>
                             </div>
-                            {ultimoExame.resultado.nivelVertebras && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                                  {t('patientRecord.apicalVertebra')}
-                                </span>
-                                <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>
-                                  {ultimoExame.resultado.nivelVertebras}
-                                </span>
-                              </div>
-                            )}
                           </>
                         )}
                         <div className="flex items-center justify-between">
@@ -733,7 +721,6 @@ export default function PatientRecordScreen() {
                     imageSrc={thumbnailUrls[exame.id]}
                     date={new Date(exame.dataEstudo).toLocaleDateString(dateLocale)}
                     cobbAngle={exame.resultado ? (exame.resultado.anguloCobbCorrigido ?? exame.resultado.anguloCobb) : 0}
-                    apicalVertebra={exame.resultado?.nivelVertebras ?? undefined}
                     status={estadoParaBadge(exame.estado)}
                     onClick={() => navigate(`/exam-viewer/${exame.id}`)}
                   />

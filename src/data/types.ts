@@ -147,7 +147,6 @@ export interface ResultadoEstudo {
   anguloCobbCorrigido: number | null;
   grauCurvatura: string;
   localizacaoCurva: string | null;
-  nivelVertebras: string | null;
 }
 
 export interface EstudoComResultado {
@@ -205,7 +204,6 @@ export interface ResultadoCompleto {
   anguloCobb: number;
   grauCurvatura: string;
   localizacaoCurva: string | null;
-  nivelVertebras: string | null;
   confiancaModelo: number;       // 0.0 – 1.0
   versaoModelo: string;
   overlayJson: unknown | null;   // coordenadas/anotações do modelo para o overlay SVG
@@ -334,7 +332,6 @@ export interface EstudoComparacao {
   id: string;
   dataEstudo: string;          // ISO date
   anguloCobb: number;          // valor corrigido se existir, senão o da IA
-  nivelVertebras: string | null;
   urlImagem: string | null;    // URL assinada da primeira imagem (ou null)
   vertebrae: VertebraDetetada[] | null;
   cobbMeasurement: CobbMeasurementData | null;

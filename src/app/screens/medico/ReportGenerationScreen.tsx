@@ -84,7 +84,7 @@ const REPORT_TR = {
     examDate: 'Data do exame', reportDate: 'Data do relatório',
     examImage: 'Imagem do exame', noImage: 'Sem imagem', metrics: 'Métricas validadas',
     cobbAI: 'Ângulo de Cobb (IA)', cobbCorr: 'Ângulo de Cobb (corrigido)',
-    vertebra: 'Vértebra apical', classif: 'Classificação',
+    classif: 'Classificação',
     notes: 'Observações do médico', sig: 'Assinatura digital',
     sigBy: 'Médico', license: 'Cédula', specialty: 'Especialidade',
     pending: 'Documento por assinar',
@@ -98,7 +98,7 @@ const REPORT_TR = {
     examDate: 'Exam date', reportDate: 'Report date',
     examImage: 'Exam image', noImage: 'No image', metrics: 'Validated metrics',
     cobbAI: 'Cobb angle (AI)', cobbCorr: 'Cobb angle (corrected)',
-    vertebra: 'Apical vertebra', classif: 'Classification',
+    classif: 'Classification',
     notes: "Doctor's observations", sig: 'Digital signature',
     sigBy: 'Physician', license: 'Medical license', specialty: 'Specialty',
     pending: 'Document pending signature',
@@ -238,7 +238,6 @@ export default function ReportGenerationScreen() {
         <tbody>
           <tr><td>${s.cobbAI}</td><td><strong>${r.anguloCobb.toFixed(1)}°</strong></td></tr>
           ${r.anguloCobbCorrigido !== null ? `<tr><td>${s.cobbCorr}</td><td><strong>${r.anguloCobbCorrigido.toFixed(1)}°</strong></td></tr>` : ''}
-          ${r.nivelVertebras ? `<tr><td>${s.vertebra}</td><td>${r.nivelVertebras}</td></tr>` : ''}
           <tr><td>${s.classif}</td><td>${r.grauCurvatura}</td></tr>
         </tbody>
       </table>` : '';
@@ -658,12 +657,6 @@ export default function ReportGenerationScreen() {
                             <tr>
                               <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{ps.cobbCorr}</td>
                               <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-caption)' }}>{resultado.anguloCobbCorrigido.toFixed(1)}°</td>
-                            </tr>
-                          )}
-                          {resultado.nivelVertebras && (
-                            <tr>
-                              <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{ps.vertebra}</td>
-                              <td className="px-4 py-2 border-b border-[var(--scolio-border-light)] text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>{resultado.nivelVertebras}</td>
                             </tr>
                           )}
                           <tr>

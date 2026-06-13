@@ -89,7 +89,6 @@ export default function ExamViewerScreen() {
   // ── Modal de correção ──────────────────────────────────────────────────────
   const [showCorrectModal, setShowCorrectModal] = React.useState(false);
   const [correctedAngle, setCorrectedAngle] = React.useState('');
-  const [correctedVertebra, setCorrectedVertebra] = React.useState('');
   const [correctionJustification, setCorrectionJustification] = React.useState('');
   const [aCorrigir, setACorrigir] = React.useState(false);
 
@@ -129,7 +128,6 @@ export default function ExamViewerScreen() {
       if (dados.resultado) {
         const r = dados.resultado;
         setCorrectedAngle(String(r.anguloCobbCorrigido ?? r.anguloCobb));
-        setCorrectedVertebra(r.nivelVertebras ?? '');
       }
 
       if (dados.imagens.length > 0) {
@@ -222,7 +220,6 @@ export default function ExamViewerScreen() {
         utilizador.perfil,
         estudo.estado,
         angulo,
-        correctedVertebra.trim() || null,
         correctionJustification.trim() || `Ângulo corrigido para ${angulo}°`,
       );
       setEstudo((prev) => prev
@@ -233,7 +230,6 @@ export default function ExamViewerScreen() {
               ...prev.resultado!,
               decisao: 'CORRIGIDO',
               anguloCobbCorrigido: angulo,
-              nivelVertebras: correctedVertebra.trim() || prev.resultado!.nivelVertebras,
               dataValidacao: new Date().toISOString(),
             },
           }
@@ -629,21 +625,6 @@ export default function ExamViewerScreen() {
                   )}
                 </div>
 
-                {/* Vértebra apical */}
-                {resultado.nivelVertebras && (
-                  <div className="flex items-center justify-between py-3 border-t border-[var(--scolio-border-light)]">
-                    <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
-                      {t('examViewer.apicalVertebra')}
-                    </span>
-                    <span
-                      className="text-[var(--scolio-text-primary)] font-semibold"
-                      style={{ fontSize: 'var(--text-h3)' }}
-                    >
-                      {resultado.nivelVertebras}
-                    </span>
-                  </div>
-                )}
-
                 {/* Localização */}
                 {resultado.localizacaoCurva && (
                   <div className="flex items-center justify-between py-2 border-t border-[var(--scolio-border-light)]">
@@ -844,20 +825,6 @@ export default function ExamViewerScreen() {
                   value={correctedAngle}
                   onChange={(e) => setCorrectedAngle(e.target.value)}
                   placeholder={t('examViewer.cobbPlaceholder')}
-                />
-              </div>
-              <div>
-                <label
-                  className="block text-[var(--scolio-text-primary)] mb-2"
-                  style={{ fontSize: 'var(--text-body)', fontWeight: 'var(--weight-medium)' }}
-                >
-                  {t('examViewer.apicalVertebra')}
-                </label>
-                <Input
-                  type="text"
-                  value={correctedVertebra}
-                  onChange={(e) => setCorrectedVertebra(e.target.value)}
-                  placeholder={t('examViewer.vertebraPlaceholder')}
                 />
               </div>
               <div>

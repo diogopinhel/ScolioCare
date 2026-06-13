@@ -337,7 +337,6 @@
     "scoliosisThreshold": "Scoliosis threshold",
     "lastExam": "Last exam",
     "examDate": "Exam date",
-    "apicalVertebra": "Vertebral level",
     "status": "Status",
     "viewExam": "View exam →",
     "noExams": "No exams recorded.",
@@ -429,8 +428,7 @@
   },
   "examCard": {
     "noPreview":       "No preview",
-    "cobbAngle":       "Cobb angle",
-    "apicalVertebra":  "Apical vertebra"
+    "cobbAngle":       "Cobb angle"
   },
   "examViewer": {
     "notFoundTitle": "Exam not found",
@@ -456,7 +454,6 @@
     "cobbAngle": "Cobb angle",
     "correctedByDoctor": " (corrected by doctor)",
     "originalAI": "AI original: {{angle}}°",
-    "apicalVertebra": "Apical vertebra",
     "location": "Location",
     "aiConfidence": "AI Confidence",
     "metricsAccepted": "Metrics accepted by doctor",
@@ -484,7 +481,6 @@
     "correctMetricsTitle": "Correct metrics",
     "cobbDegrees": "Cobb angle (degrees)",
     "cobbPlaceholder": "E.g.: 15.7",
-    "vertebraPlaceholder": "E.g.: T8",
     "justification": "Justification",
     "justificationOptional": "(optional)",
     "justificationPlaceholder": "Reason for correction...",
@@ -517,7 +513,6 @@
     "improvement": "Improvement",
     "worsening": "Worsening",
     "metricCobb": "Cobb angle",
-    "metricVertebra": "Apical vertebra",
     "metricDate": "Date",
     "confirmAssessment": "Confirm assessment",
     "writeOwn": "Write own assessment",

@@ -356,14 +356,6 @@ export default function ExamComparisonScreen() {
                     {variation > 0 ? '+' : ''}{variation.toFixed(1)}°
                   </td>
                 </tr>
-                <tr className="border-b border-[var(--scolio-border-light)]">
-                  <td className="px-3 py-3 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{t('examComparison.metricVertebra')}</td>
-                  <td className="px-2 py-3 text-center text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>{examA.nivelVertebras ?? '—'}</td>
-                  <td className="px-2 py-3 text-center text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-caption)' }}>{examB.nivelVertebras ?? '—'}</td>
-                  <td className="px-2 py-3 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-                    {examA.nivelVertebras === examB.nivelVertebras ? '—' : '≠'}
-                  </td>
-                </tr>
               </tbody>
             </table>
           </div>
@@ -501,10 +493,6 @@ function ExamViewer({ label, exam, examsList, onExamChange, aiOverlay, onAiOverl
         <div className="flex items-center justify-between">
           <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('examComparison.metricCobb')}</span>
           <span className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>{exam.anguloCobb.toFixed(1)}°</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('examComparison.metricVertebra')}</span>
-          <span className="text-[var(--scolio-text-primary)] font-medium" style={{ fontSize: 'var(--text-body)' }}>{exam.nivelVertebras ?? '—'}</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('examComparison.metricDate')}</span>

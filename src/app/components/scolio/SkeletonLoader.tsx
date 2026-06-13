@@ -47,12 +47,6 @@ export function AIMetricsSkeleton() {
           <SkeletonBlock width={120} height={120} rounded="full" />
         </div>
 
-        {/* Apical vertebra row */}
-        <div className="flex items-center justify-between pt-3 border-t border-[var(--scolio-border-light)]">
-          <SkeletonBlock height={14} width={100} />
-          <SkeletonBlock height={20} width={40} />
-        </div>
-
         {/* Confidence score */}
         <div className="space-y-2">
           <div className="flex justify-between">

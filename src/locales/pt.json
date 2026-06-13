@@ -337,7 +337,6 @@
     "scoliosisThreshold": "Limiar de escoliose",
     "lastExam": "Último exame",
     "examDate": "Data do exame",
-    "apicalVertebra": "Nível vertebral",
     "status": "Estado",
     "viewExam": "Ver exame →",
     "noExams": "Sem exames registados.",
@@ -429,8 +428,7 @@
   },
   "examCard": {
     "noPreview":       "Sem pré-visualização",
-    "cobbAngle":       "Ângulo de Cobb",
-    "apicalVertebra":  "Vértebra apical"
+    "cobbAngle":       "Ângulo de Cobb"
   },
   "examViewer": {
     "notFoundTitle": "Exame não encontrado",
@@ -456,7 +454,6 @@
     "cobbAngle": "Ângulo de Cobb",
     "correctedByDoctor": " (corrigido pelo médico)",
     "originalAI": "Original IA: {{angle}}°",
-    "apicalVertebra": "Vértebra apical",
     "location": "Localização",
     "aiConfidence": "Confiança IA",
     "metricsAccepted": "Métricas aceites pelo médico",
@@ -484,7 +481,6 @@
     "correctMetricsTitle": "Corrigir métricas",
     "cobbDegrees": "Ângulo de Cobb (graus)",
     "cobbPlaceholder": "Ex: 15.7",
-    "vertebraPlaceholder": "Ex: T8",
     "justification": "Justificação",
     "justificationOptional": "(opcional)",
     "justificationPlaceholder": "Motivo da correção...",
@@ -517,7 +513,6 @@
     "improvement": "Melhoria",
     "worsening": "Agravamento",
     "metricCobb": "Ângulo de Cobb",
-    "metricVertebra": "Vértebra apical",
     "metricDate": "Data",
     "confirmAssessment": "Confirmar avaliação",
     "writeOwn": "Escrever avaliação própria",

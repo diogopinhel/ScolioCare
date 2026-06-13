@@ -6,13 +6,12 @@ export interface ExamCardProps {
   imageSrc?: string;
   date: string;
   cobbAngle: number;
-  apicalVertebra?: string;
   status: BadgeStatus;
   className?: string;
   onClick?: () => void;
 }
 
-export function ExamCard({ imageSrc, date, cobbAngle, apicalVertebra, status, className = '', onClick }: ExamCardProps) {
+export function ExamCard({ imageSrc, date, cobbAngle, status, className = '', onClick }: ExamCardProps) {
   const { t } = useTranslation();
 
   return (
@@ -54,11 +53,6 @@ export function ExamCard({ imageSrc, date, cobbAngle, apicalVertebra, status, cl
           </span>
         </div>
 
-        {apicalVertebra && (
-          <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
-            {t('examCard.apicalVertebra')}: <span className="text-[var(--scolio-text-primary)]">{apicalVertebra}</span>
-          </p>
-        )}
       </div>
     </div>
   );

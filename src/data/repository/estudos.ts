@@ -142,7 +142,7 @@ export async function getEstudosDoPaciente(pacienteId: string): Promise<EstudoCo
     .from('estudos')
     .select(`
       id, data_estudo, estado, notas_clinicas, ficheiro_pdf,
-      resultados(id, angulo_cobb, angulo_cobb_corrigido, grau_curvatura, localizacao_curva, nivel_vertebras),
+      resultados(id, angulo_cobb, angulo_cobb_corrigido, grau_curvatura, localizacao_curva),
       imagens_estudo(caminho_armazenamento)
     `)
     .eq('paciente_id', pacienteId)
@@ -169,7 +169,6 @@ export async function getEstudosDoPaciente(pacienteId: string): Promise<EstudoCo
         anguloCobbCorrigido: r.angulo_cobb_corrigido as number | null,
         grauCurvatura: r.grau_curvatura as string,
         localizacaoCurva: r.localizacao_curva as string | null,
-        nivelVertebras: r.nivel_vertebras as string | null,
       } : null,
     };
   });
@@ -303,7 +302,7 @@ export async function getEstudosParaComparacao(pacienteId: string): Promise<Estu
     .from('estudos')
     .select(`
       id, data_estudo,
-      resultados(angulo_cobb, angulo_cobb_corrigido, nivel_vertebras, pontos_anatomicos, cobb_angles),
+      resultados(angulo_cobb, angulo_cobb_corrigido, pontos_anatomicos, cobb_angles),
       imagens_estudo(caminho_armazenamento)
     `)
     .eq('paciente_id', pacienteId)
@@ -328,7 +327,6 @@ export async function getEstudosParaComparacao(pacienteId: string): Promise<Estu
         id: row.id as string,
         dataEstudo: row.data_estudo as string,
         anguloCobb: ((r.angulo_cobb_corrigido ?? r.angulo_cobb) as number),
-        nivelVertebras: (r.nivel_vertebras as string | null) ?? null,
         urlImagem,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         vertebrae: Array.isArray(r.pontos_anatomicos) ? (r.pontos_anatomicos as any[]) : null,
@@ -359,7 +357,7 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
       utilizadores!estudos_paciente_id_fkey(id, nome_completo),
       resultados(
         id, angulo_cobb, grau_curvatura, localizacao_curva,
-        nivel_vertebras, confianca_modelo, versao_modelo, overlay_json,
+        confianca_modelo, versao_modelo, overlay_json,
         pontos_anatomicos, cobb_angles,
         decisao, angulo_cobb_corrigido, justificacao_validacao,
         data_validacao, concluido, observacoes_medico, data_processamento
@@ -390,7 +388,6 @@ export async function getEstudoCompleto(estudoId: string): Promise<EstudoComplet
         anguloCobb: r.angulo_cobb as number,
         grauCurvatura: r.grau_curvatura as string,
         localizacaoCurva: r.localizacao_curva as string | null,
-        nivelVertebras: r.nivel_vertebras as string | null,
         confiancaModelo: r.confianca_modelo as number,
         versaoModelo: r.versao_modelo as string,
         overlayJson: r.overlay_json,
@@ -550,7 +547,6 @@ export async function corrigirMetricasIA(
   utilizadorPerfil: string,
   estadoAtual: EstadoEstudo,
   anguloCorrigido: number,
-  vertebraCorrigida: string | null,
   justificacao: string,
 ): Promise<void> {
   const agora = new Date().toISOString();
@@ -562,7 +558,6 @@ export async function corrigirMetricasIA(
     justificacao_validacao: justificacao,
     data_validacao: agora,
   };
-  if (vertebraCorrigida) updates.nivel_vertebras = vertebraCorrigida;
 
   const [r1, r2] = await Promise.all([
     supabase.from('resultados').update(updates).eq('id', resultadoId),
@@ -575,12 +570,11 @@ export async function corrigirMetricasIA(
   await inserirHistoricoEstado(
     estudoId, utilizadorId, utilizadorNome, utilizadorPerfil,
     estadoAtual, 'VALIDATED',
-    `Métricas corrigidas: ângulo ${anguloCorrigido}°${vertebraCorrigida ? `, vértebra ${vertebraCorrigida}` : ''}`,
+    `Métricas corrigidas: ângulo ${anguloCorrigido}°`,
   );
 
   registarAcao('CORRIGIR_EXAME', 'estudos', estudoId, {
     angulo: `${anguloCorrigido}°`,
-    vertebra: vertebraCorrigida ?? '—',
     justificacao,
   });
 
