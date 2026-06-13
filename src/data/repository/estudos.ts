@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { registarAcao } from './audit';
+import { criarNotificacao } from './notificacoes';
 import type {
   EstudoResumo,
   MetricasDashboardMedico,
@@ -470,26 +471,6 @@ async function inserirHistoricoEstado(
 
 // ─── Acções de validação do médico ────────────────────────────────────────
 
-// ─── Helper interno: notificar paciente ───────────────────────────────────────
-
-async function notificarPaciente(
-  pacienteId: string,
-  tipo: string,
-  titulo: string,
-  mensagem: string,
-  referenciaEntidade: string,
-  referenciaId: string,
-): Promise<void> {
-  // fire-and-forget — não bloqueia nem propaga erros para o chamador
-  supabase.from('notificacoes').insert({
-    destinatario_id: pacienteId,
-    tipo,
-    titulo,
-    mensagem,
-    referencia_entidade: referenciaEntidade,
-    referencia_id: referenciaId,
-  }).then(() => {/* silencioso */});
-}
 
 /**
  * Médico aceita as métricas calculadas pelo modelo ML sem alterações.
@@ -527,13 +508,6 @@ export async function confirmarMetricasIA(
   );
 
   registarAcao('VALIDAR_EXAME', 'estudos', estudoId);
-
-  notificarPaciente(
-    pacienteId, 'EXAME',
-    'Exame analisado',
-    'O seu exame foi analisado e validado pelo médico responsável. Consulte os detalhes na aplicação.',
-    'estudos', estudoId,
-  );
 }
 
 /**
@@ -579,13 +553,6 @@ export async function corrigirMetricasIA(
   );
 
   registarAcao('CORRIGIR_EXAME', 'estudos', estudoId);
-
-  notificarPaciente(
-    pacienteId, 'EXAME',
-    'Exame analisado',
-    'O seu exame foi analisado e validado pelo médico responsável. Consulte os detalhes na aplicação.',
-    'estudos', estudoId,
-  );
 }
 
 /**
@@ -599,26 +566,15 @@ export async function guardarObservacoesMedico(resultadoId: string, observacoes:
   if (error) throw error;
 }
 
-/**
- * Guarda o path do PDF no Storage em estudos.ficheiro_pdf e notifica o paciente.
- */
 export async function guardarFicheiroPdf(
   estudoId: string,
   path: string,
-  pacienteId: string,
 ): Promise<void> {
   const { error } = await supabase
     .from('estudos')
     .update({ ficheiro_pdf: path })
     .eq('id', estudoId);
   if (error) throw error;
-
-  notificarPaciente(
-    pacienteId, 'RELATORIO',
-    'Novo relatório de exame disponível',
-    'O relatório do seu exame foi gerado pelo médico responsável e está disponível para consulta na aplicação.',
-    'estudos', estudoId,
-  );
 }
 
 /**
@@ -674,15 +630,16 @@ export async function enviarEstudoAoPaciente(estudoId: string, pacienteId: strin
 
   registarAcao('ENVIAR_RELATORIO', 'estudos', estudoId);
 
-  // Notificar o paciente que o relatório está disponível (fire-and-forget)
-  notificarPaciente(
-    pacienteId,
-    'RELATORIO',
-    'Relatório clínico disponível',
-    'O seu relatório clínico foi assinado e enviado pelo seu médico.',
-    'estudos',
-    estudoId,
-  );
+  criarNotificacao({
+    destinatarioId: pacienteId,
+    tipo: 'RELATORIO',
+    titulo: 'Resultado disponível',
+    mensagem: 'O seu exame foi analisado e os resultados foram disponibilizados pelo seu médico.',
+    tituloEn: 'Results available',
+    mensagemEn: 'Your exam has been reviewed and the results have been made available by your doctor.',
+    referenciaEntidade: 'estudos',
+    referenciaId: estudoId,
+  });
 }
 
 /**

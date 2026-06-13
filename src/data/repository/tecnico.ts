@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { criarNotificacao } from './notificacoes';
 import type {
   EstudoFilaItem,
   MetricasDashboardTecnico,
@@ -263,7 +264,21 @@ export async function criarEstudo(
     .single();
 
   if (error || !data) throw error ?? new Error('Falha ao criar estudo.');
-  return data.id as string;
+
+  const estudoId = data.id as string;
+
+  criarNotificacao({
+    destinatarioId: pacienteId,
+    tipo: 'EXAME',
+    titulo: 'Novo exame registado',
+    mensagem: 'O seu exame foi carregado na plataforma e será analisado em breve.',
+    tituloEn: 'New exam registered',
+    mensagemEn: 'Your exam has been uploaded to the platform and will be analysed shortly.',
+    referenciaEntidade: 'estudos',
+    referenciaId: estudoId,
+  });
+
+  return estudoId;
 }
 
 /**
@@ -312,4 +327,15 @@ export async function uploadImagemEstudo(
     .from('estudos')
     .update({ estado: 'PROCESSING' })
     .eq('id', estudoId);
+
+  criarNotificacao({
+    destinatarioId: pacienteId,
+    tipo: 'EXAME',
+    titulo: 'Exame em análise',
+    mensagem: 'O seu exame está a ser processado e analisado pela equipa médica.',
+    tituloEn: 'Exam under analysis',
+    mensagemEn: 'Your exam is being processed and reviewed by the medical team.',
+    referenciaEntidade: 'estudos',
+    referenciaId: estudoId,
+  });
 }
