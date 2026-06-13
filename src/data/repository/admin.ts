@@ -179,6 +179,22 @@ export interface CamposEdicaoUtilizador {
 }
 
 export async function editarUtilizadorAdmin(id: string, perfil: string, campos: CamposEdicaoUtilizador): Promise<void> {
+  // PACIENTE: Edge Function atualizar-paciente (service_role, passa por RLS, regista EDITAR_PACIENTE)
+  if (perfil === 'PACIENTE') {
+    await invocarEdgeFunction('atualizar-paciente', {
+      pacienteId:     id,
+      nomeCompleto:   campos.nomeCompleto.trim(),
+      dataNascimento: campos.dataNascimento ?? '',
+      genero:         campos.genero ?? '',
+      numeroUtente:   campos.numeroUtente?.trim() ?? '',
+      contacto:       campos.contacto?.trim() ?? '',
+      morada:         campos.morada?.trim() ?? '',
+      cartaoCidadao:  campos.cartaoCidadao?.trim() ?? '',
+    });
+    return;
+  }
+
+  // MEDICO / TECNICO / ADMIN: UPDATE direto (RLS permite ADMIN atualizar qualquer linha)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dados: Record<string, any> = {
     nome_completo: campos.nomeCompleto.trim(),
@@ -190,22 +206,11 @@ export async function editarUtilizadorAdmin(id: string, perfil: string, campos: 
   } else if (perfil === 'TECNICO') {
     dados.codigo_funcionario = campos.codigoFuncionario?.trim() ?? null;
     dados.departamento       = campos.departamento?.trim() ?? null;
-  } else if (perfil === 'PACIENTE') {
-    dados.data_nascimento = campos.dataNascimento ?? null;
-    dados.genero          = campos.genero ?? null;
-    dados.numero_utente   = campos.numeroUtente?.trim() ?? null;
-    dados.contacto        = campos.contacto?.trim() ?? null;
-    dados.morada          = campos.morada?.trim() ?? null;
-    dados.cartao_cidadao  = campos.cartaoCidadao?.trim() ?? null;
   }
 
   const { error } = await supabase.from('utilizadores').update(dados).eq('id', id);
   if (error) throw error;
-  // Edição de PACIENTE já é logada pela Edge Function atualizar-paciente,
-  // por isso só registamos para MEDICO/TECNICO/ADMIN.
-  if (perfil !== 'PACIENTE') {
-    registarAcao('EDITAR_UTILIZADOR', 'utilizadores', id);
-  }
+  registarAcao('EDITAR_UTILIZADOR', 'utilizadores', id);
 }
 
 export async function toggleBloqueioUtilizador(id: string, contaBloqueada: boolean): Promise<void> {

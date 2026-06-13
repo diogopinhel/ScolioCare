@@ -11,6 +11,7 @@ export default function AdminDashboardScreen() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [aCarregar, setACarregar] = React.useState(true);
+  const [erro, setErro] = React.useState(false);
   const [metricas, setMetricas] = React.useState<MetricasDashboardAdmin | null>(null);
   const [usageData, setUsageData] = React.useState<UsoSemanalDia[]>([]);
 
@@ -23,6 +24,7 @@ export default function AdminDashboardScreen() {
           setUsageData(uso);
         }
       })
+      .catch(() => { if (!cancelado) setErro(true); })
       .finally(() => { if (!cancelado) setACarregar(false); });
     return () => { cancelado = true; };
   }, []);
@@ -72,6 +74,12 @@ export default function AdminDashboardScreen() {
           {t('dashboard.adminSubtitle')}
         </p>
       </div>
+
+      {erro && (
+        <div className="bg-[var(--scolio-danger-surface)] border border-[var(--scolio-danger-coral)] rounded-[var(--radius-component)] px-4 py-3 text-[var(--scolio-danger-coral)]" style={{ fontSize: 'var(--text-body)' }}>
+          {t('admin.dashboardLoadError')}
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-6">

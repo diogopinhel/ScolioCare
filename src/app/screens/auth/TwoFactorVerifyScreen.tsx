@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 // Tem de bater certo com a definição "Email OTP Length" do projeto Supabase
 // (Authentication → Providers → Email). Se mudares lá, muda aqui.
-const NUM_DIGITOS = 8;
+const NUM_DIGITOS = 6;
 const COOLDOWN_REENVIO_S = 60;
 
 export default function TwoFactorVerifyScreen() {
