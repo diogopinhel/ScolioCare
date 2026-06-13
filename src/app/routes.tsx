@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router";
 
-import { ProtectedRoute } from "./auth/ProtectedRoute";
+import { ProtectedRoute, NotFoundRedirect } from "./auth/ProtectedRoute";
 
 // Auth
 import LoginScreen from "./screens/auth/LoginScreen";
@@ -37,8 +37,6 @@ import AdminAIScreen from "./screens/admin/AdminAIScreen";
 
 // Shared
 import UIAuditScreen from "./screens/shared/UIAuditScreen";
-import Error403Screen from "./screens/shared/Error403Screen";
-import Error404Screen from "./screens/shared/Error404Screen";
 import ProfileScreen from "./screens/shared/ProfileScreen";
 
 export const router = createBrowserRouter([
@@ -54,10 +52,6 @@ export const router = createBrowserRouter([
   {
     path: "/auth/set-password",
     Component: SetPasswordScreen,
-  },
-  {
-    path: "/403",
-    Component: Error403Screen,
   },
 
   // ─── Médico Especialista ───────────────────────────────────────────────
@@ -78,7 +72,7 @@ export const router = createBrowserRouter([
       { path: "glass-break/:pacienteId", Component: GlassBreakScreen },
       { path: "exam-upload/:pacienteId", Component: ExamUploadMedicoScreen },
       { path: "perfil", Component: ProfileScreen },
-      { path: "*", Component: Error404Screen },
+      { path: "*", Component: NotFoundRedirect },
     ],
   },
 
@@ -98,7 +92,7 @@ export const router = createBrowserRouter([
       { path: "patients", Component: TecnicoPatientsScreen },
       { path: "patients/:id/edit", Component: PatientEditScreen },
       { path: "perfil", Component: ProfileScreen },
-      { path: "*", Component: Error404Screen },
+      { path: "*", Component: NotFoundRedirect },
     ],
   },
 
@@ -117,13 +111,13 @@ export const router = createBrowserRouter([
       { path: "ai", Component: AdminAIScreen },
       { path: "ui-audit", Component: UIAuditScreen },
       { path: "perfil", Component: ProfileScreen },
-      { path: "*", Component: Error404Screen },
+      { path: "*", Component: NotFoundRedirect },
     ],
   },
 
   // ─── Catch-all ─────────────────────────────────────────────────────────
   {
     path: "*",
-    Component: Error404Screen,
+    Component: NotFoundRedirect,
   },
 ]);

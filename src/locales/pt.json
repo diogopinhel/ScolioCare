@@ -34,7 +34,6 @@
     "saveNote": "Guardar nota",
     "saving": "A guardar...",
     "back": "Voltar",
-    "backPrev": "Voltar atrás",
     "logout": "Sair",
     "loading": "A carregar...",
     "notifications": "Notificações",
@@ -57,10 +56,7 @@
     "allStatuses": "Todos os estados",
     "active": "Ativo",
     "inactive": "Inativo",
-    "home": "Ir para o início",
-    "homeDash": "Voltar ao dashboard",
     "copyright": "© 2026 ScolioScan. Todos os direitos reservados.",
-    "errorCode": "Código de erro: 404-NOT-FOUND · ScolioScan v2.1",
     "contactAdmin": "Contactar administrador do sistema",
     "timeJustNow": "agora mesmo",
     "timeMinutes": "há {{count}} min",
@@ -804,22 +800,5 @@
     "signExplanation": "O documento será assinado com o seu certificado digital qualificado, garantindo validade legal e autenticidade.",
     "signatory": "Signatário",
     "signCertify": "Ao confirmar, certifica que as informações neste relatório são precisas e completas."
-  },
-  "errors": {
-    "error403Title": "Acesso proibido",
-    "error403Desc": "Não tem permissão para aceder a este recurso. O seu perfil de utilizador não tem os privilégios necessários para esta área do ScolioScan.",
-    "errorDetails": "Detalhes do erro",
-    "yourProfile": "O seu perfil",
-    "requiredProfile": "Perfil necessário",
-    "requestedResource": "Recurso solicitado",
-    "profileTechnician": "Técnico",
-    "profileAdmin": "Administrador",
-    "error403Note": "Se considerar que esta restrição é um erro, contacte o administrador do sistema com referência ao erro 403-AUTH-ROLE.",
-    "error404Title": "Página não encontrada",
-    "error404Desc": "O endereço que tentou aceder não existe ou foi movido. Verifique se o URL está correto ou navegue para uma das páginas abaixo.",
-    "suggestedPages": "PÁGINAS SUGERIDAS",
-    "dashboard": "Dashboard",
-    "patientList": "Lista de pacientes",
-    "generateReport": "Gerar relatório"
   }
 }

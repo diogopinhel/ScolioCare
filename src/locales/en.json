@@ -34,7 +34,6 @@
     "saveNote": "Save note",
     "saving": "Saving...",
     "back": "Back",
-    "backPrev": "Go back",
     "logout": "Sign out",
     "loading": "Loading...",
     "notifications": "Notifications",
@@ -57,10 +56,7 @@
     "allStatuses": "All statuses",
     "active": "Active",
     "inactive": "Inactive",
-    "home": "Go to home",
-    "homeDash": "Back to dashboard",
     "copyright": "© 2026 ScolioScan. All rights reserved.",
-    "errorCode": "Error code: 404-NOT-FOUND · ScolioScan v2.1",
     "contactAdmin": "Contact system administrator",
     "timeJustNow": "just now",
     "timeMinutes": "{{count}} min ago",
@@ -804,22 +800,5 @@
     "signExplanation": "The document will be signed with your qualified digital certificate, ensuring legal validity and authenticity.",
     "signatory": "Signatory",
     "signCertify": "By confirming, you certify that the information in this report is accurate and complete."
-  },
-  "errors": {
-    "error403Title": "Access forbidden",
-    "error403Desc": "You do not have permission to access this resource. Your user profile does not have the required privileges for this area of ScolioScan.",
-    "errorDetails": "Error details",
-    "yourProfile": "Your profile",
-    "requiredProfile": "Required profile",
-    "requestedResource": "Requested resource",
-    "profileTechnician": "Technician",
-    "profileAdmin": "Administrator",
-    "error403Note": "If you believe this restriction is an error, contact the system administrator referencing error 403-AUTH-ROLE.",
-    "error404Title": "Page not found",
-    "error404Desc": "The address you tried to access does not exist or has been moved. Check that the URL is correct or navigate to one of the pages below.",
-    "suggestedPages": "SUGGESTED PAGES",
-    "dashboard": "Dashboard",
-    "patientList": "Patient list",
-    "generateReport": "Generate report"
   }
 }

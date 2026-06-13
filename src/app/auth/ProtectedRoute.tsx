@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router';
 import type { Perfil } from '../../data/types';
-import { useAuth } from './AuthContext';
+import { useAuth, rotaInicialPara } from './AuthContext';
 
 /**
  * Protege uma rota. Comportamento:
@@ -9,7 +9,8 @@ import { useAuth } from './AuthContext';
  * - Se há um 2FA de login pendente → redirecciona para a verificação.
  * - Se não autenticado → redirecciona para /login (guardando o destino
  *   pretendido em location.state.from para retomar depois).
- * - Se autenticado mas sem o perfil certo → redirecciona para /403.
+ * - Se autenticado mas sem o perfil certo → redirecciona para a área
+ *   inicial do seu perfil (rotaInicialPara).
  * - Se autenticado e com perfil válido → renderiza children.
  *
  * Aceita um único perfil ou uma lista de perfis permitidos.
@@ -17,6 +18,15 @@ import { useAuth } from './AuthContext';
 interface ProtectedRouteProps {
   perfis: Perfil | Perfil[];
   children: React.ReactNode;
+}
+
+/**
+ * Redireciona rotas inexistentes (catch-all "*") para a área inicial do
+ * utilizador autenticado, ou para /login se não autenticado.
+ */
+export function NotFoundRedirect() {
+  const { utilizador } = useAuth();
+  return <Navigate to={utilizador ? rotaInicialPara(utilizador.perfil) : '/login'} replace />;
 }
 
 export function ProtectedRoute({ perfis, children }: ProtectedRouteProps) {
@@ -43,7 +53,7 @@ export function ProtectedRoute({ perfis, children }: ProtectedRouteProps) {
 
   const perfisPermitidos = Array.isArray(perfis) ? perfis : [perfis];
   if (!perfisPermitidos.includes(utilizador.perfil)) {
-    return <Navigate to="/403" replace />;
+    return <Navigate to={rotaInicialPara(utilizador.perfil)} replace />;
   }
 
   return <>{children}</>;

@@ -8,7 +8,7 @@ import type { Perfil } from '../../../data/types';
 import { useTranslation } from 'react-i18next';
 
 const prefixosPorPerfil: Record<Perfil, (p: string) => boolean> = {
-  MEDICO:   (p) => p !== '/login' && p !== '/403' && !p.startsWith('/tecnico') && !p.startsWith('/admin-panel'),
+  MEDICO:   (p) => p !== '/login' && !p.startsWith('/tecnico') && !p.startsWith('/admin-panel'),
   TECNICO:  (p) => p.startsWith('/tecnico'),
   ADMIN:    (p) => p.startsWith('/admin-panel'),
   PACIENTE: (_p) => false, // pacientes usam a app React Native — sem acesso web
