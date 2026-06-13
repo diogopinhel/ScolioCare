@@ -68,6 +68,10 @@ Deno.serve(async (req: Request) => {
       return json({ erro: 'Email inválido' }, 400)
     }
 
+    // Capturar o email atual antes de alterar, para o registo de auditoria.
+    const { data: authAtual } = await adminClient.auth.admin.getUserById(utilizadorId)
+    const emailAnterior = authAtual?.user?.email ?? '—'
+
     const { error: updateErr } = await adminClient.auth.admin.updateUserById(utilizadorId, {
       email: emailNormalizado,
       email_confirm: true,
@@ -86,6 +90,7 @@ Deno.serve(async (req: Request) => {
       tipo_acao: 'EDITAR_EMAIL_UTILIZADOR',
       entidade_afetada: 'utilizadores',
       entidade_id: utilizadorId,
+      detalhe: { email: `${emailAnterior} → ${emailNormalizado}` },
       data_hora: new Date().toISOString(),
     })
 

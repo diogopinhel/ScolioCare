@@ -1,6 +1,6 @@
 import React from 'react';
-import { Search, Download, ChevronDown } from 'lucide-react';
-import { Button, Toast } from '../../components/scolio';
+import { Search, Download, ChevronDown, Eye } from 'lucide-react';
+import { Button, Toast, Modal } from '../../components/scolio';
 import { getAuditLog } from '../../../data/repository/admin';
 import { registarAcao } from '../../../data/repository/audit';
 import type { AuditLogEntry } from '../../../data/types';
@@ -47,6 +47,7 @@ export default function AdminAuditScreen() {
   const [pesquisaDebounced, setPesquisaDebounced] = React.useState('');
   const [categoriaFiltro, setCategoriaFiltro] = React.useState('all');
   const [toast, setToast] = React.useState<string | null>(null);
+  const [selecionado, setSelecionado] = React.useState<AuditLogEntry | null>(null);
   const primeiraCargaRef = React.useRef(true);
 
   const CATEGORIAS = [
@@ -94,7 +95,7 @@ export default function AdminAuditScreen() {
 
   const exportarCSV = () => {
     const linhas = [
-      ['ID', 'Data/Hora', 'Utilizador', 'Perfil', 'Tipo de ação', 'Entidade', 'Entidade ID'].join(','),
+      ['ID', 'Data/Hora', 'Utilizador', 'Perfil', 'Tipo de ação', 'Entidade', 'Entidade ID', 'Detalhe'].join(','),
       ...filtrados.map((e) => [
         e.id,
         formatarDataHora(e.dataHora, dateLocale),
@@ -103,6 +104,7 @@ export default function AdminAuditScreen() {
         e.tipoAcao,
         e.entidadeAfetada,
         e.entidadeId ?? '—',
+        e.detalhe ? JSON.stringify(e.detalhe).replace(/"/g, '""') : '—',
       ].map((v) => `"${v}"`).join(',')),
     ];
     // ﻿ = UTF-8 BOM — necessário para o Excel reconhecer acentos e cedilhas correctamente
@@ -174,13 +176,14 @@ export default function AdminAuditScreen() {
                   {h}
                 </th>
               ))}
+              <th className="w-12 px-4 py-3" aria-hidden="true" />
             </tr>
           </thead>
           <tbody>
             {aCarregar ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i} className="border-b border-[var(--scolio-border-light)]">
-                  {Array.from({ length: 5 }).map((__, j) => (
+                  {Array.from({ length: 6 }).map((__, j) => (
                     <td key={j} className="px-4 py-4">
                       <div className="h-4 bg-[var(--scolio-page-surface)] rounded animate-pulse" />
                     </td>
@@ -189,7 +192,7 @@ export default function AdminAuditScreen() {
               ))
             ) : filtrados.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
+                <td colSpan={6} className="px-4 py-12 text-center text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>
                   {pesquisa || categoriaFiltro !== 'all' ? t('admin.noMatchEvents') : t('admin.noEvents')}
                 </td>
               </tr>
@@ -198,7 +201,11 @@ export default function AdminAuditScreen() {
                 const cat = categoriaDaTipoAcao(e.tipoAcao);
                 const style = categoriaStyle(cat, t);
                 return (
-                  <tr key={e.id} className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors">
+                  <tr
+                    key={e.id}
+                    onClick={() => setSelecionado(e)}
+                    className="border-b border-[var(--scolio-border-light)] hover:bg-[var(--scolio-page-surface)] transition-colors cursor-pointer"
+                  >
                     <td className="px-4 py-3 text-[var(--scolio-text-secondary)] font-mono" style={{ fontSize: 'var(--text-caption)' }}>
                       {formatarDataHora(e.dataHora, dateLocale)}
                     </td>
@@ -227,6 +234,9 @@ export default function AdminAuditScreen() {
                         {style.label}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <Eye className="w-4 h-4 text-[var(--scolio-neutral-gray)] inline" aria-label={t('admin.auditViewDetails')} />
+                    </td>
                   </tr>
                 );
               })
@@ -234,6 +244,58 @@ export default function AdminAuditScreen() {
           </tbody>
         </table>
       </div>
+
+      {selecionado && (() => {
+        const u = selecionado.utilizadorSnapshot;
+        const detalhe = selecionado.detalhe;
+        const campos: { label: string; value: string; mono?: boolean }[] = [
+          { label: t('admin.colDateTime'), value: formatarDataHora(selecionado.dataHora, dateLocale) },
+          { label: t('admin.colUser'), value: `${u?.nome ?? '—'}${u?.perfil ? ` (${u.perfil})` : ''}` },
+          ...(u?.email ? [{ label: t('admin.auditEmail'), value: u.email }] : []),
+          { label: t('admin.colActionType'), value: selecionado.tipoAcao },
+          { label: t('admin.colCategory'), value: categoriaStyle(categoriaDaTipoAcao(selecionado.tipoAcao), t).label },
+          { label: t('admin.colEntity'), value: selecionado.entidadeAfetada },
+          { label: t('admin.auditEntityId'), value: selecionado.entidadeId ?? '—', mono: true },
+        ];
+        return (
+          <Modal isOpen onClose={() => setSelecionado(null)} title={t('admin.auditDetailsTitle')} className="max-w-lg">
+            <div className="space-y-5">
+              <dl className="space-y-2">
+                {campos.map((c) => (
+                  <div key={c.label} className="flex gap-4">
+                    <dt className="w-36 flex-shrink-0 text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{c.label}</dt>
+                    <dd className={`text-[var(--scolio-text-primary)] break-all ${c.mono ? 'font-mono' : ''}`} style={{ fontSize: 'var(--text-caption)' }}>{c.value}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              <div>
+                <p className="text-[var(--scolio-text-primary)] font-medium mb-2" style={{ fontSize: 'var(--text-body)' }}>
+                  {t('admin.auditDetailsSection')}
+                </p>
+                {detalhe && Object.keys(detalhe).length > 0 ? (
+                  <div className="bg-[var(--scolio-page-surface)] rounded-[var(--radius-component)] p-3 space-y-1.5 border border-[var(--scolio-border-light)]">
+                    {Object.entries(detalhe).map(([k, v]) => (
+                      <div key={k} className="flex gap-3">
+                        <span className="w-36 flex-shrink-0 text-[var(--scolio-text-secondary)] font-mono" style={{ fontSize: 'var(--text-caption)' }}>{k}</span>
+                        <span className="text-[var(--scolio-text-primary)] break-all" style={{ fontSize: 'var(--text-caption)' }}>
+                          {v === null || v === undefined ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-body)' }}>{t('admin.auditNoDetails')}</p>
+                )}
+              </div>
+
+              <div className="flex justify-end">
+                <Button variant="primary" onClick={() => setSelecionado(null)}>{t('common.close')}</Button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {toast && (
         <div className="fixed top-8 right-8 z-50">

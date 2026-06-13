@@ -115,6 +115,7 @@ Deno.serve(async (req: Request) => {
       tipo_acao: 'CRIAR_UTILIZADOR',
       entidade_afetada: 'utilizadores',
       entidade_id: novoId,
+      detalhe: { perfil, nome: nomeCompleto.trim(), email: email.trim().toLowerCase() },
       data_hora: new Date().toISOString(),
     })
 

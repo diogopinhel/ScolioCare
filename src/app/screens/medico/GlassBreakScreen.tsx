@@ -118,11 +118,15 @@ export default function GlassBreakScreen() {
         data_expiracao: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // preenchido também pelo trigger
       });
       if (error) throw error;
-      registarAcao('GLASS_BREAK', 'glassbreak_log', pacienteId);
 
       // Notificar todos os admins activos (fire-and-forget).
       const motivoLabel   = t(`glassBreak.reasons.${selectedReason}`, { lng: 'pt' });
       const motivoLabelEn = t(`glassBreak.reasons.${selectedReason}`, { lng: 'en' });
+
+      registarAcao('GLASS_BREAK', 'glassbreak_log', pacienteId, {
+        motivo: motivoLabel,
+        justificacao: justification.trim(),
+      });
       supabase
         .from('utilizadores')
         .select('id')

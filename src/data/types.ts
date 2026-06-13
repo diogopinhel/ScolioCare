@@ -251,6 +251,7 @@ export interface AuditLogEntry {
   tipoAcao: string;
   entidadeAfetada: string;
   entidadeId: string | null;
+  detalhe: Record<string, unknown> | null;
   dataHora: string;
 }
 

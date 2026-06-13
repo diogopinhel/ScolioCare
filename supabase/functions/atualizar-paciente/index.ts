@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
     // ── 5. Verificar que o paciente existe e é realmente PACIENTE ───────────
     const { data: pacienteExistente } = await adminClient
       .from('utilizadores')
-      .select('id, perfil')
+      .select('id, perfil, nome_completo, data_nascimento, genero, numero_utente, contacto, morada, cartao_cidadao')
       .eq('id', pacienteId)
       .eq('perfil', 'PACIENTE')
       .single()
@@ -69,21 +69,32 @@ Deno.serve(async (req: Request) => {
     // ── 6. Actualizar os campos editáveis do paciente ────────────────────────
     // Campos imutáveis (email, perfil, ativo, conta_bloqueada, etc.) não são
     // expostos neste endpoint. A alteração de email requer fluxo separado.
+    const novosValores = {
+      nome_completo: nomeCompleto.trim(),
+      data_nascimento: dataNascimento || null,
+      genero: genero || null,
+      numero_utente: numeroUtente?.trim() || null,
+      contacto: contacto?.trim() || null,
+      morada: morada?.trim() || null,
+      cartao_cidadao: cartaoCidadao?.trim() || null,
+    }
+
     const { error: updateErr } = await adminClient
       .from('utilizadores')
-      .update({
-        nome_completo: nomeCompleto.trim(),
-        data_nascimento: dataNascimento || null,
-        genero: genero || null,
-        numero_utente: numeroUtente?.trim() || null,
-        contacto: contacto?.trim() || null,
-        morada: morada?.trim() || null,
-        cartao_cidadao: cartaoCidadao?.trim() || null,
-      })
+      .update(novosValores)
       .eq('id', pacienteId)
 
     if (updateErr) {
       return json({ erro: updateErr.message }, 500)
+    }
+
+    // Diff antes→depois dos campos que mudaram, para o registo de auditoria.
+    const alteracoes: Record<string, string> = {}
+    for (const [campo, depois] of Object.entries(novosValores)) {
+      const antes = (pacienteExistente as Record<string, unknown>)[campo] ?? null
+      if (String(antes ?? '') !== String(depois ?? '')) {
+        alteracoes[campo] = `${antes ?? '—'} → ${depois ?? '—'}`
+      }
     }
 
     await adminClient.from('audit_log').insert({
@@ -91,6 +102,7 @@ Deno.serve(async (req: Request) => {
       tipo_acao: 'EDITAR_PACIENTE',
       entidade_afetada: 'utilizadores',
       entidade_id: pacienteId,
+      detalhe: Object.keys(alteracoes).length > 0 ? alteracoes : null,
       data_hora: new Date().toISOString(),
     })
 

@@ -578,7 +578,11 @@ export async function corrigirMetricasIA(
     `Métricas corrigidas: ângulo ${anguloCorrigido}°${vertebraCorrigida ? `, vértebra ${vertebraCorrigida}` : ''}`,
   );
 
-  registarAcao('CORRIGIR_EXAME', 'estudos', estudoId);
+  registarAcao('CORRIGIR_EXAME', 'estudos', estudoId, {
+    angulo: `${anguloCorrigido}°`,
+    vertebra: vertebraCorrigida ?? '—',
+    justificacao,
+  });
 
   notificarPaciente(
     pacienteId, 'EXAME',

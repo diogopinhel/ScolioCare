@@ -44,7 +44,10 @@ export async function registarMedidaPaciente(
 
   if (error || !data) throw error ?? new Error('Falha ao registar medidas.');
 
-  registarAcao('REGISTAR_MEDIDAS', 'medidas_paciente', pacienteId);
+  registarAcao('REGISTAR_MEDIDAS', 'medidas_paciente', pacienteId, {
+    peso: `${peso} kg`,
+    altura: `${altura} cm`,
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const row = data as any;

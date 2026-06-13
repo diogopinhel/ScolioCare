@@ -169,7 +169,7 @@ CSV export uses UTF-8 BOM (`﻿`) for correct rendering of Portuguese characters
 | Screen | Route | State |
 |--------|-------|-------|
 | AdminDashboardScreen | `/admin-panel` | ✅ Real KPIs + usage chart from `audit_log` |
-| AdminAuditScreen | `/admin-panel/audit` | ✅ Real `audit_log` entries (200 latest), categorized, CSV export (UTF-8 BOM). Search is server-side (debounced, includes `utilizador_snapshot->>nome/email`); category filter is client-side. |
+| AdminAuditScreen | `/admin-panel/audit` | ✅ Real `audit_log` entries (200 latest), categorized, CSV export (UTF-8 BOM, includes `detalhe`). Search is server-side (debounced, includes `utilizador_snapshot->>nome/email`); category filter is client-side. Clicking a row opens a details modal (full `entidade_id` + the `detalhe` JSON). Actions that populate `detalhe`: `ALTERAR_MEDICO_PACIENTE` (doctor before→after), `CRIAR_UTILIZADOR` (perfil/nome/email), `EDITAR_EMAIL_UTILIZADOR` (email before→after), `EDITAR_PACIENTE` (only the changed fields, before→after), `CORRIGIR_EXAME` (angle/vertebra/justification), `REGISTAR_MEDIDAS` (peso/altura), `GLASS_BREAK` (motivo/justificação). `registar_acao` RPC takes an optional `p_detalhe jsonb` (4th arg); `registarAcao()` only sends it when present and falls back to the 3-arg call if the migration isn't applied yet. |
 | AdminUsersScreen | `/admin-panel/users` | ✅ Toggle active/blocked, edit user data + email (any profile, via `gerir-email-utilizador`), invite user (no password — sets own on first access via `SetPasswordScreen`), change patient's doctor — all audited |
 | AdminAIScreen | `/admin-panel/ai` | ⚠️ ML metrics show N/D — requires ML pipeline integration |
 

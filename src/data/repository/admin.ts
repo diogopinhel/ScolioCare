@@ -53,7 +53,7 @@ export async function getAuditLog(
 ): Promise<AuditLogEntry[]> {
   let query = supabase
     .from('audit_log')
-    .select('id, utilizador_snapshot, tipo_acao, entidade_afetada, entidade_id, data_hora')
+    .select('id, utilizador_snapshot, tipo_acao, entidade_afetada, entidade_id, detalhe, data_hora')
     .order('data_hora', { ascending: false })
     .limit(limite);
 
@@ -85,6 +85,7 @@ export async function getAuditLog(
     tipoAcao: row.tipo_acao as string,
     entidadeAfetada: row.entidade_afetada as string,
     entidadeId: row.entidade_id as string | null,
+    detalhe: (row.detalhe ?? null) as Record<string, unknown> | null,
     dataHora: row.data_hora as string,
   }));
 }
