@@ -1,7 +1,6 @@
 import React from 'react';
 import { Cpu, TrendingUp, Database, CheckCircle, Info, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { supabase } from '../../../lib/supabase';
 import { getMetricasIA } from '../../../data/repository/admin';
 import type { MetricasIA } from '../../../data/repository/admin';
 import { useTranslation } from 'react-i18next';
@@ -16,22 +15,14 @@ const GRAU_CORES: Record<string, string> = {
 export default function AdminAIScreen() {
   const { t } = useTranslation();
   const [metricas, setMetricas] = React.useState<MetricasIA | null>(null);
-  const [totalPacientes, setTotalPacientes] = React.useState<number | null>(null);
   const [aCarregar, setACarregar] = React.useState(true);
 
   React.useEffect(() => {
-    Promise.all([
-      getMetricasIA(),
-      supabase
-        .from('utilizadores')
-        .select('*', { count: 'exact', head: true })
-        .eq('perfil', 'PACIENTE')
-        .eq('ativo', true)
-        .then(({ count }) => count ?? 0),
-    ]).then(([m, count]) => {
-      setMetricas(m);
-      setTotalPacientes(count);
-    }).finally(() => setACarregar(false));
+    getMetricasIA()
+      .then((m) => {
+        setMetricas(m);
+      })
+      .finally(() => setACarregar(false));
   }, []);
 
   if (aCarregar) {
@@ -114,31 +105,6 @@ export default function AdminAIScreen() {
         )}
       </div>
 
-      {/* Consentimentos de treino */}
-      <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6 opacity-70">
-        <div className="mb-4 flex items-center gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-[var(--scolio-text-primary)]">{t('admin.aiConsents')}</h3>
-              <span
-                className="inline-flex items-center px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: 'var(--scolio-warning-surface)', color: 'var(--scolio-warning-amber)', fontSize: 'var(--text-caption)', fontWeight: 'var(--weight-medium)' }}
-              >
-                {t('admin.notImplemented')}
-              </span>
-            </div>
-            <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-caption)' }}>
-              {totalPacientes !== null ? t('admin.totalActivePatients', { count: totalPacientes }) : t('admin.loadingCount')}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-start gap-3 p-4 bg-[var(--scolio-light-blue-surface)] border border-[var(--scolio-primary-blue)] rounded-[var(--radius-component)]">
-          <Info className="w-5 h-5 text-[var(--scolio-primary-blue)] flex-shrink-0 mt-0.5" />
-          <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>
-            {t('admin.aiConsentNote')}
-          </p>
-        </div>
-      </div>
     </div>
   );
 }
