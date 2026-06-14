@@ -798,7 +798,13 @@
     "dashboardLoadError": "Erro ao carregar os dados do painel. Verifique a ligação e tente novamente."
   },
   "report": {
-    "sectionsTitle": "Secções do relatório",
+    "pageTitle": "Geração de relatório",
+    "sectionsTitle": "Secções incluídas",
+    "sectionPatientInfo": "Informação do paciente",
+    "sectionExamImage": "Imagem do exame",
+    "sectionMetrics": "Métricas validadas",
+    "sectionNotes": "Observações do médico",
+    "sectionSignature": "Assinatura digital",
     "overlayAI": "Overlay IA",
     "languageTitle": "Idioma do relatório",
     "langPT": "Português (PT)",

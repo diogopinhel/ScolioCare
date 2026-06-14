@@ -75,6 +75,30 @@ function formatarData(isoDate: string | null, locale: string): string {
   return new Date(isoDate).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+let logoDataUrlPromise: Promise<string | null> | null = null;
+
+async function obterLogoDataUrl(): Promise<string | null> {
+  if (!logoDataUrlPromise) {
+    logoDataUrlPromise = fetch('/logo.png')
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        const buffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+
+        for (let i = 0; i < bytes.length; i += 0x8000) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+        }
+
+        return `data:${blob.type || 'image/png'};base64,${btoa(binary)}`;
+      })
+      .catch(() => null);
+  }
+
+  return logoDataUrlPromise;
+}
+
 // ── Traduções PT / EN do documento (usadas no PDF e na prévia) ────────────────
 const REPORT_TR = {
   pt: {
@@ -121,11 +145,12 @@ export default function ReportGenerationScreen() {
   const navigate = useNavigate();
   const { estudoId } = useParams<{ estudoId: string }>();
   const { utilizador } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [estudo, setEstudo] = React.useState<EstudoCompleto | null>(null);
   const [paciente, setPaciente] = React.useState<PacienteDetalhe | null>(null);
   const [urlImagem, setUrlImagem] = React.useState<string | null>(null);
+  const [logoDataUrl, setLogoDataUrl] = React.useState<string | null>(null);
   const [imgNaturalSize, setImgNaturalSize] = React.useState<{ w: number; h: number } | null>(null);
   const [aCarregar, setACarregar] = React.useState(true);
   const [erroCarregamento, setErroCarregamento] = React.useState(false);
@@ -140,7 +165,19 @@ export default function ReportGenerationScreen() {
     observacoesMedico: true,
     assinaturaDigital: true,
   });
-  const [idioma, setIdioma] = React.useState('pt');
+  const [idioma, setIdioma] = React.useState(i18n.language === 'en' ? 'en' : 'pt');
+  const idiomaEscolhidoManualmente = React.useRef(false);
+  // Acompanha a língua da interface até o utilizador escolher explicitamente
+  // a língua do relatório no painel "Idioma do relatório".
+  React.useEffect(() => {
+    if (!idiomaEscolhidoManualmente.current) {
+      setIdioma(i18n.language === 'en' ? 'en' : 'pt');
+    }
+  }, [i18n.language]);
+  const escolherIdioma = (val: string) => {
+    idiomaEscolhidoManualmente.current = true;
+    setIdioma(val);
+  };
   const ps = REPORT_TR[idioma as 'pt' | 'en'] ?? REPORT_TR.pt;
   const dateLocale = getDateLocale(idioma);
   const [observacoesMedico, setObservacoesMedico] = React.useState('');
@@ -156,6 +193,18 @@ export default function ReportGenerationScreen() {
       pendingCapture.current = null;
     }
   }, [captureMode]);
+
+  React.useEffect(() => {
+    let cancelado = false;
+    obterLogoDataUrl().then((logo) => {
+      if (!cancelado) setLogoDataUrl(logo);
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   const [aEnviar, setAEnviar] = React.useState(false);
   const [foiEnviado, setFoiEnviado] = React.useState(false);
   const [showSignatureModal, setShowSignatureModal] = React.useState(false);
@@ -190,7 +239,7 @@ export default function ReportGenerationScreen() {
   const toggleSection = (s: keyof typeof includedSections) =>
     setIncludedSections((prev) => ({ ...prev, [s]: !prev[s] }));
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!estudo) return;
 
     const s = REPORT_TR[idioma as 'pt' | 'en'] ?? REPORT_TR.pt;
@@ -198,6 +247,7 @@ export default function ReportGenerationScreen() {
     const dataExameStr = formatarData(estudo.dataEstudo, dateLocale);
     const r = estudo.resultado;
     const idadePaciente = computeAge(paciente?.dataNascimento ?? null);
+    const logoDataUrl = await obterLogoDataUrl();
 
     const secaoPaciente = includedSections.dadosPaciente ? `
       <h2>${s.patient}</h2>
@@ -274,6 +324,7 @@ export default function ReportGenerationScreen() {
     .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1a6faf;padding-bottom:12px;margin-bottom:4px}
     .logo{display:flex;align-items:center;gap:10px}
     .logo-box{width:40px;height:40px;background:#1a6faf;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:22px;font-weight:700}
+    .logo-img{width:40px;height:40px;object-fit:contain;display:block;border-radius:8px}
     .doc-title{font-size:20px;font-weight:700;color:#1a6faf;margin-top:8px}
     .meta{text-align:right;font-size:11px;color:#666}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
@@ -296,7 +347,7 @@ export default function ReportGenerationScreen() {
 <body>
   <div class="header">
     <div class="logo">
-      <div class="logo-box">S</div>
+      ${logoDataUrl ? `<img src="${logoDataUrl}" alt="ScolioCare" class="logo-img" />` : `<div class="logo-box">S</div>`}
       <div>
         <div style="font-size:13px;color:#666">${s.subtitle}</div>
         <div class="doc-title">${s.title}</div>
@@ -444,7 +495,7 @@ export default function ReportGenerationScreen() {
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-[var(--scolio-text-secondary)] hover:text-[var(--scolio-text-primary)] transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-[var(--scolio-text-primary)]">Geração de relatório</h1>
+          <h1 className="text-[var(--scolio-text-primary)]">{t('report.pageTitle')}</h1>
         </div>
         <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-12 text-center">
           <AlertCircle className="w-12 h-12 text-[var(--scolio-danger-coral)] mx-auto mb-4" />
@@ -461,6 +512,7 @@ export default function ReportGenerationScreen() {
   const nomeMedico = medico ? `Dr. ${medico.nomeCompleto}` : (utilizador?.nomeCompleto ?? '—');
   const dataRelatorio = formatarData(new Date().toISOString(), dateLocale);
   const dataExame = formatarData(estudo.dataEstudo, dateLocale);
+  const dataExameUI = formatarData(estudo.dataEstudo, getDateLocale(i18n.language));
   const resultado = estudo.resultado;
 
   return (
@@ -472,9 +524,9 @@ export default function ReportGenerationScreen() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-[var(--scolio-text-primary)]">Geração de relatório</h1>
+            <h1 className="text-[var(--scolio-text-primary)]">{t('report.pageTitle')}</h1>
             <p className="text-[var(--scolio-text-secondary)] mt-1" style={{ fontSize: 'var(--text-body)' }}>
-              {estudo.pacienteNome} — Exame de {dataExame}
+              {estudo.pacienteNome} — {t('patientRecord.examOf', { date: dataExameUI })}
             </p>
           </div>
         </div>
@@ -484,20 +536,20 @@ export default function ReportGenerationScreen() {
         {/* Configuração (30%) */}
         <div className="col-span-3 space-y-6">
           <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-            <h3 className="text-[var(--scolio-text-primary)] mb-4">Secções incluídas</h3>
+            <h3 className="text-[var(--scolio-text-primary)] mb-4">{t('report.sectionsTitle')}</h3>
             <div className="space-y-3">
-              <CheckboxItem label={ps.patient} checked={includedSections.dadosPaciente} onChange={() => toggleSection('dadosPaciente')} />
-              <CheckboxItem label={ps.examImage} checked={includedSections.imagemExame} onChange={() => toggleSection('imagemExame')} />
+              <CheckboxItem label={t('report.sectionPatientInfo')} checked={includedSections.dadosPaciente} onChange={() => toggleSection('dadosPaciente')} />
+              <CheckboxItem label={t('report.sectionExamImage')} checked={includedSections.imagemExame} onChange={() => toggleSection('imagemExame')} />
               <CheckboxItem label={t('report.overlayAI')} checked={includedSections.overlayIA} onChange={() => toggleSection('overlayIA')} disabled={!includedSections.imagemExame} />
-              <CheckboxItem label={ps.metrics} checked={includedSections.metricasValidadas} onChange={() => toggleSection('metricasValidadas')} />
-              <CheckboxItem label={ps.notes} checked={includedSections.observacoesMedico} onChange={() => toggleSection('observacoesMedico')} />
-              <CheckboxItem label={ps.sig} checked={includedSections.assinaturaDigital} onChange={() => toggleSection('assinaturaDigital')} />
+              <CheckboxItem label={t('report.sectionMetrics')} checked={includedSections.metricasValidadas} onChange={() => toggleSection('metricasValidadas')} />
+              <CheckboxItem label={t('report.sectionNotes')} checked={includedSections.observacoesMedico} onChange={() => toggleSection('observacoesMedico')} />
+              <CheckboxItem label={t('report.sectionSignature')} checked={includedSections.assinaturaDigital} onChange={() => toggleSection('assinaturaDigital')} />
             </div>
           </div>
 
           {/* Observações do médico */}
           <div className="bg-white rounded-[var(--radius-card)] shadow-sm border border-[var(--scolio-border-light)] p-6">
-            <h3 className="text-[var(--scolio-text-primary)] mb-1">{ps.notes}</h3>
+            <h3 className="text-[var(--scolio-text-primary)] mb-1">{t('report.sectionNotes')}</h3>
             <p className="text-[var(--scolio-text-secondary)] mb-3" style={{ fontSize: 'var(--text-caption)' }}>
               {t('report.observationsHint')}
             </p>
@@ -514,7 +566,7 @@ export default function ReportGenerationScreen() {
             <div className="space-y-2">
               {[{ val: 'pt', label: t('report.langPT') }, { val: 'en', label: t('report.langEN') }].map(({ val, label }) => (
                 <label key={val} className="flex items-center gap-3 cursor-pointer">
-                  <input type="radio" name="language" value={val} checked={idioma === val} onChange={() => setIdioma(val)} className="w-4 h-4 text-[var(--scolio-primary-blue)] focus:ring-[var(--scolio-primary-blue)]" />
+                  <input type="radio" name="language" value={val} checked={idioma === val} onChange={() => escolherIdioma(val)} className="w-4 h-4 text-[var(--scolio-primary-blue)] focus:ring-[var(--scolio-primary-blue)]" />
                   <span className="text-[var(--scolio-text-primary)]" style={{ fontSize: 'var(--text-body)' }}>{label}</span>
                 </label>
               ))}
@@ -561,9 +613,13 @@ export default function ReportGenerationScreen() {
                   <div className="border-b border-[var(--scolio-border-light)] pb-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-[var(--scolio-primary-blue)] rounded-lg flex items-center justify-center">
-                          <span className="text-white text-2xl font-semibold">S</span>
-                        </div>
+                        {logoDataUrl ? (
+                          <img src={logoDataUrl} alt="ScolioCare" className="w-12 h-12 rounded-lg object-contain" />
+                        ) : (
+                          <div className="w-12 h-12 bg-[var(--scolio-primary-blue)] rounded-lg flex items-center justify-center">
+                            <span className="text-white text-2xl font-semibold">S</span>
+                          </div>
+                        )}
                         <div>
                           <h3 className="text-[var(--scolio-text-primary)] font-semibold" style={{ fontSize: 'var(--text-h3)' }}>ScolioCare</h3>
                           <p className="text-[var(--scolio-text-secondary)]" style={{ fontSize: 'var(--text-caption)' }}>{ps.subtitle}</p>

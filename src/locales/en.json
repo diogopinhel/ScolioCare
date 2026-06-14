@@ -798,7 +798,13 @@
     "dashboardLoadError": "Error loading dashboard data. Check your connection and try again."
   },
   "report": {
-    "sectionsTitle": "Report sections",
+    "pageTitle": "Report generation",
+    "sectionsTitle": "Included sections",
+    "sectionPatientInfo": "Patient information",
+    "sectionExamImage": "Exam image",
+    "sectionMetrics": "Validated metrics",
+    "sectionNotes": "Doctor's observations",
+    "sectionSignature": "Digital signature",
     "overlayAI": "AI Overlay",
     "languageTitle": "Report language",
     "langPT": "Português (PT)",
